@@ -8,6 +8,7 @@ import {
   COST_WINDOW_DAYS, CREDIT_ENTITLEMENT, costQueryBody, costWindow, mapCredit, mapCreditPool, mapLimit, parseCostQuery, toCostDaily, toCostMeters,
   type CostQueryResult, type CreditSnapshot, type CurrencyReport,
 } from './cost'
+import { parseM365 } from './m365'
 import { KQL, mapDevices, mapExecuted, mapInstalled, mapNetwork } from './shadow'
 import {
   isFoundryProject, joinAgents, projectAgent, projectAzureAIResource, projectConnectors, projectEnvironment, projectFlow,
@@ -161,6 +162,7 @@ export const TABLES = {
   interactionRuns: 'poc_copilotinteractionflowrunses',
   sharepointRuns: 'poc_sharepointagentloggingruns',
   knowledgeRuns: 'poc_knowledgesweepruns',
+  m365usage: 'poc_m365usagereports',
   users: 'systemusers',
 } as const
 
@@ -328,6 +330,7 @@ const LANES: Record<LaneId, { label: string; connector: string }> = {
   credits: { label: 'Copilot Credits per agent', connector: 'powerplatformadminv2' },
   creditpool: { label: 'Tenant capacity (credit pool)', connector: 'powerplatformadminv2' },
   aicost: { label: 'Azure AI spend (Cost Management)', connector: 'arm' },
+  m365usage: { label: 'Microsoft 365 usage reports', connector: 'commondataserviceforapps' },
 }
 
 async function lane<T>(id: LaneId, run: () => Promise<{ rows: T[]; detail?: string }>, dataverse = false): Promise<{ rows: T[]; status: LaneStatus }> {
@@ -357,7 +360,7 @@ export async function loadLive(onLane?: LaneProgress, now = new Date()): Promise
   // Azure AI spend is only queried in subscriptions that hold Azure AI resources, so it waits for the Foundry listing.
   const foundryP = loadFoundry()
   foundryP.catch(() => undefined)
-  const [agentItems, envs, usage, flowItems, foundry, users, interactions, sources, spAgents, shadow, credits, creditPool, aiCost, runs, appEnv] = await Promise.all([
+  const [agentItems, envs, usage, flowItems, foundry, users, interactions, sources, spAgents, shadow, credits, creditPool, aiCost, m365, runs, appEnv] = await Promise.all([
     report(lane('agents', async () => ({ rows: await queryPowerPlatform('microsoft.copilotstudio/agents') }))),
     report(lane('environments', async () => ({ rows: (await queryPowerPlatform('microsoft.powerplatform/environments')).map(projectEnvironment) }))),
     report(lane('usage', async () => ({ rows: await queryPowerPlatform('microsoft.powerplatformusage/usagerecords') }))),
@@ -406,6 +409,18 @@ export async function loadLive(onLane?: LaneProgress, now = new Date()): Promise
       if (r.skipped === subs.length && r.firstError) throw r.firstError
       return { rows: [r].filter((x) => x.daily.length + x.meters.length > 0), detail: aiCostDetail(r, subs.length) }
     })),
+    report(lane('m365usage', async () => {
+      const usage = parseM365(
+        (await listRecords(TABLES.m365usage, 'poc_name,poc_payload,poc_status,poc_collectedat')).map((r) => ({
+          name: str(r.poc_name),
+          payload: str(r.poc_payload),
+          status: str(r.poc_status),
+          collectedAt: toTime(r.poc_collectedat),
+        })),
+      )
+      const failed = usage?.failed.length ? `${usage.failed.length} report(s) failed on the last run: ${usage.failed.map((f) => `${f.name} (${f.status})`).join(', ')}.` : undefined
+      return { rows: usage ? [usage] : [], detail: failed }
+    }, true)),
     Promise.all([
       lastRun('interactions', 'Copilot interaction flow runs', TABLES.interactionRuns),
       lastRun('sharepoint', 'SharePoint agent logging runs', TABLES.sharepointRuns),
@@ -438,6 +453,7 @@ export async function loadLive(onLane?: LaneProgress, now = new Date()): Promise
     creditPool: creditPool.rows,
     aiCostDaily: aiCost.rows[0]?.daily ?? [],
     aiCostMeters: aiCost.rows[0]?.meters ?? [],
+    m365: m365.rows[0],
   }
   const shadowStatus: LaneStatus = { ...shadow.status, rows: raw.shadowSignals.length }
   const aiCostStatus: LaneStatus = { ...aiCost.status, rows: raw.aiCostDaily.length }
@@ -447,7 +463,7 @@ export async function loadLive(onLane?: LaneProgress, now = new Date()): Promise
     asOf: now.toISOString().slice(0, 19),
     lanes: [
       agentItems.status, envs.status, usage.status, flowItems.status, foundry.status, users.status, interactions.status, sources.status, spAgents.status,
-      shadowStatus, credits.status, creditPool.status, aiCostStatus,
+      shadowStatus, credits.status, creditPool.status, aiCostStatus, m365.status,
     ],
     runs,
     namesResolved: users.rows.length > 0,

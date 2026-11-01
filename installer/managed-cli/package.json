@@ -1,5 +1,5 @@
 {
-  "name": "agent-inventory-managed-cli",
+  "name": "ai-monitor-managed-cli",
   "version": "1.0.0",
   "description": "Pins the Copilot managed apps CLI that deploys the app. The installer runs it with Node.js 24.11 or later.",
   "license": "MIT",

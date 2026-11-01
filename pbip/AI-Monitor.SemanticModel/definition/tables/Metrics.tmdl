@@ -1,0 +1,1000 @@
+/// All report measures.
+table Metrics
+	lineageTag: 23dec7b7-9f04-4071-8fef-d59fcc307577
+
+	/// Total agents discovered across Copilot Studio, Microsoft 365 Copilot Agent Builder and Azure AI Foundry.
+	measure 'Agent Count' = COUNTROWS ( 'Agent' )
+		formatString: #,0
+		displayFolder: 01 Inventory
+		lineageTag: e7130fdf-8567-44f3-920f-ba2d91d1b244
+
+	measure 'Copilot Studio Agents' = CALCULATE ( [Agent Count], KEEPFILTERS ( 'Agent'[Platform] = "Copilot Studio" ))
+		formatString: #,0
+		displayFolder: 01 Inventory
+		lineageTag: b9735405-31ec-4de6-8587-2048b2cb118b
+
+	/// Agents authored in Microsoft 365 Copilot Agent Builder (reported by the inventory API as 'Copilot Studio Lite').
+	measure 'Agent Builder Agents' = CALCULATE ( [Agent Count], KEEPFILTERS ( 'Agent'[Platform] = "M365 Copilot Agent Builder" ))
+		formatString: #,0
+		displayFolder: 01 Inventory
+		lineageTag: 0c16efca-c442-490a-87b4-31c017997ca7
+
+	/// Azure AI Foundry projects, which are the containers that host Foundry Agent Service agents.
+	measure 'Foundry Agent Projects' = CALCULATE ( [Agent Count], KEEPFILTERS ( 'Agent'[Platform] = "Azure AI Foundry" ))
+		formatString: #,0
+		displayFolder: 01 Inventory
+		lineageTag: a8f6ad68-32d9-4b74-83ee-74722a46c3da
+
+	/// SharePoint .agent files observed inside the configured Purview audit-retention window.
+	measure 'SharePoint Agents' = COUNTROWS ( 'SharePointAgent' )
+		formatString: #,0
+		displayFolder: 01 Inventory
+		lineageTag: 1582f418-d57b-407f-a1fd-598a59d2eeef
+
+	measure 'Current SharePoint Agents' = CALCULATE ( [SharePoint Agents], KEEPFILTERS ( 'SharePointAgent'[IsDeleted] = FALSE () ) )
+		formatString: #,0
+		displayFolder: 01 Inventory
+		lineageTag: d8401e4e-3ef5-4d39-b29e-9ed7d0631be8
+
+	measure 'Deleted SharePoint Agents' = CALCULATE ( [SharePoint Agents], KEEPFILTERS ( 'SharePointAgent'[IsDeleted] = TRUE () ) )
+		formatString: #,0
+		displayFolder: 01 Inventory
+		lineageTag: 60815bb4-10b3-4a91-98a0-aa1e1de8b05a
+
+	measure 'SharePoint Agent Sites' = CALCULATE ( DISTINCTCOUNT ( 'SharePointAgent'[SiteUrl] ), KEEPFILTERS ( 'SharePointAgent'[IsDeleted] = FALSE () ) )
+		formatString: #,0
+		displayFolder: 01 Inventory
+		lineageTag: c8efc1e5-86a9-4ab7-8ae1-26e2d8ff8cab
+
+	measure 'SharePoint Audit Events' = SUM ( 'SharePointAgent'[EventCount] )
+		formatString: #,0
+		displayFolder: 01 Inventory
+		lineageTag: 4161e992-3c1d-4fb2-a872-1cd81d6602a7
+
+	measure 'SharePoint Inventory Age (days)' = VAR collected = MAX ( 'SharePointAgent'[CollectedAt] ) RETURN IF ( ISBLANK ( collected ), BLANK (), DATEDIFF ( collected, NOW (), DAY ) )
+		formatString: #,0
+		displayFolder: 01 Inventory
+		lineageTag: 2221cc4b-3ae3-432b-82cc-7ae5d663965f
+
+	measure 'Generative Agents' = CALCULATE ( [Agent Count], KEEPFILTERS ( 'Agent'[Orchestration] = "Generative" ))
+		formatString: #,0
+		displayFolder: 01 Inventory
+		lineageTag: 283d0b20-d0bb-438d-8da9-df69894bb9ed
+
+	measure 'Classic Agents' = CALCULATE ( [Agent Count], KEEPFILTERS ( 'Agent'[Orchestration] = "Classic" ))
+		formatString: #,0
+		displayFolder: 01 Inventory
+		lineageTag: 1aee9e9c-3a54-4f6c-b3a8-6b83296501c2
+
+	measure 'Published Agents' = CALCULATE ( [Agent Count], KEEPFILTERS ( 'Agent'[IsPublished] = TRUE () ))
+		formatString: #,0
+		displayFolder: 01 Inventory
+		lineageTag: cd6e4d49-36c8-4fe1-8bb0-b5d93174dddb
+
+	measure 'Unpublished Agents' = [Agent Count] - [Published Agents]
+		formatString: #,0
+		displayFolder: 01 Inventory
+		lineageTag: b9e2cdbc-c1fd-4e7d-ad09-c005922a951c
+
+	measure 'Published %' = DIVIDE ( [Published Agents], [Agent Count] )
+		formatString: 0.0%
+		displayFolder: 01 Inventory
+		lineageTag: 498e327a-65c9-4eb1-ae0a-8bbf3a3acd97
+
+	measure 'Environment Count' = COUNTROWS ( 'Environment' )
+		formatString: #,0
+		displayFolder: 01 Inventory
+		lineageTag: 1e68eed0-5d47-4656-acc5-6d5cd1f49e42
+
+	measure 'Environments with Agents' = DISTINCTCOUNT ( 'Agent'[EnvironmentId] )
+		formatString: #,0
+		displayFolder: 01 Inventory
+		lineageTag: 6dd8162c-0cd3-4545-a9c0-778d9bc1f1a0
+
+	measure 'Agent Flow Count' = COUNTROWS ( 'AgentFlow' )
+		formatString: #,0
+		displayFolder: 01 Inventory
+		lineageTag: 05d4fcad-0bc0-4afd-adba-36a04106dc4d
+
+	measure 'Active Agents (7d)' = CALCULATE ( [Agent Count], KEEPFILTERS ( 'Agent'[ActivityStatus] = "Active (7d)" ))
+		formatString: #,0
+		displayFolder: 02 Adoption
+		lineageTag: f095d848-b146-4325-aead-0ad572beb047
+
+	/// Agents with a usage signal in the last 30 days. Filtering on ActivityStatus rather than DaysSinceLastUse avoids DAX treating the blank of a never-used agent as 0.
+	measure 'Active Agents (30d)' = CALCULATE ( [Agent Count], KEEPFILTERS ( 'Agent'[ActivityStatus] IN { "Active (7d)", "Active (30d)" } ))
+		formatString: #,0
+		displayFolder: 02 Adoption
+		lineageTag: c85a9eea-11a0-4e05-a950-38d894f0a4e8
+
+	measure 'Idle Agents (90d)' = CALCULATE ( [Agent Count], KEEPFILTERS ( 'Agent'[ActivityStatus] = "Idle (90d)" ))
+		formatString: #,0
+		displayFolder: 02 Adoption
+		lineageTag: 1312ec83-62b2-45e6-b1bc-9fb6ca236c8f
+
+	measure 'Dormant Agents' = CALCULATE ( [Agent Count], KEEPFILTERS ( 'Agent'[ActivityStatus] = "Dormant (90d+)" ))
+		formatString: #,0
+		displayFolder: 02 Adoption
+		lineageTag: c328a047-49b8-4e4e-86f2-ff9ce9e8f7a4
+
+	/// No usage record has ever been emitted for these agents.
+	measure 'Agents Never Used' = CALCULATE ( [Agent Count], KEEPFILTERS ( ISBLANK ( 'Agent'[LastUsed] ) ))
+		formatString: #,0
+		displayFolder: 02 Adoption
+		lineageTag: 29c22f47-d975-4d86-adaf-8279ed1e45a2
+
+	measure 'Adoption Rate %' = DIVIDE ( [Active Agents (30d)], [Agent Count] )
+		formatString: 0.0%
+		displayFolder: 02 Adoption
+		lineageTag: d9a70de2-9c92-4cbc-9650-c82ce1fdf325
+
+	measure 'Never Used %' = DIVIDE ( [Agents Never Used], [Agent Count] )
+		formatString: 0.0%
+		displayFolder: 02 Adoption
+		lineageTag: 9605633d-3aab-4a67-a94b-187b10a80ba4
+
+	/// Averaged over agents that have been used at least once.
+	measure 'Avg Days Since Last Use' = AVERAGEX ( FILTER ( 'Agent', NOT ISBLANK ( 'Agent'[DaysSinceLastUse] ) ), 'Agent'[DaysSinceLastUse] )
+		formatString: #,0.0
+		displayFolder: 02 Adoption
+		lineageTag: 47616eeb-f89a-4630-b5dd-d85c868fad1d
+
+	measure 'New Agents (30d)' = CALCULATE ( [Agent Count], KEEPFILTERS ( 'Agent'[AgeDays] <= 30 ), KEEPFILTERS ( NOT ISBLANK ( 'Agent'[AgeDays] ) ))
+		formatString: #,0
+		displayFolder: 02 Adoption
+		lineageTag: fc7e004f-efde-44ea-bb7c-cca26cf14622
+
+	measure 'New Agents (90d)' = CALCULATE ( [Agent Count], KEEPFILTERS ( 'Agent'[AgeDays] <= 90 ), KEEPFILTERS ( NOT ISBLANK ( 'Agent'[AgeDays] ) ))
+		formatString: #,0
+		displayFolder: 02 Adoption
+		lineageTag: 718912ee-c908-4d1c-9748-ef3e01afbee3
+
+	/// Agent count sliced by creation date.
+	measure 'Agents Created' = CALCULATE ( [Agent Count], USERELATIONSHIP ( 'Agent'[CreatedDate], 'Date'[Date] ) )
+		formatString: #,0
+		displayFolder: 02 Adoption
+		lineageTag: 1131d4ab-5ac5-4bd2-84d0-6b32035a129f
+
+	/// Agent count sliced by last-used date.
+	measure 'Agents Last Used' = CALCULATE ( [Agent Count], USERELATIONSHIP ( 'Agent'[LastUsedDate], 'Date'[Date] ) )
+		formatString: #,0
+		displayFolder: 02 Adoption
+		lineageTag: 0df0da25-6827-49ba-be4e-9db373f95877
+
+	measure 'Cumulative Agents' = CALCULATE ( [Agent Count], FILTER ( ALL ( 'Date'[Date] ), 'Date'[Date] <= MAX ( 'Date'[Date] ) ), USERELATIONSHIP ( 'Agent'[CreatedDate], 'Date'[Date] ) )
+		formatString: #,0
+		displayFolder: 02 Adoption
+		lineageTag: 1a121219-96d6-441a-b4b9-64c095d05d3d
+
+	/// Agents shared with everyone in the tenant.
+	measure 'Tenant-wide Shared Agents' = CALCULATE ( [Agent Count], KEEPFILTERS ( 'Agent'[SharedTenantWide] = TRUE () ))
+		formatString: #,0
+		displayFolder: 03 Governance
+		lineageTag: 9c74fe15-825c-4792-8dff-fb93ce9a9564
+
+	measure 'Tenant-wide Shared %' = DIVIDE ( [Tenant-wide Shared Agents], [Agent Count] )
+		formatString: 0.0%
+		displayFolder: 03 Governance
+		lineageTag: 2bfb4be7-8784-4d72-bd21-d949e8463077
+
+	/// Agents configured with no end-user authentication.
+	measure 'Unauthenticated Agents' = CALCULATE ( [Agent Count], KEEPFILTERS ( 'Agent'[Authentication] IN { "None", "" } ))
+		formatString: #,0
+		displayFolder: 03 Governance
+		lineageTag: 008050f2-d617-4ee4-b97e-93365384df99
+
+	measure 'Quarantined Agents' = CALCULATE ( [Agent Count], KEEPFILTERS ( 'Agent'[IsQuarantined] = TRUE () ))
+		formatString: #,0
+		displayFolder: 03 Governance
+		lineageTag: 72f8acb1-e398-48f2-a786-8a2df8480618
+
+	measure 'Web Search Enabled Agents' = CALCULATE ( [Agent Count], KEEPFILTERS ( 'Agent'[WebSearchEnabled] = TRUE () ))
+		formatString: #,0
+		displayFolder: 03 Governance
+		lineageTag: 48841ea8-980e-47ad-8c57-4df54b3a78a4
+
+	measure 'High Risk Agents' = CALCULATE ( [Agent Count], KEEPFILTERS ( 'Agent'[RiskBand] = "High" ))
+		formatString: #,0
+		displayFolder: 03 Governance
+		lineageTag: fbbeb012-1d70-4db2-9c06-71b23f25c74e
+
+	measure 'Medium Risk Agents' = CALCULATE ( [Agent Count], KEEPFILTERS ( 'Agent'[RiskBand] = "Medium" ))
+		formatString: #,0
+		displayFolder: 03 Governance
+		lineageTag: a9e1f87b-63bf-489b-9dc9-71803d43ec2a
+
+	measure 'Low Risk Agents' = CALCULATE ( [Agent Count], KEEPFILTERS ( 'Agent'[RiskBand] = "Low" ))
+		formatString: #,0
+		displayFolder: 03 Governance
+		lineageTag: bf00ee7e-a840-4bcc-86b2-c0dd63a1cc66
+
+	measure 'Avg Risk Score' = AVERAGE ( 'Agent'[RiskScore] )
+		formatString: #,0.0
+		displayFolder: 03 Governance
+		lineageTag: 95adec4c-cd7a-468d-8bb2-dae892526dbc
+
+	/// Shared with the whole tenant but never used - prime clean-up candidates.
+	measure 'Orphan Risk Agents' = CALCULATE ( [Agent Count], KEEPFILTERS ( 'Agent'[SharedTenantWide] = TRUE () ), KEEPFILTERS ( ISBLANK ( 'Agent'[LastUsed] ) ))
+		formatString: #,0
+		displayFolder: 03 Governance
+		lineageTag: 9f58c707-b462-4aaa-8759-cbd6dd9c0cdd
+
+	measure 'Unmanaged Agents' = CALCULATE ( [Agent Count], KEEPFILTERS ( 'Agent'[IsManaged] = FALSE () ))
+		formatString: #,0
+		displayFolder: 03 Governance
+		lineageTag: 9da9b99d-a49d-44e1-9679-c0d72ae4dfd9
+
+	measure 'Connector Links' = COUNTROWS ( 'AgentConnector' )
+		formatString: #,0
+		displayFolder: 04 Tools and Integration
+		lineageTag: 2d385fe4-9c83-4bf2-9f93-330bd9674fcf
+
+	measure 'Distinct Connectors' = DISTINCTCOUNT ( 'AgentConnector'[ConnectorId] )
+		formatString: #,0
+		displayFolder: 04 Tools and Integration
+		lineageTag: 19d28de9-ae94-4894-be98-d3d32d194426
+
+	/// Agent-to-connector bindings that expose an MCP server tool.
+	measure 'MCP Server Links' = CALCULATE ( [Connector Links], KEEPFILTERS ( 'AgentConnector'[IsMcpServer] = TRUE () ))
+		formatString: #,0
+		displayFolder: 04 Tools and Integration
+		lineageTag: e17d96bf-cf81-467f-9fd9-574cbdf72ec0
+
+	measure 'Agents with Connectors' = DISTINCTCOUNT ( 'AgentConnector'[AgentKey] )
+		formatString: #,0
+		displayFolder: 04 Tools and Integration
+		lineageTag: 8d572ba3-7c38-46fe-9860-68c7f7def00b
+
+	measure 'Total Topics' = SUM ( 'Agent'[TopicCount] )
+		formatString: #,0
+		displayFolder: 04 Tools and Integration
+		lineageTag: 72809537-7642-4369-a08e-d2720204f7e5
+
+	measure 'Total Tools' = SUM ( 'Agent'[ToolCount] )
+		formatString: #,0
+		displayFolder: 04 Tools and Integration
+		lineageTag: 813930d2-5dc9-4573-965f-1444dda6161b
+
+	measure 'Total Knowledge Sources' = SUM ( 'Agent'[KnowledgeCount] )
+		formatString: #,0
+		displayFolder: 04 Tools and Integration
+		lineageTag: f1d65422-4b8c-4df4-b6e3-7c93a4a65787
+
+	measure 'Agents with Knowledge' = CALCULATE ( [Agent Count], KEEPFILTERS ( 'Agent'[KnowledgeCount] > 0 ))
+		formatString: #,0
+		displayFolder: 04 Tools and Integration
+		lineageTag: 14f9be5a-e989-4c8b-875f-0230e452ccc1
+
+	measure 'Multi-agent Links' = SUM ( 'Agent'[ConnectedAgentCount] )
+		formatString: #,0
+		displayFolder: 04 Tools and Integration
+		lineageTag: 2322f1bd-5046-48c3-b309-147d9231c062
+
+	measure 'Agents with Tools' = CALCULATE ( [Agent Count], KEEPFILTERS ( 'Agent'[ToolCount] > 0 ))
+		formatString: #,0
+		displayFolder: 04 Tools and Integration
+		lineageTag: 64230b43-a1ec-4f90-b5a5-90df6bc7a14f
+
+	measure 'Agents Calling Agents' = CALCULATE ( [Agent Count], KEEPFILTERS ( 'Agent'[ConnectedAgentCount] > 0 ))
+		formatString: #,0
+		displayFolder: 04 Tools and Integration
+		lineageTag: 4d49a978-c581-4da5-9218-db535b0b8081
+
+	/// Distinct agents bound to at least one Model Context Protocol server.
+	measure 'MCP Enabled Agents' = CALCULATE ( DISTINCTCOUNT ( 'AgentConnector'[AgentKey] ), KEEPFILTERS ( 'AgentConnector'[IsMcpServer] = TRUE () ))
+		formatString: #,0
+		displayFolder: 04 Tools and Integration
+		lineageTag: fa2c6f22-02b9-4c32-8a43-88bae833da19
+
+	measure 'Distinct MCP Servers' = CALCULATE ( DISTINCTCOUNT ( 'AgentConnector'[ConnectorId] ), KEEPFILTERS ( 'AgentConnector'[IsMcpServer] = TRUE () ))
+		formatString: #,0
+		displayFolder: 04 Tools and Integration
+		lineageTag: b78a2c0d-1c09-4eb1-9dc2-67dc4d6fc58b
+
+	/// Configured knowledge sources, broken down by what they actually are. Unlike Total Knowledge Sources this can be sliced by source type.
+	measure 'Knowledge Sources' = SUM ( 'AgentKnowledge'[SourceCount] )
+		formatString: #,0
+		displayFolder: 04 Tools and Integration
+		lineageTag: 983a6647-8e14-47f3-92e9-8a919512801b
+
+	/// One per agent per source type - use this to count how many agents use a given type rather than how many sources they have.
+	measure 'Knowledge Bindings' = COUNTROWS ( 'AgentKnowledge' )
+		formatString: #,0
+		displayFolder: 04 Tools and Integration
+		lineageTag: d1ca09ef-d99e-4b4a-947d-ffc94b61da07
+
+	/// Agents with at least one knowledge source of any type, including web search.
+	measure 'Grounded Agents' = DISTINCTCOUNT ( 'AgentKnowledge'[AgentKey] )
+		formatString: #,0
+		displayFolder: 04 Tools and Integration
+		lineageTag: c7210ffc-0834-42d5-b66a-96525ae655ad
+
+	measure 'Distinct Knowledge Types' = DISTINCTCOUNT ( 'AgentKnowledge'[KnowledgeType] )
+		formatString: #,0
+		displayFolder: 04 Tools and Integration
+		lineageTag: 8a65cf1a-cf1f-4184-9104-2da16fa9571b
+
+	/// Agents with no knowledge source at all - they answer from the model alone.
+	measure 'Ungrounded Agents' = [Agent Count] - [Grounded Agents]
+		formatString: #,0
+		displayFolder: 04 Tools and Integration
+		lineageTag: 57fe7782-7446-4bb5-b2cf-765e5c0a0f94
+
+	/// Groundings that reach outside the tenant boundary.
+	measure 'External Knowledge Bindings' = CALCULATE ( [Knowledge Bindings], KEEPFILTERS ( 'AgentKnowledge'[KnowledgeType] IN { "Public websites", "Web search", "Bing custom search" } ))
+		formatString: #,0
+		displayFolder: 04 Tools and Integration
+		lineageTag: 5b5aa3b8-9ad7-4526-9779-be3f5b4938e5
+
+	/// Groundings that read tenant-internal data.
+	measure 'Tenant Knowledge Bindings' = CALCULATE ( [Knowledge Bindings], KEEPFILTERS ( 'AgentKnowledge'[KnowledgeType] IN { "SharePoint sites", "Dataverse tables", "Microsoft Graph connectors", "Teams messages", "Uploaded files", "File groups" } ))
+		formatString: #,0
+		displayFolder: 04 Tools and Integration
+		lineageTag: 5b5702e1-66df-43da-bd8f-199d223ad841
+
+	/// Individually named knowledge sources - the actual site, index or connector, not just a count by type.
+	measure 'Named Knowledge Sources' = COUNTROWS ( 'KnowledgeSource' )
+		formatString: #,0
+		displayFolder: 04 Tools and Integration
+		lineageTag: ec38574e-a4fa-4f7f-9be8-889b09e1df08
+
+	measure 'Agents with Named Sources' = DISTINCTCOUNT ( 'KnowledgeSource'[AgentKey] )
+		formatString: #,0
+		displayFolder: 04 Tools and Integration
+		lineageTag: 3f920cfe-cf85-414a-b9c4-56aecb24ebec
+
+	/// Distinct hosts the estate is grounded in, counting each SharePoint tenant or website once however many agents read it.
+	measure 'Distinct Grounding Hosts' = DISTINCTCOUNT ( 'KnowledgeSource'[LocatorHost] )
+		formatString: #,0
+		displayFolder: 04 Tools and Integration
+		lineageTag: 29a06a13-6404-4fee-b518-3bd710433370
+
+	/// Distinct site URLs, indexes and connectors, counting a source shared by many agents once.
+	measure 'Distinct Named Sources' = DISTINCTCOUNT ( 'KnowledgeSource'[Locator] )
+		formatString: #,0
+		displayFolder: 04 Tools and Integration
+		lineageTag: 6a2fd3ad-1464-4e5a-9aaa-10094f6526b9
+
+	/// Named sources that read content from outside the tenant boundary.
+	measure 'External Named Sources' = CALCULATE ( [Named Knowledge Sources], KEEPFILTERS ( 'KnowledgeSource'[IsExternal] = TRUE () ))
+		formatString: #,0
+		displayFolder: 04 Tools and Integration
+		lineageTag: 742222c8-61e8-4515-a85a-fe9ccf845c4f
+
+	measure 'Agents Reading Outside Tenant' = CALCULATE ( DISTINCTCOUNT ( 'KnowledgeSource'[AgentKey] ), KEEPFILTERS ( 'KnowledgeSource'[IsExternal] = TRUE () ))
+		formatString: #,0
+		displayFolder: 04 Tools and Integration
+		lineageTag: 4d0adec9-8ad1-4f51-8052-b5907f09a7f0
+
+	measure 'SharePoint Named Sources' = CALCULATE ( [Named Knowledge Sources], KEEPFILTERS ( 'KnowledgeSource'[KnowledgeType] = "SharePoint sites" ))
+		formatString: #,0
+		displayFolder: 04 Tools and Integration
+		lineageTag: 99d0fa6e-6ec4-4cd9-a927-0f0d9dc919c6
+
+	/// Share of the sources ARG reports for which the collector could retrieve a name. Below 100% means environments the sweep could not read - Agent Builder agents are never stored in Dataverse, and some environments deny Dataverse access.
+	measure 'Named Source Coverage %' = DIVIDE ( [Named Knowledge Sources], [Knowledge Sources] )
+		formatString: 0.0%
+		displayFolder: 04 Tools and Integration
+		lineageTag: eafeb067-5321-47b2-b3dd-ee8ae9dcfd22
+
+	/// When the out-of-band sweep that produced the named sources last ran.
+	measure 'Knowledge Sources Collected' = MAX ( 'KnowledgeSource'[CollectedAt] )
+		formatString: yyyy-mm-dd
+		displayFolder: 04 Tools and Integration
+		lineageTag: 594af536-5d23-4969-a676-df85f1a1a6d0
+
+	/// Days since the named-source sweep last ran. This is the true age of the data on this page - not the dataset refresh time.
+	measure 'Knowledge Source Age Days' = VAR c = [Knowledge Sources Collected] RETURN IF ( ISBLANK ( c ), BLANK (), INT ( NOW () - c ) )
+		formatString: #,0
+		displayFolder: 04 Tools and Integration
+		lineageTag: 12786e58-3173-4ddd-a674-0cea58c3f5af
+
+	/// Date of the last named-source sweep with its age, so a stale or never-run collector is visible on the page rather than inferred from an empty chart. Anything over a week old means the out-of-band sweep has stopped running.
+	measure 'Knowledge Source Freshness' = VAR c = [Knowledge Sources Collected] VAR d = [Knowledge Source Age Days] RETURN IF ( ISBLANK ( d ), "Never collected", FORMAT ( c, "yyyy-mm-dd" ) & IF ( d = 0, " (today)", IF ( d <= 7, " (" & d & "d ago)", " (" & d & "d ago - STALE)" )))
+		displayFolder: 04 Tools and Integration
+		lineageTag: 061fd6f6-1756-4d59-abb0-7177e1d2ee5a
+
+	measure 'Azure AI Resources' = COUNTROWS ( 'AzureAIResource' )
+		formatString: #,0
+		displayFolder: 05 Azure AI Foundry
+		lineageTag: c1bd0056-be3b-4e60-a5da-6de49f65a68c
+
+	/// Projects are the resources that host Foundry Agent Service agents.
+	measure 'Foundry Projects' = CALCULATE ( [Azure AI Resources], KEEPFILTERS ( 'AzureAIResource'[IsAgentHost] = TRUE () ))
+		formatString: #,0
+		displayFolder: 05 Azure AI Foundry
+		lineageTag: 8cb20b1d-cb05-46c5-9e7d-6a751d74d6ac
+
+	measure 'Foundry Accounts' = CALCULATE ( [Azure AI Resources], KEEPFILTERS ( 'AzureAIResource'[Category] = "AI Foundry account" ))
+		formatString: #,0
+		displayFolder: 05 Azure AI Foundry
+		lineageTag: ebeb3f64-bd5a-4581-ab60-e10772e934ba
+
+	measure 'Azure OpenAI Accounts' = CALCULATE ( [Azure AI Resources], KEEPFILTERS ( 'AzureAIResource'[Category] = "Azure OpenAI" ))
+		formatString: #,0
+		displayFolder: 05 Azure AI Foundry
+		lineageTag: 3ae70667-7475-4224-ab96-0bf26bc1fa78
+
+	measure 'Public Network Resources' = CALCULATE ( [Azure AI Resources], KEEPFILTERS ( 'AzureAIResource'[PublicAccess] = "Enabled" ))
+		formatString: #,0
+		displayFolder: 05 Azure AI Foundry
+		lineageTag: f8273105-335d-463a-bf1a-470638d922be
+
+	measure 'Local Auth Disabled' = CALCULATE ( [Azure AI Resources], KEEPFILTERS ( 'AzureAIResource'[LocalAuthOff] = TRUE () ))
+		formatString: #,0
+		displayFolder: 05 Azure AI Foundry
+		lineageTag: 46f39068-c043-4c34-ab3e-b25f541132e9
+
+	measure 'Foundry Regions' = DISTINCTCOUNT ( 'AzureAIResource'[Region] )
+		formatString: #,0
+		displayFolder: 05 Azure AI Foundry
+		lineageTag: 39e92634-09e0-428d-b5bc-7458f3679ec8
+
+	measure 'Foundry Resource Groups' = DISTINCTCOUNT ( 'AzureAIResource'[ResourceGroup] )
+		formatString: #,0
+		displayFolder: 05 Azure AI Foundry
+		lineageTag: e466d5a3-8f43-40c3-b5e4-7dad93b12c28
+
+	measure 'Distinct Models' = DISTINCTCOUNT ( 'Agent'[Model] )
+		formatString: #,0
+		displayFolder: 01 Inventory
+		lineageTag: a9c278b6-51fc-48a9-90f2-8590378964e5
+
+	measure 'Distinct Regions' = DISTINCTCOUNT ( 'Agent'[Region] )
+		formatString: #,0
+		displayFolder: 01 Inventory
+		lineageTag: ab7e1aad-6f98-467b-9689-daa11dd5325f
+
+	/// Share of the whole estate represented by the current selection.
+	measure 'Agent Share %' = DIVIDE ( [Agent Count], CALCULATE ( [Agent Count], REMOVEFILTERS () ) )
+		formatString: 0.0%
+		displayFolder: 01 Inventory
+		lineageTag: 0923f7a0-d020-4424-b2ff-d9d92e0f8fbf
+
+	measure 'Working APIs' = CALCULATE ( COUNTROWS ( 'ApiCoverage' ), KEEPFILTERS ( 'ApiCoverage'[Verdict] = "Working" ))
+		formatString: #,0
+		displayFolder: 06 Coverage
+		lineageTag: 0e590960-8f7b-4555-8e85-552c387cfb8b
+
+	measure 'Blocked APIs' = CALCULATE ( COUNTROWS ( 'ApiCoverage' ), KEEPFILTERS ( 'ApiCoverage'[Verdict] <> "Working" ))
+		formatString: #,0
+		displayFolder: 06 Coverage
+		lineageTag: d1e99b90-599b-4d38-aa80-c9e7c107649a
+
+	measure 'APIs Tested' = COUNTROWS ( 'ApiCoverage' )
+		formatString: #,0
+		displayFolder: 06 Coverage
+		lineageTag: d3e6f2b5-1bca-44e6-a68f-21a9a97bab5e
+
+	measure 'Agent 365 Gaps' = COUNTROWS ( 'AgentGap' )
+		formatString: #,0
+		displayFolder: 06 Coverage
+		lineageTag: 5f90f784-13f7-4a9f-9e42-19bff17216b2
+
+	/// Every autonomous or conversational agent artefact in the tenant: Copilot Studio agents, Agent Builder agents, Foundry projects and agent flows.
+	measure 'Total Agent Surface' = [Agent Count] + [Agent Flow Count]
+		formatString: #,0
+		displayFolder: 00 Headline
+		lineageTag: 85da69c9-11cf-42b9-b35b-9dcc5adf7369
+
+	/// Distinct Entra identities that have authored at least one agent.
+	measure 'Distinct Creators' = DISTINCTCOUNT ( 'Agent'[CreatedByName] )
+		formatString: #,0
+		displayFolder: 07 Ownership
+		lineageTag: 8e476498-a4eb-4534-ba62-84da7a0f03cb
+
+	measure 'Distinct Owners' = DISTINCTCOUNT ( 'Agent'[OwnerName] )
+		formatString: #,0
+		displayFolder: 07 Ownership
+		lineageTag: 494baaf7-a47a-4417-8ec8-426addb8632b
+
+	/// Agents whose creator resolved to a real Entra principal rather than the platform system account. Agents with no creator recorded at all - Azure AI Foundry does not expose one - are excluded rather than assumed human.
+	measure 'Human Created Agents' = CALCULATE ( [Agent Count], KEEPFILTERS ( 'Agent'[AgentOrigin] = "Human-built" ))
+		formatString: #,0
+		displayFolder: 07 Ownership
+		lineageTag: 8b019035-ae80-48a2-97b0-3885e8ea6d3c
+
+	/// Agents provisioned by the platform itself, where the inventory API reports the null creator GUID.
+	measure 'System Created Agents' = CALCULATE ( [Agent Count], KEEPFILTERS ( 'Agent'[AgentOrigin] = "Platform-provisioned" ))
+		formatString: #,0
+		displayFolder: 07 Ownership
+		lineageTag: f8df2971-5a11-4b35-a299-299585a0967e
+
+	/// Agents whose source API records no creator at all. This is a reporting gap rather than a fact about the agent - the Azure AI Foundry control plane simply does not return one.
+	measure 'Creator Unknown Agents' = CALCULATE ( [Agent Count], KEEPFILTERS ( 'Agent'[AgentOrigin] = "Creator unknown" )) + 0
+		formatString: #,0
+		displayFolder: 07 Ownership
+		lineageTag: b314e868-d261-4f92-93f5-72e3aa2b2a78
+
+	measure 'Agents per Creator' = DIVIDE ( [Human Created Agents], [Distinct Creators] )
+		formatString: #,0.0
+		displayFolder: 07 Ownership
+		lineageTag: 39b6e444-e0b1-4e06-bde1-5b8b6a4dd385
+
+	measure 'Top Creator' = CONCATENATEX ( TOPN ( 1, FILTER ( VALUES ( 'Agent'[CreatedByName] ), 'Agent'[CreatedByName] <> "System / platform" ), [Agent Count], DESC ), 'Agent'[CreatedByName], ", " )
+		displayFolder: 07 Ownership
+		lineageTag: cb636885-4d07-46d8-95bc-08ad5bd1db18
+
+	/// Agents whose owner id returns nothing from Graph directoryObjects/getByIds - deleted accounts, cross-tenant guests, and the platform identities behind system-provisioned agents. Without an owner nobody is accountable for the agent, which is why Agent 365 treats this as a governance signal.
+	measure 'Owners Not Resolved' = CALCULATE ( [Agent Count], KEEPFILTERS ( 'Agent'[OwnerPrincipalType] = "Not resolved in Entra" )) + 0
+		formatString: #,0
+		displayFolder: 07 Ownership
+		lineageTag: 954db942-a9a7-45ba-b3b2-87cf3f3f523c
+
+	measure 'Owner Resolution %' = DIVIDE ( [Agent Count] - [Owners Not Resolved], [Agent Count] )
+		formatString: 0.0%
+		displayFolder: 07 Ownership
+		lineageTag: 075b344d-e023-4098-b98c-b665ddae51b2
+
+	/// Total number of individual risk conditions that fired across the estate.
+	measure 'Risk Factor Instances' = COUNTROWS ( 'RiskDetail' )
+		formatString: #,0
+		displayFolder: 03 Governance
+		lineageTag: fcbe7712-12d6-4fcf-94ab-6f30ebae4ce8
+
+	measure 'Risk Points' = SUM ( 'RiskDetail'[Points] )
+		formatString: #,0
+		displayFolder: 03 Governance
+		lineageTag: cc7ebba7-f7da-47c6-9ccd-fe6834f0b198
+
+	/// Distinct agents on which the selected risk factor fires.
+	measure 'Agents Affected' = DISTINCTCOUNT ( 'RiskDetail'[AgentKey] )
+		formatString: #,0
+		displayFolder: 03 Governance
+		lineageTag: 6ecec8da-8826-406c-b6c3-9e744bba7d73
+
+	measure 'Agents with No Risk Factors' = CALCULATE ( [Agent Count], KEEPFILTERS ( 'Agent'[RiskFactorCount] = 0 ))
+		formatString: #,0
+		displayFolder: 03 Governance
+		lineageTag: 2da61b17-abc3-4b19-8100-ac85194c84b1
+
+	measure 'Avg Risk Factors per Agent' = AVERAGE ( 'Agent'[RiskFactorCount] )
+		formatString: #,0.0
+		displayFolder: 03 Governance
+		lineageTag: 6ac11f83-c863-4398-aa43-8030c52ef8a9
+
+	measure 'Max Risk Score' = MAX ( 'Agent'[RiskScore] )
+		formatString: #,0
+		displayFolder: 03 Governance
+		lineageTag: f9d1ab9e-efdb-4a7b-8eaa-8bbac38ff7d3
+
+	measure 'Risk Factor Share %' = DIVIDE ( [Risk Factor Instances], CALCULATE ( [Risk Factor Instances], REMOVEFILTERS ( 'RiskDetail' ) ) )
+		formatString: 0.0%
+		displayFolder: 03 Governance
+		lineageTag: e7b3c8a4-109a-4392-8f82-47d310c72356
+
+	/// Agents with at least one usage signal from the Power Platform resource-usage records.
+	measure 'Agents Used' = CALCULATE ( [Agent Count], KEEPFILTERS ( NOT ISBLANK ( 'Agent'[LastUsed] ) ))
+		formatString: #,0
+		displayFolder: 08 Usage
+		lineageTag: 32ee181a-d418-47fe-b33f-bcb674d8cad7
+
+	measure 'Agents Used %' = DIVIDE ( [Agents Used], [Agent Count] )
+		formatString: 0.0%
+		displayFolder: 08 Usage
+		lineageTag: 508733a8-9807-4232-8054-82ac617c60f4
+
+	/// Distinct agents whose most recent use fell in the selected period. This is a recency trend, not a message count - the tenant APIs expose no per-message telemetry without Agent 365.
+	measure 'Agents Used in Month' = CALCULATE ( [Agent Count], USERELATIONSHIP ( 'Agent'[LastUsedDate], 'Date'[Date] ), KEEPFILTERS ( NOT ISBLANK ( 'Agent'[LastUsed] ) ))
+		formatString: #,0
+		displayFolder: 08 Usage
+		lineageTag: ad5727f3-ac9d-4731-9c8f-2cd9032d48bc
+
+	measure 'Cumulative Agents Used' = CALCULATE ( [Agents Used in Month], FILTER ( ALL ( 'Date'[Date] ), 'Date'[Date] <= MAX ( 'Date'[Date] ) ) )
+		formatString: #,0
+		displayFolder: 08 Usage
+		lineageTag: 4afd61a1-b04a-43b2-ad38-4a1561554b90
+
+	measure 'Most Recent Use' = MAX ( 'Agent'[LastUsed] )
+		formatString: yyyy-mm-dd
+		displayFolder: 08 Usage
+		lineageTag: b27b313a-ad7e-4fad-bb91-3a7ef8dcf911
+
+	measure 'Days Since Last Use' = MIN ( 'Agent'[DaysSinceLastUse] )
+		formatString: #,0
+		displayFolder: 08 Usage
+		lineageTag: 9bc9e42d-1588-456e-8e33-1abb0be9fe5a
+
+	/// Ranks agents by how recently they were used - the closest available proxy for popularity without Dataverse transcripts.
+	measure 'Usage Recency Rank' = RANKX ( ALLSELECTED ( 'Agent'[AgentName] ), [Most Recent Use], , DESC, DENSE )
+		formatString: #,0
+		displayFolder: 08 Usage
+		lineageTag: 69f9693a-b426-4e63-9f40-18d2f60b1085
+
+	measure 'Active Environments' = CALCULATE ( DISTINCTCOUNT ( 'Agent'[EnvironmentId] ), KEEPFILTERS ( NOT ISBLANK ( 'Agent'[LastUsed] ) ))
+		formatString: #,0
+		displayFolder: 08 Usage
+		lineageTag: ba0213c0-7f70-4f5a-8645-71b41998f42a
+
+	measure 'Environment Adoption %' = DIVIDE ( [Active Environments], [Environments with Agents] )
+		formatString: 0.0%
+		displayFolder: 08 Usage
+		lineageTag: 7aaaf7b1-0970-4692-b008-035409e18b89
+
+	measure 'Agents Used Last 7d' = CALCULATE ( [Agent Count], KEEPFILTERS ( 'Agent'[ActivityStatus] = "Active (7d)" ))
+		formatString: #,0
+		displayFolder: 08 Usage
+		lineageTag: ef32968d-4fff-4a6e-b37f-35103d9fc918
+
+	/// Share of the estate for which any usage telemetry exists at all. The remainder is invisible to monitoring without Agent 365.
+	measure 'Usage Signal Coverage %' = DIVIDE ( [Agents Used], [Agent Count] )
+		formatString: 0.0%
+		displayFolder: 08 Usage
+		lineageTag: c0b96fea-1b88-4622-8a8e-eb57e6fefbf5
+
+	measure 'Platforms with Telemetry' = CALCULATE ( COUNTROWS ( 'TelemetryCoverage' ), KEEPFILTERS ( 'TelemetryCoverage'[UsageSignal] <> "None" ))
+		formatString: #,0
+		displayFolder: 08 Usage
+		lineageTag: 4d967f21-b6b5-4bda-bb7d-bc72256ad1f1
+
+	measure 'Platforms without Telemetry' = CALCULATE ( COUNTROWS ( 'TelemetryCoverage' ), KEEPFILTERS ( 'TelemetryCoverage'[UsageSignal] = "None" ))
+		formatString: #,0
+		displayFolder: 08 Usage
+		lineageTag: 2acaea86-a340-44af-9f19-38f9223efb34
+
+	/// Agents on platforms that emit no usage signal reachable from this tenant. Agent Builder agents used to sit here too, until the Purview audit-log feed was added - Foundry Agent Service runtime telemetry stays data-plane only.
+	measure 'Agents with No Telemetry Possible' = [Foundry Agent Projects]
+		formatString: #,0
+		displayFolder: 08 Usage
+		lineageTag: 4d9a19e1-f302-4e94-b47e-38d2950916bd
+
+	/// Copilot turns recorded in the Purview unified audit log. One row per user request across every Copilot surface in the tenant.
+	measure Interactions = COUNTROWS ( 'Interaction' )
+		formatString: #,0
+		displayFolder: 09 Interactions
+		lineageTag: c186efbb-5367-46cc-9d06-143db49c6b04
+
+	/// Distinct people who used any Copilot surface in the selected period.
+	measure 'Interaction Users' = DISTINCTCOUNT ( 'Interaction'[UserPrincipalName] )
+		formatString: #,0
+		displayFolder: 09 Interactions
+		lineageTag: 3d31a6ff-75d0-40ef-a690-247a038cd12f
+
+	/// Distinct conversation threads - a better measure of engagement than raw turn count.
+	measure 'Interaction Sessions' = DISTINCTCOUNT ( 'Interaction'[ThreadId] )
+		formatString: #,0
+		displayFolder: 09 Interactions
+		lineageTag: 317ca784-78ab-4f0e-908b-1deb52ea7edb
+
+	measure 'Interactions per User' = DIVIDE ( [Interactions], [Interaction Users] )
+		formatString: #,0.0
+		displayFolder: 09 Interactions
+		lineageTag: 2bb0fbcc-6a9f-458f-910c-d1c04d19dc10
+
+	measure 'Interactions per Session' = DIVIDE ( [Interactions], [Interaction Sessions] )
+		formatString: #,0.0
+		displayFolder: 09 Interactions
+		lineageTag: e83481ec-e75f-4992-a968-eca6727479e8
+
+	/// Turns served by a specific agent rather than by base Microsoft 365 Copilot.
+	measure 'Agent Interactions' = CALCULATE ( [Interactions], KEEPFILTERS ( 'CopilotSurface'[IsAgent] = TRUE () ))
+		formatString: #,0
+		displayFolder: 09 Interactions
+		lineageTag: 53742fba-64ac-4150-8a22-700398ce7333
+
+	/// Turns handled by Microsoft 365 Copilot itself - BizChat, web chat, the Office apps and Cowork.
+	measure 'Base Copilot Interactions' = CALCULATE ( [Interactions], KEEPFILTERS ( 'CopilotSurface'[SurfaceType] = "M365 Copilot (base)" ))
+		formatString: #,0
+		displayFolder: 09 Interactions
+		lineageTag: f34aa776-23e6-4481-a94b-88518b7ecff5
+
+	/// Usage of declarative agents authored in Microsoft 365 Copilot Agent Builder. This figure is unavailable from any Agent Builder or Power Platform API - only the audit log carries it.
+	measure 'Agent Builder Interactions' = CALCULATE ( [Interactions], KEEPFILTERS ( 'CopilotSurface'[SurfaceType] = "Agent Builder agent" ))
+		formatString: #,0
+		displayFolder: 09 Interactions
+		lineageTag: 0c693839-db00-49c4-beb8-a5fb054391dd
+
+	measure 'Copilot Studio Interactions' = CALCULATE ( [Interactions], KEEPFILTERS ( 'CopilotSurface'[SurfaceType] = "Copilot Studio agent" ))
+		formatString: #,0
+		displayFolder: 09 Interactions
+		lineageTag: f9b12daf-6c03-4e60-9961-01704fa88e67
+
+	/// Usage of Microsoft's own agents such as Researcher, Analyst and Facilitator.
+	measure 'First Party Agent Interactions' = CALCULATE ( [Interactions], KEEPFILTERS ( 'CopilotSurface'[SurfaceType] = "Microsoft 1P agent" ))
+		formatString: #,0
+		displayFolder: 09 Interactions
+		lineageTag: 91e319d3-b274-4b46-ae92-0c5fc6693b8b
+
+	/// Turns served by a SharePoint agent - a .agent file that lives in a document library.
+	measure 'SharePoint Agent Interactions' = CALCULATE ( [Interactions], KEEPFILTERS ( 'CopilotSurface'[SurfaceType] = "SharePoint agent" ))
+		formatString: #,0
+		displayFolder: 09 Interactions
+		lineageTag: 1c93d80a-5b47-4e62-8d09-a4f75e230b91
+
+	/// Distinct SharePoint agents that served at least one turn in the audit window.
+	measure 'SharePoint Agents Used' = CALCULATE ( DISTINCTCOUNT ( 'Interaction'[SurfaceKey] ), KEEPFILTERS ( 'CopilotSurface'[SurfaceType] = "SharePoint agent" ))
+		formatString: #,0
+		displayFolder: 09 Interactions
+		lineageTag: 9f2b64c7-e015-4d38-b7ca-53081ae9d267
+
+	/// Inventory agents that served at least one turn in the audit window.
+	measure 'Agents with Interactions' = CALCULATE ( DISTINCTCOUNT ( 'Interaction'[AgentKey] ), KEEPFILTERS ( NOT ISBLANK ( 'Interaction'[AgentKey] ) ))
+		formatString: #,0
+		displayFolder: 09 Interactions
+		lineageTag: d1838b7d-4ebe-425c-900a-96200861f8de
+
+	measure 'Agent Builder Agents with Usage' = CALCULATE ( [Agents with Interactions], KEEPFILTERS ( 'CopilotSurface'[SurfaceType] = "Agent Builder agent" ))
+		formatString: #,0
+		displayFolder: 09 Interactions
+		lineageTag: 0781d4ba-f81f-46a5-ab54-b6afad4fbd74
+
+	/// Share of the inventory for which the audit log supplies real usage telemetry.
+	measure 'Audit Usage Coverage %' = DIVIDE ( [Agents with Interactions], [Agent Count] )
+		formatString: 0.0%
+		displayFolder: 09 Interactions
+		lineageTag: 49641ee5-87f2-408c-b841-786479d5d1a5
+
+	/// Distinct AppIdentity values seen in the audit log.
+	measure 'Copilot Surfaces' = COUNTROWS ( 'CopilotSurface' )
+		formatString: #,0
+		displayFolder: 09 Interactions
+		lineageTag: 4ea7caab-c51c-45c0-b408-6e0c8fc45831
+
+	/// Agent surfaces that appear in the audit log but not in the inventory - normally agents deleted since the last collection. SharePoint agents are excluded: they are .agent files rather than Power Platform resources, so they are structurally absent from the inventory rather than missing from it, and counting them here would read as a collection fault.
+	measure 'Unmatched Surfaces' = CALCULATE ( COUNTROWS ( 'CopilotSurface' ), KEEPFILTERS ( 'CopilotSurface'[IsAgent] = TRUE () ), KEEPFILTERS ( 'CopilotSurface'[IsMatched] = FALSE () ), KEEPFILTERS ( 'CopilotSurface'[SurfaceType] <> "SharePoint agent" ))
+		formatString: #,0
+		displayFolder: 09 Interactions
+		lineageTag: cad6d686-745a-4188-a9c0-e7fd3dd75ca4
+
+	/// How many files, sites, connectors and MCP tools Copilot turns reached into. This is the data-access footprint of the agent estate.
+	measure 'Resource Touches' = SUM ( 'Interaction'[ResourceCount] )
+		formatString: #,0
+		displayFolder: 09 Interactions
+		lineageTag: a7866567-c536-4ac8-88a8-d4350de49806
+
+	/// Turns that touched at least one tenant resource rather than answering from the model alone.
+	measure 'Grounded Interactions' = CALCULATE ( [Interactions], KEEPFILTERS ( 'Interaction'[ResourceCount] > 0 ))
+		formatString: #,0
+		displayFolder: 09 Interactions
+		lineageTag: 2d4d5344-8d03-4603-8988-ee81d82fd991
+
+	measure 'Grounded %' = DIVIDE ( [Grounded Interactions], [Interactions] )
+		formatString: 0.0%
+		displayFolder: 09 Interactions
+		lineageTag: 66ba0ecc-ddbf-4062-b113-8a4a704d92e8
+
+	measure 'First Interaction' = MIN ( 'Interaction'[CreationTime] )
+		formatString: yyyy-mm-dd
+		displayFolder: 09 Interactions
+		lineageTag: ee9babf3-a537-415d-81fa-e4d78aa6ded6
+
+	measure 'Last Interaction' = MAX ( 'Interaction'[CreationTime] )
+		formatString: yyyy-mm-dd
+		displayFolder: 09 Interactions
+		lineageTag: 084ea07d-b1e0-407f-97f4-85bdff1c0c2d
+
+	/// How many distinct client surfaces (Teams, Office, SharePoint, MCP, autonomous runs) generated Copilot traffic.
+	measure 'Interaction Hosts' = DISTINCTCOUNT ( 'Interaction'[AppHost] )
+		formatString: #,0
+		displayFolder: 09 Interactions
+		lineageTag: b625998b-7857-4a6f-abf9-2ed6f48b5e2d
+
+	measure 'Interactions 30d' = CALCULATE ( [Interactions], KEEPFILTERS ( 'Interaction'[CreationTime] >= TODAY () - 30 ))
+		formatString: #,0
+		displayFolder: 09 Interactions
+		lineageTag: bda81fc5-717d-48ea-abcf-045ab01d931d
+
+	measure 'Interactions 7d' = CALCULATE ( [Interactions], KEEPFILTERS ( 'Interaction'[CreationTime] >= TODAY () - 7 ))
+		formatString: #,0
+		displayFolder: 09 Interactions
+		lineageTag: e65fd065-4a32-463a-ab38-8ea8b65d96bc
+
+	measure 'Avg Daily Interactions' = DIVIDE ( [Interactions], DISTINCTCOUNT ( 'Interaction'[Date] ) )
+		formatString: #,0.0
+		displayFolder: 09 Interactions
+		lineageTag: 576f0e55-064d-42ca-bca8-7d01567eb07c
+
+	/// Turns executed by an agent with no human in the loop - the unattended workload Agent 365 reports as autonomous runs.
+	measure 'Autonomous Interactions' = CALCULATE ( [Interactions], KEEPFILTERS ( 'Interaction'[AppHost] = "Autonomous" ))
+		formatString: #,0
+		displayFolder: 09 Interactions
+		lineageTag: e65f281f-a551-42c9-acf2-75a9bf257d14
+
+	measure 'Autonomous %' = DIVIDE ( [Autonomous Interactions], [Interactions] )
+		formatString: 0.0%
+		displayFolder: 09 Interactions
+		lineageTag: 83230604-e26a-4f95-a1cf-879c4309dcb1
+
+	/// Turns where a human prompted the agent directly.
+	measure 'Attended Interactions' = [Interactions] - [Autonomous Interactions]
+		formatString: #,0
+		displayFolder: 09 Interactions
+		lineageTag: c44e1c35-0756-47e1-a4b1-29393ba9fd7f
+
+	/// Agents that the Power Platform usage records show as never used, but which the audit log proves are in active service. This is exactly the blind spot Agent 365 would otherwise cover.
+	measure 'Telemetry Uplift' = [Agents with Interactions] - CALCULATE ( [Agents with Interactions], KEEPFILTERS ( 'Agent'[ActivityStatus] <> "No usage signal" ))
+		formatString: #,0
+		displayFolder: 09 Interactions
+		lineageTag: b2329f6f-fca7-436b-b1d1-a57cbcacff73
+
+	/// Distinct people who interacted with an agent, as opposed to any Copilot surface. This is the figure the Agent 365 overview reports as "Active users".
+	measure 'Active Users' = CALCULATE ( DISTINCTCOUNT ( 'Interaction'[UserPrincipalName] ), KEEPFILTERS ( NOT ISBLANK ( 'Interaction'[AgentKey] ) ) )
+		formatString: #,0
+		displayFolder: 10 Agent 365 alignment
+		lineageTag: a854de1a-5899-47fd-bc12-2a54beb47e29
+
+	/// Approximate. Neither Azure Resource Graph nor the Microsoft 365 audit log records how long an agent worked, only when it was used, so this sums the elapsed time within each conversation on each calendar day. Grouping by day matters: a Teams thread stays alive for months, so measuring a thread end to end overstates the total roughly fifteenfold. Validated against a capped inter-message-gap estimate over the tenant's own audit data, where it lands at 0.81x, so treat it as a conservative floor rather than a like-for-like match with the Agent 365 run-time figure.
+	measure 'Agent Run-time (hours)' = DIVIDE ( SUMX ( ADDCOLUMNS ( SUMMARIZE ( 'Interaction', 'Interaction'[ThreadId], 'Interaction'[Date] ), "@Seconds", VAR FirstTouch = CALCULATE ( MIN ( 'Interaction'[CreationTime] ) ) VAR LastTouch = CALCULATE ( MAX ( 'Interaction'[CreationTime] ) ) RETURN IF ( FirstTouch = LastTouch, 0, DATEDIFF ( FirstTouch, LastTouch, SECOND ) ) ), [@Seconds] ), 3600 )
+		formatString: #,0.0
+		displayFolder: 10 Agent 365 alignment
+		lineageTag: b1ab1b0e-f7a3-4fa8-958d-ec39570e007e
+
+	/// Companion to the run-time measure, expressed per conversation so a small number of very long sessions is easier to spot.
+	measure 'Avg Session Minutes' = DIVIDE ( [Agent Run-time (hours)] * 60, [Interaction Sessions] )
+		formatString: #,0.0
+		displayFolder: 10 Agent 365 alignment
+		lineageTag: 74c54346-2656-4eb4-908b-4ddfcb57a97f
+
+	/// Anything the risk model scores above Low, matching the "Agents at risk" tile in the registry.
+	measure 'Agents at Risk' = CALCULATE ( [Agent Count], KEEPFILTERS ( 'Agent'[RiskBand] IN { "High", "Medium" } ) )
+		formatString: #,0
+		displayFolder: 10 Agent 365 alignment
+		lineageTag: 68ecb578-d016-48be-a9b4-b1ef1edbc534
+
+	measure 'Agents Without Owners' = CALCULATE ( [Agent Count], KEEPFILTERS ( 'Agent'[HasOwner] = FALSE ) )
+		formatString: #,0
+		displayFolder: 10 Agent 365 alignment
+		lineageTag: 173bdc80-aec4-40c3-bda4-fe49797b0c5e
+
+	/// Distinct authoring platforms that actually hold agents, reported by Agent 365 as "Connected platforms".
+	measure 'Connected Platforms' = DISTINCTCOUNT ( 'Agent'[Platform] )
+		formatString: #,0
+		displayFolder: 10 Agent 365 alignment
+		lineageTag: 32494d2f-3f0d-4e3f-9bb1-8e9ee53ef39c
+
+	measure 'Graph Connector Agents' = CALCULATE ( [Agent Count], KEEPFILTERS ( 'Agent'[HasGraphConnector] = TRUE ) )
+		formatString: #,0
+		displayFolder: 10 Agent 365 alignment
+		lineageTag: 868543ce-3674-4aa3-ae70-f3c8a71ac2f5
+
+	measure 'Agents with Instructions' = CALCULATE ( [Agent Count], KEEPFILTERS ( 'Agent'[InstructionsCharCount] > 0 ) )
+		formatString: #,0
+		displayFolder: 10 Agent 365 alignment
+		lineageTag: f4589114-7b66-4464-bd5e-b60e3e6a0ab2
+
+	/// Average instruction length across agents that have any, a proxy for how much bespoke prompt engineering the tenant is carrying.
+	measure 'Avg Instruction Length' = CALCULATE ( AVERAGE ( 'Agent'[InstructionsCharCount] ), KEEPFILTERS ( 'Agent'[InstructionsCharCount] > 0 ) )
+		formatString: #,0
+		displayFolder: 10 Agent 365 alignment
+		lineageTag: 2f37b77e-fe63-4c95-b088-1d5293146865
+
+	/// Ranks agents by reach rather than raw chattiness, which is what the "Trending agents" list on the Agent 365 overview shows.
+	measure 'Agent Active Users Rank' = IF ( NOT ISBLANK ( [Active Users] ), RANKX ( ALLSELECTED ( 'Agent'[AgentName] ), [Active Users],, DESC, DENSE ) )
+		formatString: #,0
+		displayFolder: 10 Agent 365 alignment
+		lineageTag: 031a6c56-3ef5-4a6e-a9cb-65a481ecf9c9
+
+	/// Distinct AI tools detected on managed endpoints by any of the three layers.
+	measure 'Shadow AI Apps' = DISTINCTCOUNT ( 'ShadowAiSignal'[AppName] )
+		formatString: #,0
+		displayFolder: 11 Shadow AI
+		lineageTag: 4fc24e75-4442-4e19-a35c-b96741420982
+
+	/// Detected tools not on the sanctioned list. This is the number that matters.
+	measure 'Unsanctioned AI Apps' = CALCULATE ( [Shadow AI Apps], KEEPFILTERS ( 'ShadowAiSignal'[Posture] = "Unsanctioned" ))
+		formatString: #,0
+		displayFolder: 11 Shadow AI
+		lineageTag: 3bc6ac4c-8d76-4ef8-b151-b3555f1f13c3
+
+	/// Distinct devices carrying or running a watchlisted AI tool. Counted from the device-grain table
+	/// rather than summing ShadowAiSignal[DeviceCount], which would count a device once per tool.
+	measure 'Shadow AI Devices' = DISTINCTCOUNT ( 'ShadowAiDevice'[DeviceName] )
+		formatString: #,0
+		displayFolder: 11 Shadow AI
+		lineageTag: e1744401-065b-4868-a938-f730bfca0228
+
+	/// Distinct users seen running a watchlisted AI tool. Process telemetry only - installed-software
+	/// rows carry no user, so this undercounts where a tool is present but was not launched in 30 days.
+	measure 'Shadow AI Users' = DISTINCTCOUNT ( 'ShadowAiDevice'[UserUpn] )
+		formatString: #,0
+		displayFolder: 11 Shadow AI
+		lineageTag: f1e0c807-e489-4401-b9ed-92deb925afc2
+
+	/// Tools on the watchlist that were searched for. Lets the page distinguish "none found" from "not checked".
+	measure 'AI Tools Watched' = DISTINCTCOUNT ( 'ShadowAiCatalog'[AppName] )
+		formatString: #,0
+		displayFolder: 11 Shadow AI
+		lineageTag: 4bba255f-3118-4697-a1d2-004c4fb4f93d
+
+	/// Reads the endpoint lane's state in one line, so the page explains itself when it is empty.
+	measure 'Shadow AI Status' =
+			VAR Watched = [AI Tools Watched]
+			VAR Found = [Shadow AI Apps]
+			RETURN
+			    IF (
+			        Found > 0,
+			        Found & " of " & Watched & " watched AI tools found on managed devices",
+			        "No watchlisted AI tooling detected. Either no devices are onboarded to Microsoft Defender, the refresh account lacks AdvancedQuery.Read, or the estate is genuinely clean - check the Coverage page."
+			    )
+		displayFolder: 11 Shadow AI
+		lineageTag: 01be77cf-3498-40ad-9081-e5b5155a06ee
+
+	/// Devices carrying a detection, summed over ShadowAiSignal. Slice by Layer before reading it as
+	/// a device total: a tool found both installed and on the network contributes to both rows.
+	measure 'Devices Detected' = SUM ( 'ShadowAiSignal'[DeviceCount] )
+		formatString: #,0
+		displayFolder: 11 Shadow AI
+		lineageTag: e5e35bc9-fc7d-43c9-a666-8b6bf628ee4b
+
+	/// One-sentence briefing for the Overview page: estate size, 30-day use, high risk and unused tenant-wide sharing.
+	measure 'Briefing Headline' = ```
+			VAR _agents = [Agent Count]
+			VAR _active = [Adoption Rate %]
+			VAR _high = [High Risk Agents] + 0
+			VAR _shared = [Tenant-wide Shared Agents] + 0
+			VAR _unused = [Orphan Risk Agents] + 0
+			RETURN
+			    IF (
+			        ISBLANK ( _agents ),
+			        "No agents found yet. Setup & coverage shows which sources did not load.",
+			        FORMAT ( _agents, "#,0" ) & " agents, " & FORMAT ( _active, "0%" ) & " of them used in the last 30 days. "
+			            & FORMAT ( _high, "#,0" ) & IF ( _high = 1, " is", " are" ) & " high risk, and "
+			            & FORMAT ( _unused, "#,0" ) & " of the " & FORMAT ( _shared, "#,0" ) & " shared tenant-wide "
+			            & IF ( _unused = 1, "has", "have" ) & " never been used."
+			    )
+			```
+		displayFolder: 00 Headline
+
+	/// Agents with no use in more than 90 days that are not shared tenant-wide: safe candidates to retire.
+	measure 'Agents to Retire' = CALCULATE ( [Agent Count], KEEPFILTERS ( 'Agent'[ActivityStatus] = "Dormant (90d+)" ), KEEPFILTERS ( 'Agent'[SharedTenantWide] = FALSE () ) ) + 0
+		formatString: #,0
+		displayFolder: 00 Headline
+
+	/// High-risk agents with no owner on record, or whose owner no longer resolves in Entra ID.
+	measure 'Unowned High Risk Agents' = ```
+			CALCULATE (
+			    [High Risk Agents],
+			    KEEPFILTERS (
+			        FILTER (
+			            ALL ( 'Agent'[HasOwner], 'Agent'[OwnerPrincipalType] ),
+			            'Agent'[HasOwner] = FALSE () || 'Agent'[OwnerPrincipalType] = "Not resolved in Entra"
+			        )
+			    )
+			) + 0
+			```
+		formatString: #,0
+		displayFolder: 00 Headline
+
+	/// Agents with no authentication that ground on web content or on a named source outside the tenant.
+	measure 'External Unauthenticated Agents' = ```
+			VAR _named =
+			    CALCULATETABLE ( VALUES ( 'KnowledgeSource'[AgentKey] ), 'KnowledgeSource'[IsExternal] = TRUE () )
+			VAR _web =
+			    CALCULATETABLE (
+			        VALUES ( 'AgentKnowledge'[AgentKey] ),
+			        'AgentKnowledge'[KnowledgeType] IN { "Public websites", "Web search", "Bing custom search" }
+			    )
+			RETURN
+			    CALCULATE ( [Unauthenticated Agents], KEEPFILTERS ( TREATAS ( DISTINCT ( UNION ( _named, _web ) ), 'Agent'[AgentKey] ) ) ) + 0
+			```
+		formatString: #,0
+		displayFolder: 00 Headline
+
+	/// The count behind each row of the Attention list on the Overview page.
+	measure 'Attention Count' = ```
+			SWITCH (
+			    SELECTEDVALUE ( 'Attention'[SortOrder] ),
+			    1, [Agents to Retire],
+			    2, [Unowned High Risk Agents],
+			    3, [Orphan Risk Agents] + 0,
+			    4, [External Unauthenticated Agents],
+			    5, [Owners Not Resolved],
+			    6, [Unsanctioned AI Apps] + 0
+			)
+			```
+		formatString: #,0
+		displayFolder: 00 Headline
+
+	column Placeholder
+		dataType: int64
+		isHidden
+		lineageTag: 27f9bada-c38b-4fc1-bdd9-b13c26dd52db
+		sourceColumn: Placeholder
+
+	partition Metrics = m
+		mode: import
+		source =
+				let
+				    Source = #table(type table [Placeholder = Int64.Type], {{1}})
+				in
+				    Source

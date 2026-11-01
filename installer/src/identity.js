@@ -1,8 +1,8 @@
 // @ts-check
 /**
  * The two app registrations, through Microsoft Graph:
- *   - the audit collector, with Graph's AuditLogsQuery.Read.All application permission and admin
- *     consent, for lanes C and E;
+ *   - the audit collector, with Graph's AuditLogsQuery.Read.All and Reports.Read.All application
+ *     permissions and admin consent, for lanes C and E and the work patterns reports;
  *   - the knowledge sweep, with no API permissions, registered as a Power Platform admin management
  *     application, for lane D. In Agents scope mode it also needs Reader at the tenant root
  *     management group, which is asked for separately.
@@ -15,19 +15,23 @@ import { HttpError } from './http.js';
 /** Microsoft Graph's own app ID, the same in every tenant. */
 export const GRAPH_APP_ID = '00000003-0000-0000-c000-000000000000';
 export const AUDIT_PERMISSION = 'AuditLogsQuery.Read.All';
+/** For the Microsoft 365 usage reports behind the Work patterns view. */
+export const REPORTS_PERMISSION = 'Reports.Read.All';
+/** Every Graph application permission the audit collector holds. */
+export const AUDIT_PERMISSIONS = [AUDIT_PERMISSION, REPORTS_PERMISSION];
 /** Azure's built-in Reader role. */
 export const READER_ROLE_ID = 'acdd72a7-3385-48ef-bd42-f606fba81ae7';
 export const BAP_BASE = 'https://api.bap.microsoft.com';
 export const BAP_API_VERSION = '2020-10-01';
 /** Written into each app registration's notes, so a re-run without the record can find its own. */
-export const NOTES = 'Created by the Agent Monitor installer.';
+export const NOTES = 'Created by the AI-Monitor installer.';
 /** Notes and names on registrations made before the rename, so a re-run adopts them instead of making new ones. */
-const LEGACY_NOTES = 'Created by the Copilot Inventory installer.';
-const legacyName = (/** @type {string} */ name) => name.replace('Agent Monitor', 'Copilot Inventory');
+const LEGACY_NOTES = ['Created by the Agent Monitor installer.', 'Created by the Copilot Inventory installer.'];
+const legacyNames = (/** @type {string} */ name) => ['Agent Monitor', 'Copilot Inventory'].map((old) => name.replace('AI-Monitor', old));
 
 export const APPS = /** @type {const} */ ({
-  audit: { displayName: 'Agent Monitor - audit collector', purpose: 'Reads the unified audit log for lanes C and E (Copilot interactions and SharePoint agents).' },
-  sweep: { displayName: 'Agent Monitor - knowledge sweep', purpose: 'Reads each environment\'s Dataverse for lane D (agent knowledge sources).' },
+  audit: { displayName: 'AI-Monitor - audit collector', purpose: 'Reads the unified audit log for lanes C and E (Copilot interactions and SharePoint agents) and the Microsoft 365 usage reports for work patterns.' },
+  sweep: { displayName: 'AI-Monitor - knowledge sweep', purpose: 'Reads each environment\'s Dataverse for lane D (agent knowledge sources).' },
 });
 
 /** @typedef {import('./http.js').HttpClient} Client */
@@ -40,23 +44,27 @@ const denied = (err) => err instanceof HttpError && (err.status === 401 || err.s
 const q = (s) => s.replace(/'/g, "''");
 
 /**
- * Graph's service principal and the ID of the AuditLogsQuery.Read.All app role, read from the tenant.
+ * Graph's service principal and the IDs of the audit collector's app roles (AUDIT_PERMISSIONS, in
+ * that order), read from the tenant.
  * @param {Client} graph
  */
 export async function graphAuditRole(graph) {
   const data = await graph.get(`/servicePrincipals?$filter=appId eq '${GRAPH_APP_ID}'&$select=id,appRoles`);
   const sp = data?.value?.[0];
   if (!sp) throw new Error('Microsoft Graph\'s service principal wasn\'t found in the tenant.');
-  const role = (sp.appRoles ?? []).find((/** @type {any} */ r) => r.value === AUDIT_PERMISSION);
-  if (!role) throw new Error(`Microsoft Graph has no ${AUDIT_PERMISSION} permission in this cloud.`);
-  return { graphSpId: /** @type {string} */ (sp.id), roleId: /** @type {string} */ (role.id) };
+  const roleIds = AUDIT_PERMISSIONS.map((perm) => {
+    const role = (sp.appRoles ?? []).find((/** @type {any} */ r) => r.value === perm);
+    if (!role) throw new Error(`Microsoft Graph has no ${perm} permission in this cloud.`);
+    return /** @type {string} */ (role.id);
+  });
+  return { graphSpId: /** @type {string} */ (sp.id), roleIds };
 }
 
 /**
  * The requiredResourceAccess for the audit collector.
- * @param {string} roleId
+ * @param {string[]} roleIds
  */
-export const auditResourceAccess = (roleId) => [{ resourceAppId: GRAPH_APP_ID, resourceAccess: [{ id: roleId, type: 'Role' }] }];
+export const auditResourceAccess = (roleIds) => [{ resourceAppId: GRAPH_APP_ID, resourceAccess: roleIds.map((id) => ({ id, type: 'Role' })) }];
 
 /**
  * Finds the app registration the record names, or one this installer made earlier with the same name,
@@ -78,9 +86,9 @@ export async function ensureApp(graph, { key, existing, requiredResourceAccess =
   }
   let created = existing?.created ?? false;
   if (!app) {
-    const names = [displayName, legacyName(displayName)].map((n) => `displayName eq '${q(n)}'`).join(' or ');
+    const names = [displayName, ...legacyNames(displayName)].map((n) => `displayName eq '${q(n)}'`).join(' or ');
     const found = await graph.get(`/applications?$filter=${names}&$select=id,appId,displayName,notes,requiredResourceAccess`);
-    const mine = (found?.value ?? []).filter((/** @type {any} */ a) => a.notes === NOTES || a.notes === LEGACY_NOTES);
+    const mine = (found?.value ?? []).filter((/** @type {any} */ a) => a.notes === NOTES || LEGACY_NOTES.includes(a.notes));
     app = mine.find((/** @type {any} */ a) => a.displayName === displayName) ?? mine[0];
   }
   if (!app) {
@@ -123,18 +131,21 @@ export async function ensureServicePrincipal(graph, appId) {
 export const adminConsentUrl = (tenantId, appId) => `https://login.microsoftonline.com/${tenantId}/adminconsent?client_id=${appId}`;
 
 /**
- * Grants the audit collector AuditLogsQuery.Read.All (admin consent). Without the rights to, returns a
- * hand-off for a Global Administrator or Privileged Role Administrator.
+ * Grants the audit collector its Graph application permissions (admin consent). Without the rights to,
+ * returns a hand-off for a Global Administrator or Privileged Role Administrator.
  * @param {Client} graph
- * @param {{ tenantId: string, app: AppRegistration, graphSpId: string, roleId: string }} o
+ * @param {{ tenantId: string, app: AppRegistration, graphSpId: string, roleIds: string[] }} o
  * @returns {Promise<{ consented: true } | { consented: false, handOff: HandOff }>}
  */
-export async function grantAuditConsent(graph, { tenantId, app, graphSpId, roleId }) {
+export async function grantAuditConsent(graph, { tenantId, app, graphSpId, roleIds }) {
   if (!app.spId) throw new Error('The audit collector has no service principal yet.');
   const have = await graph.get(`/servicePrincipals/${app.spId}/appRoleAssignments?$select=appRoleId,resourceId`);
-  if ((have?.value ?? []).some((/** @type {any} */ a) => a.appRoleId === roleId && a.resourceId === graphSpId)) return { consented: true };
+  const granted = new Set((have?.value ?? []).filter((/** @type {any} */ a) => a.resourceId === graphSpId).map((/** @type {any} */ a) => a.appRoleId));
+  const missing = roleIds.filter((id) => !granted.has(id));
   try {
-    await graph.post(`/servicePrincipals/${graphSpId}/appRoleAssignedTo`, { principalId: app.spId, resourceId: graphSpId, appRoleId: roleId }, { once: true });
+    for (const appRoleId of missing) {
+      await graph.post(`/servicePrincipals/${graphSpId}/appRoleAssignedTo`, { principalId: app.spId, resourceId: graphSpId, appRoleId }, { once: true });
+    }
     return { consented: true };
   } catch (err) {
     if (!denied(err)) throw err;
@@ -143,7 +154,7 @@ export async function grantAuditConsent(graph, { tenantId, app, graphSpId, roleI
       handOff: {
         id: 'audit-consent',
         who: 'Global Administrator or Privileged Role Administrator',
-        what: `Grant admin consent for ${AUDIT_PERMISSION} to "${app.displayName}". Open the link, sign in, and accept. Then run the installer again.`,
+        what: `Grant admin consent for ${AUDIT_PERMISSIONS.join(' and ')} to "${app.displayName}". Open the link, sign in, and accept. Then run the installer again.`,
         link: adminConsentUrl(tenantId, app.appId),
       },
     };
@@ -162,7 +173,7 @@ export async function addSecret(graph, app, { months = 12, now = () => new Date(
   const end = now();
   end.setMonth(end.getMonth() + months);
   const res = await graph.post(`/applications/${app.objectId}/addPassword`, {
-    passwordCredential: { displayName: `Agent Monitor installer ${now().toISOString().slice(0, 10)}`, endDateTime: end.toISOString() },
+    passwordCredential: { displayName: `AI-Monitor installer ${now().toISOString().slice(0, 10)}`, endDateTime: end.toISOString() },
   }, { once: true });
   return { secret: res.secretText, keyId: res.keyId, expires: res.endDateTime };
 }

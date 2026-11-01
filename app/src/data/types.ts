@@ -270,9 +270,38 @@ export interface AiCostMeter {
   currency: string
 }
 
+/** The Office apps Microsoft 365's app usage report counts daily users for. */
+export type M365App = 'outlook' | 'teams' | 'word' | 'excel' | 'powerPoint' | 'oneNote'
+
+/** Where Microsoft 365 Copilot is counted, as the Copilot usage report names it. */
+export type CopilotProduct = 'anyApp' | 'microsoftTeams' | 'outlook' | 'word' | 'excel' | 'powerPoint' | 'oneNote' | 'loop' | 'copilotChat'
+
+/**
+ * Tenant-wide Microsoft 365 usage: counts only, from Microsoft Graph's usage reports. A daily flow
+ * stores each report's JSON in Dataverse; nothing here names a person.
+ */
+export interface M365Usage {
+  /** The newest report refresh date, yyyy-mm-dd. Microsoft's reports run about two days behind. */
+  refreshed: string
+  /** Distinct people active on any Microsoft 365 service in the last 30 days. */
+  active: number | null
+  /** Distinct people active per service in the last 30 days. */
+  services: { key: string; label: string; active: number }[]
+  /** Daily active users per Office app. */
+  appDaily: { date: string; counts: Record<M365App, number> }[]
+  emailDaily: { date: string; sent: number; received: number; read: number; meetingsCreated: number }[]
+  teamsDaily: { date: string; channel: number; chat: number; calls: number; meetings: number }[]
+  /** People licensed for Microsoft 365 Copilot, and those who used it in the last 30 days, per product. */
+  copilot: { product: CopilotProduct; enabled: number; active: number }[]
+  /** Reports the flow could not fetch on its last run. */
+  failed: { name: string; status: string }[]
+  /** When the flow last stored a report. */
+  collectedAt: string
+}
+
 export type LaneId =
   | 'agents' | 'environments' | 'usage' | 'flows' | 'foundry' | 'users' | 'interactions' | 'knowledge' | 'sharepoint' | 'shadow'
-  | 'credits' | 'creditpool' | 'aicost'
+  | 'credits' | 'creditpool' | 'aicost' | 'm365usage'
 
 export type LaneState = 'ok' | 'empty' | 'not-set-up' | 'denied' | 'error' | 'sample' | 'loading'
 
@@ -316,6 +345,7 @@ export interface RawData {
   creditPool: CreditPool[]
   aiCostDaily: AiCostDaily[]
   aiCostMeters: AiCostMeter[]
+  m365?: M365Usage
 }
 
 export interface Dataset {
@@ -342,6 +372,7 @@ export interface Dataset {
   creditPool: CreditPool[]
   aiCostDaily: AiCostDaily[]
   aiCostMeters: AiCostMeter[]
+  m365?: M365Usage
   lanes: LaneStatus[]
   runs: RunInfo[]
   appEnvironment?: string

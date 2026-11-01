@@ -25,6 +25,7 @@ const FIX: Partial<Record<LaneId, string>> = {
   aicost: 'Cost Management needs Cost Management Reader, or Reader, on each subscription that holds Azure AI resources.',
   credits: 'The licensing API needs a Power Platform administrator (or Dynamics 365 administrator) on the connection.',
   creditpool: 'The licensing API needs a Power Platform administrator (or Dynamics 365 administrator) on the connection.',
+  m365usage: 'The usage reports need Reports.Read.All on the audit collector app and the daily Microsoft 365 usage flow. Run the installer to add both.',
 }
 const SETUP = 'Run the installer, or add the connection in the app settings.'
 

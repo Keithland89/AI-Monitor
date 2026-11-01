@@ -1,0 +1,39 @@
+/// The ranked "What needs attention" list on the Overview page. Attention Count supplies each row's figure.
+table Attention
+
+	column SortOrder
+		dataType: int64
+		isHidden
+		formatString: 0
+		summarizeBy: none
+		sourceColumn: SortOrder
+
+	column Action
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Action
+		sortByColumn: SortOrder
+
+	column 'Where to look'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Where to look
+
+	partition Attention = m
+		mode: import
+		source =
+				let
+				    Source = #table(
+				        type table [SortOrder = Int64.Type, Action = text, #"Where to look" = text],
+				        {
+				            { 1, "Retire: no use in 90+ days, not shared tenant-wide", "Adoption · Agents in use" },
+				            { 2, "High-risk agents with no owner on record", "Risk · Agents to review" },
+				            { 3, "Shared tenant-wide but never used", "Risk · Agents to review" },
+				            { 4, "Read outside the tenant with no authentication", "Risk · Knowledge reach" },
+				            { 5, "Owners not resolved in Entra ID (likely leavers)", "Agents · Builders" },
+				            { 6, "Unsanctioned AI tools on managed devices", "Risk · Shadow AI" }
+				        }
+				    )
+				in
+				    Source
+

@@ -141,7 +141,7 @@ export function buildPrompt(question: string, context: string, history: AskTurn[
     .map((t) => `Q: ${t.question}\nA: ${t.answer.slice(0, 1200)}`)
     .join('\n\n')
   return [
-    'You are answering a question from someone using Agent Monitor, an app that monitors the AI agents and Copilot use in their Microsoft 365 tenant.',
+    'You are answering a question from someone using AI-Monitor, an app that monitors the AI agents and Copilot use in their Microsoft 365 tenant.',
     'Answer from the summary below first. If it does not cover the question, say what is missing before using anything else. Areas listed as not loaded are unknown, not zero.',
     'Lead with the answer in one or two sentences, then at most five short bullets. Use the agent names exactly as written. Do not invent figures.',
     '',

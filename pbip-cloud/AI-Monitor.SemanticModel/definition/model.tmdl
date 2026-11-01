@@ -1,0 +1,38 @@
+model Model
+	culture: en-GB
+	defaultPowerBIDataSourceVersion: powerBI_V3
+	discourageImplicitMeasures
+	sourceQueryCulture: en-GB
+	maxParallelismPerRefresh: 1
+	dataAccessOptions
+		legacyRedirects
+		returnErrorValuesAsNull
+
+annotation __PBI_TimeIntelligenceEnabled = 0
+
+annotation PBI_QueryOrder = ["Agent","Environment","AgentConnector","AgentKnowledge","KnowledgeSource","SharePointAgent","AgentFlow","AzureAIResource","RiskDetail","User","Interaction","CopilotSurface","Date","ApiCoverage","AgentGap","TelemetryCoverage","RiskFactor","Metrics","DataverseUrl","DateStart","FnToInt","FnToNum","FnToBool","FnToDateTime","FnToDate","FnToLogical","FnRecordsToTable","FnRetry","FnDataverse","FnDataverseOptional","SrcInteraction","SrcSurfaceKey","SrcKnowledgeSource","SrcSharePointAgent","FnDistinctKey","FnHexRun","FnLooksGuid","FnSpo","FnSurface","FnAgentLookup","FnSharePointAgentLookup","FnArg","ShadowAiSignal","ShadowAiDevice","ShadowAiCatalog","ShadowAiWatchlist","FnWatchTerms","FnWatchPrefix","FnWatchMatch","FnInstalledMatch","FnHunt","SrcShadowInstalled","SrcShadowExecuted","SrcShadowNetwork","SrcShadowDevice"]
+
+annotation PBI_ProTooling = ["DevMode"]
+
+ref table Agent
+ref table Environment
+ref table AgentConnector
+ref table AgentKnowledge
+ref table KnowledgeSource
+ref table SharePointAgent
+ref table AgentFlow
+ref table AzureAIResource
+ref table RiskDetail
+ref table User
+ref table Interaction
+ref table CopilotSurface
+ref table Date
+ref table ApiCoverage
+ref table AgentGap
+ref table TelemetryCoverage
+ref table RiskFactor
+ref table Attention
+ref table Metrics
+ref table ShadowAiSignal
+ref table ShadowAiDevice
+ref table ShadowAiCatalog

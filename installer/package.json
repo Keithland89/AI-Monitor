@@ -1,12 +1,12 @@
 {
-  "name": "agent-inventory-installer",
+  "name": "ai-monitor-installer",
   "version": "0.1.0",
-  "description": "Agent Monitor installer. Switches on every lane in one Dataverse environment: the audit collector and knowledge sweep app registrations, the four managed solutions and the lane D tables, the flows, and the app. Shows a plan and changes nothing until it's approved.",
+  "description": "AI-Monitor installer. Switches on every lane in one Dataverse environment: the audit collector and knowledge sweep app registrations, the four managed solutions and the lane D tables, the flows, and the app. Shows a plan and changes nothing until it's approved.",
   "license": "MIT",
   "private": true,
   "type": "module",
   "bin": {
-    "agent-inventory-install": "bin/agent-inventory-install.js"
+    "ai-monitor-install": "bin/ai-monitor-install.js"
   },
   "files": [
     "bin",
@@ -18,7 +18,7 @@
     "node": ">=22.13"
   },
   "scripts": {
-    "start": "node bin/agent-inventory-install.js",
+    "start": "node bin/ai-monitor-install.js",
     "test": "node --test",
     "typecheck": "tsc -p jsconfig.json"
   },

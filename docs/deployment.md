@@ -33,7 +33,7 @@ There are **two app registrations in total**, not one per solution:
 
 | App registration | Used by | Permission and tenant setup |
 |---|---|---|
-| **Audit collector app** | `CopilotInteractionLogging` (lane C) and `SharePointAgentLogging` (lane E) | Microsoft Graph application permission `AuditLogsQuery.Read.All`, granted by a Global Administrator; unified audit logging enabled in Purview |
+| **Audit collector app** | `CopilotInteractionLogging` (lane C), `SharePointAgentLogging` (lane E) and `M365UsageReports` (lane G) | Microsoft Graph application permission `AuditLogsQuery.Read.All`, plus `Reports.Read.All` for lane G, granted by a Global Administrator; unified audit logging enabled in Purview |
 | **Knowledge sweep app** | `AgentAppUserProvisioning` and `AgentKnowledgeSourceSweep` (lane D) | No Graph API permission or admin consent; register it as a Power Platform admin management application. `Agents` scope also needs Reader at the tenant root management group |
 
 Defender does **not** add a third app registration. Lane F uses the signed-in Power BI Organizational-account credential for `https://api.security.microsoft.com`.
@@ -44,9 +44,10 @@ Install the solutions in this order:
 |---|---|---|---|---|---|
 | 1 | `CopilotInteractionLogging_managed.zip` | Audit collector | `poc_Audit_*` plus `poc_KeyVaultSecret` | `poc_sharedcommondataserviceforapps_2dd46` | Turn on both flows; confirm a non-zero run row |
 | 2 | `SharePointAgentLogging_managed.zip` | Audit collector — reuse the same tenant, app id and secret | `poc_SP_*` | `poc_sharedcommondataserviceforapps_spagent` | Turn on both flows; run the manual flow once |
-| 3 | Provision the four shared lane D tables in [lane D step 2](#2-provision-the-tables) | Knowledge sweep | None yet | None | Confirm the four tables exist |
-| 4 | `AgentAppUserProvisioning_managed.zip` | Knowledge sweep | `poc_AU_*` | `poc_sharedcommondataserviceforapps_appusr` | Run first with `poc_AU_WhatIf=true`, then grant and populate the environment manifest |
-| 5 | `AgentKnowledgeSourceSweep_managed.zip` | Knowledge sweep | `poc_KS_*` | `poc_sharedcommondataserviceforapps_ksweep` | Turn on the daily flow after the manifest contains environments |
+| 3 | `M365UsageReports_managed.zip` (lane G, used by the app's Work patterns view) | Audit collector, with `Reports.Read.All` | `poc_WP_*` | `poc_sharedcommondataserviceforapps_m365use` | Create the `poc_M365UsageReport` table first (the installer does this; it holds `poc_Name`, `poc_Period`, `poc_Payload`, `poc_Status` and `poc_CollectedAt`), then turn on the daily flow |
+| 4 | Provision the four shared lane D tables in [lane D step 2](#2-provision-the-tables) | Knowledge sweep | None yet | None | Confirm the four tables exist |
+| 5 | `AgentAppUserProvisioning_managed.zip` | Knowledge sweep | `poc_AU_*` | `poc_sharedcommondataserviceforapps_appusr` | Run first with `poc_AU_WhatIf=true`, then grant and populate the environment manifest |
+| 6 | `AgentKnowledgeSourceSweep_managed.zip` | Knowledge sweep | `poc_KS_*` | `poc_sharedcommondataserviceforapps_ksweep` | Turn on the daily flow after the manifest contains environments |
 
 Use the unmanaged ZIP with the same base name only when you intend to edit the flows. For a clean deployment, use the managed ZIPs shown above.
 
@@ -64,7 +65,7 @@ For every imported solution:
 
 ## Lanes A and B — inventory and identity
 
-Nothing to install. Open `pbip-cloud\AgentInventory.pbip`, set the two parameters, publish, then set credentials in the workspace.
+Nothing to install. Open `pbip-cloud\AI-Monitor.pbip`, set the two parameters, publish, then set credentials in the workspace.
 
 | Parameter | Value |
 |---|---|

@@ -1,5 +1,5 @@
 node_modules/
-agent-inventory-install*.json
+ai-monitor-install*.json
 plan.md
 *.tmp
 test/.work/

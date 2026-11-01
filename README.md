@@ -1,6 +1,46 @@
-# Agent Monitor
+<div align="center">
+
+<br>
+
+# 📡 AI-Monitor
+
+### Every AI agent in your tenant, who uses it and what needs attention, as an app or a Power BI report.
+
+**What exists · who uses it · what it costs · what to fix first**
+
+<br>
 
 Agent 365–style tenant agent monitoring, without Agent 365.
+
+<br>
+
+**Found this useful? ⭐ Star this repo to help others discover it!**
+
+<br>
+
+**[Quick start ↓](#quick-start)** &nbsp;·&nbsp; **[The app and the report ↓](#the-app-and-the-report)** &nbsp;·&nbsp; **[Required permissions ↓](#required-permissions)** &nbsp;·&nbsp; **[Deployment guide →](docs/deployment.md)**
+
+<br>
+
+<table>
+<tr>
+<th width="50%">The app</th>
+<th width="50%">The Power BI report</th>
+</tr>
+<tr>
+<td><img src="Images/AI-Monitor-App-Preview.gif" alt="The AI-Monitor app on its built-in sample data, animated preview of its tabs"></td>
+<td><img src="Images/AI-Monitor-Preview.gif" alt="The AI-Monitor Power BI report on the anonymised sample data, animated preview of its pages"></td>
+</tr>
+</table>
+
+</div>
+
+## What you get
+
+- **The app:** a Copilot Managed App with ten tabs, from the agent estate to cost and Shadow AI,
+  plus an **Ask** panel. It opens on an anonymised sample until it's connected.
+- **A Power BI report** with the same model, if you prefer Power BI.
+- **An installer** that switches every data lane on and deploys the app, after you approve a plan.
 
 A tenant-wide monitoring and governance solution for **Microsoft 365 Copilot Agent Builder**, **Copilot Studio**, **agent flows** and **Azure AI Foundry** — built entirely on APIs available to a normal Power Platform / Azure administrator, with **no Agent 365 licence**.
 
@@ -8,12 +48,12 @@ Two Power BI builds of one semantic model — **21 tables, 166 measures, 16 page
 
 | Deliverable | Path | What it is |
 |---|---|---|
-| **Power BI project (cloud)** | `pbip-cloud\AgentInventory.pbip` | The maintained deliverable. Live connections to Azure Resource Graph, Dataverse and Defender advanced hunting, so it refreshes on a schedule in PowerBI.com with **no gateway**. |
-| **Power BI project (CSV)** | `pbip\AgentInventory.pbip` | The same model and the same report, reading CSV files from a folder instead. For offline or air-gapped review. |
-| **Power BI template** | `template\Agent Inventory.pbit` | A single-file template of the report. Open it in Power BI Desktop, enter the parameters when prompted, and it loads against your own tenant. |
+| **Power BI project (cloud)** | `pbip-cloud\AI-Monitor.pbip` | The maintained deliverable. Live connections to Azure Resource Graph, Dataverse and Defender advanced hunting, so it refreshes on a schedule in PowerBI.com with **no gateway**. |
+| **Power BI project (CSV)** | `pbip\AI-Monitor.pbip` | The same model and the same report, reading CSV files from a folder instead. For offline or air-gapped review. |
+| **Power BI template** | `template\AI-Monitor.pbit` | A single-file template of the report. Open it in Power BI Desktop, enter the parameters when prompted, and it loads against your own tenant. |
 | **Power Platform solutions** | `solution\*.zip` | Importable Dataverse solutions for interaction telemetry, named knowledge sources and SharePoint agent inventory, plus the flow that provisions the application users lane D depends on. |
 | **Anonymised sample data** | `sample-data\agent365-sample-data.zip` | A full demo-tenant extract, every identifying value replaced, so the CSV build opens with real-shaped data and no tenant access. |
-| **The app** | `app\` | A Copilot Managed App version of the report: the same 16 pages in nine tabs, plus a **Chat & Cowork** view, a **Cost & consumption** tab (Copilot Credits per agent, and Azure AI spend from Cost Management), and lightweight **Lifecycle & review**, **Habit stages** and week-on-week views computed from data it already loads. It reads live data through four connectors, and falls back to an anonymised sample. See [`app\README.md`](app/README.md). |
+| **The app** | `app\` | A Copilot Managed App version of the report: the same 16 pages in ten tabs, plus a **Chat & Cowork** view, a **Cost & consumption** tab (Copilot Credits per agent, and Azure AI spend from Cost Management), and lightweight **Lifecycle & review**, **Habit stages** and week-on-week views computed from data it already loads. It reads live data through four connectors, and falls back to an anonymised sample. See [`app\README.md`](app/README.md). |
 | **Installer** | `installer\` | A guided installer (browser or terminal) that switches every lane on and deploys the app, after you approve a plan. See [`installer\README.md`](installer/README.md). |
 
 Verified end-to-end against a live Microsoft 365 test tenant.
@@ -27,7 +67,7 @@ Verified end-to-end against a live Microsoft 365 test tenant.
 ## Quick start
 
 **To switch everything on with the installer**: run the installer from a clone (`cd installer`,
-`npm ci`, `node bin/agent-inventory-install.js --ui`), or with the one-line launcher in
+`npm ci`, `node bin/ai-monitor-install.js --ui`), or with the one-line launcher in
 [`installer\README.md`](installer/README.md). It signs you in and checks your roles. It then shows a
 plan covering the app registrations, the solution imports, the lane D grants, the flows and the app.
 It changes nothing until you approve the plan.
@@ -36,13 +76,13 @@ It changes nothing until you approve the plan.
 hand, see [`app\README.md`](app/README.md). Outside the Managed Apps player it opens on the
 anonymised sample (`cd app`, `npm ci`, `npm run dev`).
 
-**To report on your own tenant** — open `pbip-cloud\AgentInventory.pbip` in Power BI Desktop, publish
+**To report on your own tenant** — open `pbip-cloud\AI-Monitor.pbip` in Power BI Desktop, publish
 it to a workspace, set the three data-source credentials to *Organizational account*, and set a
 refresh schedule. Permissions are listed under [Required permissions](#required-permissions);
 the three collected lanes are turned on by importing the solutions in `solution\`.
 
 **To just look at the report** — unzip `sample-data\agent365-sample-data.zip`, open
-`pbip\AgentInventory.pbip`, and point its `DataFolder` parameter at the unzipped `data` folder. No
+`pbip\AI-Monitor.pbip`, and point its `DataFolder` parameter at the unzipped `data` folder. No
 credentials, no Azure permissions, no tenant access. See [`sample-data\README.md`](sample-data/README.md).
 
 ---
@@ -61,10 +101,11 @@ Six lanes feed one semantic model:
 | **D** — named knowledge sources | The real sites, indexes and connectors agents are grounded on | A **sweep** reads `botcomponents` in every environment and writes one landing table | **Dataverse** connector → `poc_agentknowledgesources` |
 | **E** — SharePoint agent inventory | `.agent` files observed across SharePoint, with current/deleted state, names, sites and URLs | A separate **Power Automate cloud flow** reconstructs latest state from SharePoint file-operation audit records | **Dataverse** connector → `poc_sharepointagents` |
 | **F** — shadow AI on endpoints | Unsanctioned AI desktop tools on managed devices — Claude Code, Copilot CLI, Ollama, Cursor | Power BI queries **Defender advanced hunting** at refresh time | **Web** connector → `api.security.microsoft.com` |
+| **G** — Microsoft 365 work patterns *(the app only, for now)* | 30-day counts of Microsoft 365 apps, email, Teams and Copilot use, for the app's Work patterns view | A daily **Power Automate cloud flow** copies five Microsoft Graph usage reports into one landing table | **Dataverse** connector → `poc_m365usagereports` |
 
 **The semantic model only ever talks to three connectors: Azure Resource Graph, Dataverse and the Defender advanced hunting API.** It never calls Purview, never calls Power Automate, and never touches the 500-plus per-environment Dataverse endpoints. Lanes C, D and E are *collectors*, not data sources: they run on their own schedule, outside the dataset refresh, and deposit rows into the one Dataverse the model reads like any other table. That indirection is what keeps the whole solution gateway-free.
 
-> Lanes A, B and F need nothing installed. Lanes C and E can reuse one `AuditLogsQuery.Read.All` app registration; lane D uses its own Dataverse application user. See [Out-of-band collection lanes](#out-of-band-collection-lanes-c-d-and-e).
+> Lanes A, B and F need nothing installed. Lanes C and E can reuse one `AuditLogsQuery.Read.All` app registration, and lane G adds `Reports.Read.All` to it; lane D uses its own Dataverse application user. See [Out-of-band collection lanes](#out-of-band-collection-lanes-c-d-and-e).
 
 
 ### Star schema
@@ -158,63 +199,112 @@ Current tenant snapshot — live Azure Resource Graph, **4 September 2026**:
 
 ---
 
-## The report
+## The app and the report
 
-Fifteen pages. Every screenshot below is rendered from the **anonymised sample
-dataset** in [`sample-data\`](sample-data/), not from a live tenant — the shapes,
-volumes and distributions are real, the names are not. Download the sample and
-you get exactly these pages.
+Connected, the app and the Power BI report read the same sources. The screenshots below come from
+anonymised samples, not a live tenant: the report's from [`sample-data\`](sample-data/), the app's
+from the smaller sample built into it, so their numbers differ. The shapes, volumes and
+distributions are real; the names are not. The app opens on its sample until it's connected, so you
+can click through it before you install anything.
 
-### Executive overview
+### Overview
 
-The whole estate on one page: how many agents exist, who is authoring them, which
-platform they live on, and how much of the estate has ever actually been used.
+The whole estate on one page: how many agents exist, how many are used, and what needs attention
+first. The app opens with a one-line briefing and a *What needs attention* list.
 
-![Executive overview](docs/screenshots/01-executive-overview.png)
+<table>
+<tr><th width="50%">The app</th><th width="50%">The Power BI report</th></tr>
+<tr>
+<td><img src="docs/screenshots/app/01-overview.png" alt="The app's Overview tab"></td>
+<td><img src="docs/screenshots/01-executive-overview.png" alt="The report's Executive overview page"></td>
+</tr>
+</table>
 
 ### Agent inventory
 
-The full register — every agent with its creator, owner, environment, orchestration
-mode, model, authentication and risk band. Sortable, and driven by the slicers.
+The full register: every agent with its creator, owner, environment, orchestration mode, model,
+authentication and risk band. Sortable, and driven by the filters.
 
-![Agent inventory](docs/screenshots/02-agent-inventory.png)
+<table>
+<tr><th width="50%">The app</th><th width="50%">The Power BI report</th></tr>
+<tr>
+<td><img src="docs/screenshots/app/02-inventory.png" alt="The app's Inventory tab"></td>
+<td><img src="docs/screenshots/02-agent-inventory.png" alt="The report's Agent inventory page"></td>
+</tr>
+</table>
 
-### Copilot interactions
+### Copilot activity
 
-Real per-agent usage from the Purview unified audit log. This is the page that
-recovers the telemetry Agent 365 would otherwise be the only source of — including
-autonomous runs, which no other API reports, and SharePoint agents, which no
-inventory API reports at all.
+Real per-agent usage from the Purview unified audit log, including autonomous runs, which no other
+API reports, and SharePoint agents, which no inventory API reports at all. The app also splits
+Copilot Chat, in-app Copilot, Cowork and agents side by side.
 
-![Copilot interactions](docs/screenshots/03-copilot-interactions.png)
+<table>
+<tr><th width="50%">The app</th><th width="50%">The Power BI report</th></tr>
+<tr>
+<td><img src="docs/screenshots/app/05-chat-cowork.png" alt="The app's Chat and Cowork view"></td>
+<td><img src="docs/screenshots/03-copilot-interactions.png" alt="The report's Copilot interactions page"></td>
+</tr>
+</table>
 
 ### Governance & risk
 
-Exposure posture — tenant-wide sharing, unauthenticated agents, quarantine and a
-transparent heuristic score. The `RiskReasons` column lists every condition that
-fired and the points it added, so no number is unexplainable.
+Exposure posture: tenant-wide sharing, unauthenticated agents, quarantine and a transparent
+heuristic score. `RiskReasons` lists every condition that fired and the points it added, so no
+number is unexplainable.
 
-![Governance and risk](docs/screenshots/04-governance-risk.png)
+<table>
+<tr><th width="50%">The app</th><th width="50%">The Power BI report</th></tr>
+<tr>
+<td><img src="docs/screenshots/app/07-governance.png" alt="The app's Governance and risk tab"></td>
+<td><img src="docs/screenshots/04-governance-risk.png" alt="The report's Governance and risk page"></td>
+</tr>
+</table>
 
 ### Knowledge sources
 
-What agents actually read: SharePoint sites, public websites, Dataverse tables,
-Graph connectors and Azure AI Search indexes, named rather than merely counted.
+What agents actually read: SharePoint sites, public websites, Dataverse tables, Graph connectors
+and Azure AI Search indexes, named rather than merely counted.
 
-![Knowledge sources](docs/screenshots/05-knowledge-sources.png)
+<table>
+<tr><th width="50%">The app</th><th width="50%">The Power BI report</th></tr>
+<tr>
+<td><img src="docs/screenshots/app/08-knowledge-sources.png" alt="The app's Knowledge sources view"></td>
+<td><img src="docs/screenshots/05-knowledge-sources.png" alt="The report's Knowledge sources page"></td>
+</tr>
+</table>
 
 ### Azure AI Foundry
 
-The Azure-side estate that hosts Foundry Agent Service agents, with regions, SKUs
-and public-network exposure.
+The Azure-side estate that hosts Foundry Agent Service agents, with regions, SKUs and
+public-network exposure.
 
-![Azure AI Foundry](docs/screenshots/06-azure-ai-foundry.png)
+<table>
+<tr><th width="50%">The app</th><th width="50%">The Power BI report</th></tr>
+<tr>
+<td><img src="docs/screenshots/app/09-foundry.png" alt="The app's Azure AI Foundry tab"></td>
+<td><img src="docs/screenshots/06-azure-ai-foundry.png" alt="The report's Azure AI Foundry page"></td>
+</tr>
+</table>
 
-The remaining nine pages — All agents, Agent analytics, Creators & ownership,
-Usage & popularity, Adoption & activity, Tools & integration, Knowledge & grounding,
-Data sources & gaps and Shadow AI (endpoints) — are in the build. Shadow AI is
-deliberately empty in the sample; see
-[Shadow AI on managed endpoints](#shadow-ai-on-managed-endpoints).
+### More in the app
+
+Views computed from data the app already loads: which agents to promote or retire, where Copilot
+fits the way people work, and what agents cost in Copilot Credits.
+
+<table>
+<tr><th width="33%">Lifecycle & review</th><th width="33%">Work patterns</th><th width="33%">Cost & consumption</th></tr>
+<tr>
+<td><img src="docs/screenshots/app/04-lifecycle.png" alt="The app's Lifecycle and review view"></td>
+<td><img src="docs/screenshots/app/06-work-patterns.png" alt="The app's Work patterns view"></td>
+<td><img src="docs/screenshots/app/10-cost.png" alt="The app's Cost and consumption tab"></td>
+</tr>
+</table>
+
+The report's other pages (All agents, Agent analytics, Creators & ownership, Usage & popularity,
+Adoption & activity, Tools & integration, Knowledge & grounding, Data sources & gaps and Shadow AI
+(endpoints)) are in the build, and so are the app's matching views. Shadow AI is deliberately empty
+in the sample; see [Shadow AI on managed endpoints](#shadow-ai-on-managed-endpoints).
 
 ---
 
@@ -925,21 +1015,23 @@ pbip\                          Power BI project, CSV sources - same 16 pages, of
 solution\                      Lane C, lane D, lane E and app-user provisioning Dataverse solutions (.zip)
 app\                           The app (Copilot Managed App): React + TypeScript, live connectors, sample fallback
 installer\                     Guided installer: plan, approve, then set up every lane and deploy the app
-docs\                          Deployment guide + architecture diagram + report screenshots
+template\                      The report as a single Power BI template (.pbit)
+docs\                          Deployment guide, architecture diagram, report screenshots (app screenshots in docs\screenshots\app)
+Images\                        The animated app and report previews at the top of this page
 sample-data\                   Anonymised extract so colleagues can run the report without the tenant
 data\                          Local CSV folder the local build reads
 ```
 
-There are two copies of the same report. **`pbip-cloud\AgentInventory.pbip`** connects live to
+There are two copies of the same report. **`pbip-cloud\AI-Monitor.pbip`** connects live to
 Azure Resource Graph, Dataverse and Defender advanced hunting — publish it, set the three
-credentials, and it refreshes on a schedule. **`pbip\AgentInventory.pbip`** reads CSV files instead,
+credentials, and it refreshes on a schedule. **`pbip\AI-Monitor.pbip`** reads CSV files instead,
 and `sample-data\agent365-sample-data.zip` is an anonymised demo-tenant extract that already
 contains the data. Same 16 pages, same measures, same visuals in both.
 
 | Path | Use it for |
 |---|---|
-| `pbip-cloud\AgentInventory.pbip` | Open in Power BI Desktop, publish, set the three credentials, schedule the refresh |
-| `pbip\AgentInventory.pbip` | The same report reading CSV files — open it against the anonymised demo-tenant extract |
+| `pbip-cloud\AI-Monitor.pbip` | Open in Power BI Desktop, publish, set the three credentials, schedule the refresh |
+| `pbip\AI-Monitor.pbip` | The same report reading CSV files — open it against the anonymised demo-tenant extract |
 | `solution\CopilotInteractionLogging.zip` | Import into Power Platform to turn on lane C (interaction telemetry) |
 | `solution\AgentKnowledgeSourceSweep.zip` | Import into Power Platform to turn on lane D (named knowledge sources) |
 | `solution\SharePointAgentLogging.zip` | Import into Power Platform to turn on lane E (SharePoint agent inventory) |

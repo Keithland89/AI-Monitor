@@ -14,7 +14,7 @@ import { installedVersion, MIN_NODE, nodeOk } from './cli.js';
 import { ADMIN_STEPS, deployAgain, notReady } from './errors.js';
 import { addDataSource, authStatus, createApp, DATA_SOURCES, deleteApp, deployApp, isGuid, login, playUrl, readAppConfig, shareApp, switchAccount, verifyShare } from './steps.js';
 
-export const APP_NAME = 'Agent Monitor';
+export const APP_NAME = 'AI-Monitor';
 
 /** The admin settings that keep the app from going live, as people know them. */
 export const NOT_READY_NAMES = {
@@ -23,12 +23,16 @@ export const NOT_READY_NAMES = {
 };
 
 /**
- * Where the app's work folder lives: %LOCALAPPDATA%\AgentInventory\app.
+ * Where the app's work folder lives: %LOCALAPPDATA%\AI-Monitor\app, or %LOCALAPPDATA%\AgentInventory\app
+ * when an install from before the rename made one there, so a re-run updates that app instead of making another.
  * @param {NodeJS.ProcessEnv} [env]
+ * @param {(path: string) => boolean} [exists]
  */
-export function defaultWorkDir(env = process.env) {
+export function defaultWorkDir(env = process.env, exists = existsSync) {
   const base = env.LOCALAPPDATA || join(env.HOME || homedir(), '.local', 'share');
-  return join(base, 'AgentInventory', 'app');
+  const dir = join(base, 'AI-Monitor', 'app');
+  const legacy = join(base, 'AgentInventory', 'app');
+  return !exists(dir) && exists(legacy) ? legacy : dir;
 }
 
 /**

@@ -12,7 +12,7 @@ const plan = (more = {}) => buildPlan({ record: emptyRecord(), scopeMode: 'Agent
 test('the plan lists every step in order', () => {
   assert.deepEqual(plan().steps.map((s) => s.id), [
     'sign-in', 'prereqs', 'environment', 'audit-app', 'sweep-app', 'root-reader', 'connection',
-    'solution-interactions', 'solution-sharepoint', 'lane-d-tables', 'solution-appusers', 'appuser-grant', 'solution-sweep',
+    'solution-interactions', 'solution-sharepoint', 'workpatterns-table', 'solution-workpatterns', 'lane-d-tables', 'solution-appusers', 'appuser-grant', 'solution-sweep',
     'flows', 'verify', 'app', 'lane-f', 'lane-cost',
   ]);
 });
@@ -96,18 +96,18 @@ test('pending steps leave out checks, done and skipped steps', () => {
 
 test('the plan saves as Markdown', () => {
   const md = planMarkdown(plan({ scopeMode: 'Dataverse' }), { now: new Date('2024-05-01T10:30:00Z') });
-  assert.match(md, /^# Agent Monitor install: the plan/);
+  assert.match(md, /^# AI-Monitor install: the plan/);
   assert.match(md, /Made 2024-05-01 10:30 UTC\./);
   assert.match(md, /## 6\. Reader at the tenant root management group \*\(skipped\)\*/);
-  assert.match(md, /## 12\. Lane D: grant the knowledge sweep in each environment \*\(asks again before it runs\)\*/);
+  assert.match(md, /## 14\. Lane D: grant the knowledge sweep in each environment \*\(asks again before it runs\)\*/);
   assert.match(md, /- \*Role:\* System Administrator in the landing environment/);
-  assert.equal((md.match(/^## /gm) ?? []).length, 18);
+  assert.equal((md.match(/^## /gm) ?? []).length, 20);
 });
 
 test('hand-offs become next steps with a message to send', () => {
-  const [step] = handOffSteps([{ id: 'audit-consent', who: 'Global Administrator', what: 'Grant admin consent. Then run it again.', link: 'https://example.test/consent' }], 'agent-inventory-install');
+  const [step] = handOffSteps([{ id: 'audit-consent', who: 'Global Administrator', what: 'Grant admin consent. Then run it again.', link: 'https://example.test/consent' }], 'ai-monitor-install');
   assert.equal(step.who, 'Global Administrator');
   assert.equal(step.title, 'Grant admin consent');
   assert.match(step.message ?? '', /https:\/\/example\.test\/consent/);
-  assert.deepEqual(step.steps, ['When it\'s done, run agent-inventory-install.']);
+  assert.deepEqual(step.steps, ['When it\'s done, run ai-monitor-install.']);
 });

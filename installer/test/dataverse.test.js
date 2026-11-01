@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import { createDataverse } from '../src/dataverse.js';
 import { createClient, HttpError } from '../src/http.js';
 import { adminConsentUrl, BAP_API_VERSION, grantAuditConsent, registerAdminApp } from '../src/identity.js';
-import { LANE_D_TABLES, logicalName, provisionLaneD, uniqueKeyFor } from '../src/lane-d-tables.js';
+import { LANE_D_TABLES, logicalName, provisionLaneD, provisionWorkPatterns, uniqueKeyFor, WORK_PATTERNS_TABLE } from '../src/lane-d-tables.js';
 import { COST_PROBE_LIMIT, costAccess } from '../src/prereqs.js';
 import { laneCost, laneF, laneOk, verifyLanes } from '../src/verify.js';
 import { fakeFetch, noSleep } from './helpers.js';
@@ -114,6 +114,19 @@ test('lane D provisioning in dry-run mode only says what it would create', async
   assert.equal(changed.at(-1), 'would add the alternate keys and the poc_uniquekey upsert key');
 });
 
+test('the work patterns table is made once, with the columns the flow writes', async () => {
+  const log = { ok: () => {}, warn: () => {}, info: () => {} };
+  const missing = fakeFetch([{ match: /EntityDefinitions/, reply: () => ({ status: 404, body: { error: { message: 'Not found' } } }) }]);
+  assert.deepEqual(await provisionWorkPatterns(client(missing), { log, sleep: noSleep, dryRun: true }), ['would create poc_m365usagereport']);
+  assert.ok(missing.calls.every((c) => c.method === 'GET'), 'a dry run writes nothing');
+  assert.equal(logicalName(WORK_PATTERNS_TABLE), 'poc_m365usagereport');
+  assert.deepEqual(WORK_PATTERNS_TABLE.attributes.map((a) => a.SchemaName), ['poc_Period', 'poc_Payload', 'poc_Status', 'poc_CollectedAt']);
+
+  const there = fakeFetch([{ method: 'GET', match: /EntityDefinitions/, reply: () => ({ LogicalName: 'poc_m365usagereport' }) }]);
+  assert.deepEqual(await provisionWorkPatterns(client(there), { log, sleep: noSleep }), []);
+  assert.ok(there.calls.every((c) => c.method === 'GET'));
+});
+
 test('lane D provisioning leaves tables that are already there', async () => {
   const f = fakeFetch([
     { method: 'GET', match: /\/Keys\?/, reply: () => ({ value: [{ SchemaName: 'poc_UniqueKey', EntityKeyIndexStatus: 'Active' }, { SchemaName: 'poc_EnvironmentId' }] }) },
@@ -192,17 +205,23 @@ test('the run tables say ok, pending, failed or missing, and pending is not a fa
     poc_sharepointagentloggingruns: null,
     poc_knowledgesweepruns: { poc_status: 'Failed', poc_environmentsswept: 3, poc_environmentsfailed: 3, poc_rowsfound: 0, createdon: '2024-05-01T03:00:00Z' },
   };
-  const dv = /** @type {any} */ ({ latestRow: async (/** @type {string} */ set) => rows[set] });
+  const reports = [
+    { poc_name: 'getTeamsUserActivityCounts', poc_status: '200', poc_collectedat: '2024-05-01T04:00:00Z' },
+    { poc_name: 'getMicrosoft365CopilotUserCountSummary', poc_status: '403', poc_collectedat: '2024-05-01T04:00:00Z' },
+  ];
+  const dv = /** @type {any} */ ({ latestRow: async (/** @type {string} */ set) => rows[set], allRows: async () => reports });
   const out = await verifyLanes(dv);
-  assert.deepEqual(out.map((r) => [r.lane, r.state]), [['C', 'ok'], ['E', 'pending'], ['D', 'failed']]);
+  assert.deepEqual(out.map((r) => [r.lane, r.state]), [['C', 'ok'], ['E', 'pending'], ['D', 'failed'], ['G', 'warn']]);
+  assert.match(out[3].detail, /1 of 2 reports .*getMicrosoft365CopilotUserCountSummary \(403\).*Reports\.Read\.All/);
+  assert.equal((await verifyLanes(/** @type {any} */ ({ latestRow: async () => null, allRows: async () => [] })))[3].state, 'pending');
   assert.match(out[0].detail, /read 12 audit records/);
   assert.match(out[1].detail, /First run pending/);
   assert.equal(laneOk('pending'), true);
   assert.equal(laneOk('failed'), false);
 
-  const missing = await verifyLanes(/** @type {any} */ ({ latestRow: async () => undefined }));
+  const missing = await verifyLanes(/** @type {any} */ ({ latestRow: async () => undefined, allRows: async () => undefined }));
   assert.ok(missing.every((r) => r.state === 'missing'));
-  const broken = await verifyLanes(/** @type {any} */ ({ latestRow: async () => { throw new Error('boom'); } }));
+  const broken = await verifyLanes(/** @type {any} */ ({ latestRow: async () => { throw new Error('boom'); }, allRows: async () => { throw new Error('boom'); } }));
   assert.ok(broken.every((r) => r.state === 'warn'));
 });
 
@@ -272,16 +291,30 @@ test('admin consent without the rights becomes a consent link for an admin', asy
     { method: 'GET', match: /appRoleAssignments/, reply: () => ({ value: [] }) },
     { method: 'POST', match: /appRoleAssignedTo/, reply: () => ({ status: 403, body: { error: { code: 'Authorization_RequestDenied', message: 'Insufficient privileges' } } }) },
   ]);
-  const app = { appId: 'app-1', objectId: 'obj-1', spId: 'sp-1', displayName: 'Agent Monitor - audit collector' };
-  const r = await grantAuditConsent(client(f, 'https://graph.microsoft.com/v1.0'), { tenantId: 'tenant-1', app, graphSpId: 'graph-sp', roleId: 'role-1' });
+  const app = { appId: 'app-1', objectId: 'obj-1', spId: 'sp-1', displayName: 'AI-Monitor - audit collector' };
+  const r = await grantAuditConsent(client(f, 'https://graph.microsoft.com/v1.0'), { tenantId: 'tenant-1', app, graphSpId: 'graph-sp', roleIds: ['role-1', 'role-2'] });
   assert.equal(r.consented, false);
   if (!r.consented) {
     assert.equal(r.handOff.link, adminConsentUrl('tenant-1', 'app-1'));
     assert.match(r.handOff.who, /Global Administrator/);
   }
-  const already = fakeFetch([{ method: 'GET', match: /appRoleAssignments/, reply: () => ({ value: [{ appRoleId: 'role-1', resourceId: 'graph-sp' }] }) }]);
-  assert.deepEqual(await grantAuditConsent(client(already, 'https://graph.microsoft.com/v1.0'), { tenantId: 't', app, graphSpId: 'graph-sp', roleId: 'role-1' }), { consented: true });
+  const both = [{ appRoleId: 'role-1', resourceId: 'graph-sp' }, { appRoleId: 'role-2', resourceId: 'graph-sp' }];
+  const already = fakeFetch([{ method: 'GET', match: /appRoleAssignments/, reply: () => ({ value: both }) }]);
+  assert.deepEqual(await grantAuditConsent(client(already, 'https://graph.microsoft.com/v1.0'), { tenantId: 't', app, graphSpId: 'graph-sp', roleIds: ['role-1', 'role-2'] }), { consented: true });
   assert.equal(already.calls.length, 1);
+});
+
+test('admin consent grants only the permissions an earlier install lacks', async () => {
+  const f = fakeFetch([
+    { method: 'GET', match: /appRoleAssignments/, reply: () => ({ value: [{ appRoleId: 'role-1', resourceId: 'graph-sp' }] }) },
+    { method: 'POST', match: /appRoleAssignedTo/, reply: () => ({ id: 'assignment-2' }) },
+  ]);
+  const app = { appId: 'app-1', objectId: 'obj-1', spId: 'sp-1', displayName: 'AI-Monitor - audit collector' };
+  const r = await grantAuditConsent(client(f, 'https://graph.microsoft.com/v1.0'), { tenantId: 't', app, graphSpId: 'graph-sp', roleIds: ['role-1', 'role-2'] });
+  assert.deepEqual(r, { consented: true });
+  const posts = f.calls.filter((call) => call.method === 'POST');
+  assert.equal(posts.length, 1);
+  assert.match(JSON.stringify(posts[0].body), /role-2/);
 });
 
 test('HttpError keeps the status', () => {

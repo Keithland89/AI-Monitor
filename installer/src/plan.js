@@ -93,7 +93,7 @@ export function buildPlan(p) {
     title: `App registration: ${APPS.audit.displayName}`,
     changes: [
       audit ? `Reuses the app registration made earlier (${audit.displayName}).` : `Creates the app registration "${APPS.audit.displayName}", single-tenant, with its service principal.`,
-      'Adds the Microsoft Graph application permission AuditLogsQuery.Read.All and grants admin consent for it.',
+      'Adds the Microsoft Graph application permissions AuditLogsQuery.Read.All and Reports.Read.All and grants admin consent for them.',
       `Adds a client secret when a solution needs one, into ${secretWhere}. Only its key ID and expiry are saved.`,
     ],
     role: 'Can register apps; admin consent needs Global Administrator or Privileged Role Administrator (otherwise you get a link to send them)',
@@ -162,6 +162,14 @@ export function buildPlan(p) {
   solutionStep('interactions', ['Brings the Copilot interaction tables and the daily and manual sync flows.']);
   solutionStep('sharepoint', ['Brings the SharePoint agent tables and the daily and manual flows.']);
   steps.push({
+    id: 'workpatterns-table',
+    title: 'Lane G: create the work patterns table',
+    changes: ['Creates the poc_M365UsageReport table: one row for each Microsoft 365 usage report, holding its latest 30 days. A table already there is left alone.'],
+    role: 'System Administrator in the landing environment',
+    ...(record.workPatternsTable ? { state: 'done' } : {}),
+  });
+  solutionStep('workpatterns', ['Brings the daily flow that copies five Microsoft 365 usage reports from Microsoft Graph into that table.']);
+  steps.push({
     id: 'lane-d-tables',
     title: 'Lane D: create the knowledge source tables',
     changes: ['Creates the poc_AgentKnowledgeSource table and the flow tables (sweep environments, runs, errors) with their keys, as Publish-KnowledgeSources.js --provision does. Tables already there are left alone.'],
@@ -208,7 +216,7 @@ export function buildPlan(p) {
     changes: p.skipApp
       ? ['Skipped (--skip-app).']
       : [
-        app?.appId ? 'Updates the app deployed earlier, only if its build changed.' : `Creates the app "Agent Monitor" in ${envName} (ms app init).`,
+        app?.appId ? 'Updates the app deployed earlier, only if its build changed.' : `Creates the app "AI-Monitor" in ${envName} (ms app init).`,
         `Adds its ${DATA_SOURCES.length} data sources: ${DATA_SOURCES.join(', ')} (each viewer signs in to them the first time).`,
         'Deploys the built app and prints its link.',
         ...(p.viewerGroup ? [`Shares it with the viewer group ${p.viewerGroup}.`] : ['Shares it with nobody yet: run access later, or pass --viewer-group.']),
@@ -248,7 +256,7 @@ export const pendingSteps = (plan) => plan.steps.filter((s) => !s.state && !s.ch
  * @param {{ now?: Date }} [o]
  */
 export function planMarkdown(plan, o = {}) {
-  const out = [`# Agent Monitor install: ${plan.title.toLowerCase()}`, ''];
+  const out = [`# AI-Monitor install: ${plan.title.toLowerCase()}`, ''];
   if (o.now) out.push(`Made ${o.now.toISOString().slice(0, 16).replace('T', ' ')} UTC.`, '');
   for (const f of plan.facts) out.push(`- **${f.label}:** ${f.value}`);
   out.push('');
@@ -276,7 +284,7 @@ export function handOffSteps(handoffs, again) {
     why: h.what,
     ...(h.link ? { link: h.link, linkText: 'Link' } : {}),
     message: [
-      `Please could you do this for the Agent Monitor install: ${h.what}`,
+      `Please could you do this for the AI-Monitor install: ${h.what}`,
       ...(h.link ? [h.link] : []),
       ...(h.command ? [h.command] : []),
     ].join('\n'),

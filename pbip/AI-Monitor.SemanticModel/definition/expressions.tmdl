@@ -1,0 +1,684 @@
+/// Folder holding the CSV extracts this build reads.
+expression DataFolder = "C:\AI-Monitor\data" meta [IsParameterQuery = true, Type = "Text", IsParameterQueryRequired = true]
+	lineageTag: 23509e07-0caa-46f1-8737-77bb26b70154
+
+	annotation PBI_ResultType = Text
+
+	annotation PBI_NavigationStepName = Navigation
+
+/// Csv = read the collector extracts (default, no credentials needed). Live = query Azure Resource Graph directly.
+expression SourceMode = "Csv" meta [IsParameterQuery = true, List = {"Csv", "Live"}, DefaultValue = "Csv", Type = "Text", IsParameterQueryRequired = true]
+	lineageTag: fc4a8fb7-9fe1-467a-9a3b-8fef2eff7791
+
+	annotation PBI_ResultType = Text
+
+	annotation PBI_NavigationStepName = Navigation
+
+expression FnToInt = (v as any) as nullable number => if v = null or v = "" then null else Number.From(v)
+	lineageTag: 93e931a5-ba8f-409e-82b9-8a99260c8428
+
+	annotation PBI_ResultType = Function
+
+expression FnToNum = (v as any) as nullable number => if v = null or v = "" then null else Number.From(v)
+	lineageTag: 85265d7a-34dc-4bac-9511-21daf58a80cd
+
+	annotation PBI_ResultType = Function
+
+expression FnToBool = (v as any) as nullable logical => FnToLogical(v)
+	lineageTag: 7cbd2d31-b623-4099-b8ee-bd3228a0d03f
+
+	annotation PBI_ResultType = Function
+
+expression FnToDateTime =
+		(v as any) as nullable datetime =>
+		    if v = null or v = "" then null
+		    else try DateTime.From(DateTimeZone.RemoveZone(DateTimeZone.From(v))) otherwise (try DateTime.From(v) otherwise null)
+	lineageTag: bbbc8852-54ac-4caa-9e9f-dcee218a7bb3
+
+	annotation PBI_ResultType = Function
+
+expression FnToDate = (v as any) as nullable date => if v = null or v = "" then null else (try Date.From(v) otherwise null)
+	lineageTag: f463db34-2499-4a6a-b4c4-36bff87ea522
+
+	annotation PBI_ResultType = Function
+
+expression FnRecordsToTable =
+		(items as list, columns as list) as table =>
+		    if List.IsEmpty(items) then #table(columns, {})
+		    else Table.SelectColumns(Table.FromRecords(items), columns, MissingField.UseNull)
+	lineageTag: 4fedc834-cf8f-4d41-8695-2b556bb6260c
+
+	annotation PBI_ResultType = Function
+
+expression FnArg =
+		(query as text) as list =>
+		let
+		    // Table.Buffer forces the connector to page through every result inside FnRetry's
+		    // `try`. Without it the query is lazy, the transport failure surfaces later during
+		    // Table.ToRecords below, and the retry never sees an error to act on.
+		    Fetch = () => Table.Buffer(AzureResourceGraph.Query(query, "Tenant", null, null, [resultTruncated = false])),
+		    Raw = FnRetry(Fetch, Text.Length(query)),
+		    // A query that matches nothing returns #table({"Results"}, {{"No results"}}),
+		    // which shares no columns with the projection, so normalise it to an empty list.
+		    NoRows = Table.ColumnCount(Raw) = 1 and List.Contains(Table.ColumnNames(Raw), "Results"),
+		    Rows = if NoRows then {} else Table.ToRecords(Raw)
+		in
+		    Rows
+	lineageTag: d97874c6-7e1e-451d-ae02-def85d400807
+
+	annotation PBI_ResultType = Function
+
+/// Reads one collector CSV from DataFolder and returns just the requested columns.
+/// A missing file yields an EMPTY table rather than an error, which is the same contract FnHunt
+/// honours in the cloud model: an optional feed that was never collected must not stop the other
+/// tables refreshing. Columns absent from an older extract come back null for the same reason.
+expression FnCsv =
+		(fileName as text, columns as list) as table =>
+		let
+		    Bin = try File.Contents(DataFolder & "\" & fileName) otherwise null,
+		    Out =
+		        if Bin = null then #table(columns, {})
+		        else
+		            let
+		                Src = Csv.Document(Bin, [Delimiter = ",", Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
+		                Head = Table.PromoteHeaders(Src, [PromoteAllScalars = true])
+		            in
+		                Table.SelectColumns(Head, columns, MissingField.UseNull)
+		in
+		    Out
+	lineageTag: 67a442a7-6b7f-4bf4-9608-15204a2d6a17
+
+	annotation PBI_ResultType = Function
+
+expression FnToLogical =
+		(v as any) as nullable logical =>
+		    if v = null or v = "" then null
+		    else if v = true or v = 1 or v = "1" then true
+		    else if v = false or v = 0 or v = "0" then false
+		    else (try Logical.From(Text.Lower(Text.From(v))) otherwise null)
+	lineageTag: bf0ad2f8-2b94-4a95-b57c-67f0f143db95
+
+	annotation PBI_ResultType = Function
+
+expression FnRetry =
+		(producer as function, seed as number) as any =>
+		let
+		    Once = () => try producer(),
+		    Jitter = Number.Mod(seed, 5),
+		    Tries = List.Generate(
+		        () => [n = 0, r = Once(), go = true],
+		        each _[go],
+		        each if not _[r][HasError] or _[n] >= 5
+		             then [n = _[n], r = _[r], go = false]
+		             else [n = _[n] + 1, r = Function.InvokeAfter(Once, #duration(0, 0, 0, Number.Power(2, _[n]) + Jitter)), go = true],
+		        each _[r]),
+		    Last = List.Last(Tries),
+		    // The last attempt is deliberately not wrapped in `try`, so a genuine failure
+		    // surfaces with its own message rather than one invented by this loop.
+		    Result = if Last = null or Last[HasError] then producer() else Last[Value]
+		in
+		    Result
+	lineageTag: c081234b-41d1-4c91-8196-2789aad7d92c
+
+	annotation PBI_ResultType = Function
+
+/// Every AI tool this solution looks for on Defender-managed devices. Single source of truth:
+/// the hunting queries and the ShadowAiCatalog table are all generated from this one list, so
+/// adding a tool means editing here and nowhere else.
+/// Posture is the only judgement call in the table - sanctioned-or-not is local policy, not
+/// something any API reports. Edit it to match your own approved-tooling list.
+/// VendorMatch is blank for Microsoft, Google, GitHub and Hugging Face on purpose: matching those
+/// vendor names against software inventory would return every Edge and Chrome install in the estate.
+expression ShadowAiWatchlist =
+		#table(
+		    type table [Category = text, Vendor = text, AppName = text, Posture = text, SoftwareMatch = text, VendorMatch = text, ProcessName = text, Domain = text],
+		    {
+		        { "Assistant", "Anthropic", "Claude Code", "Unsanctioned", "claude code", "", "claude.exe", "" },
+		        { "Assistant", "OpenAI", "ChatGPT", "Unsanctioned", "chatgpt", "openai", "chatgpt.exe", "chatgpt.com" },
+		        { "Assistant", "Anthropic", "Claude", "Unsanctioned", "claude", "anthropic", "", "claude.ai" },
+		        { "Assistant", "Google", "Gemini", "Unsanctioned", "", "", "", "gemini.google.com" },
+		        { "Assistant", "Perplexity", "Perplexity", "Unsanctioned", "perplexity", "perplexity", "perplexity.exe", "perplexity.ai" },
+		        { "Assistant", "xAI", "Grok", "Unsanctioned", "", "", "", "grok.com" },
+		        { "Assistant", "DeepSeek", "DeepSeek", "Unsanctioned", "", "", "", "deepseek.com" },
+		        { "Assistant", "Mistral AI", "Le Chat", "Unsanctioned", "", "", "", "chat.mistral.ai" },
+		        { "Assistant", "Microsoft", "Microsoft Copilot", "Sanctioned", "microsoft copilot", "", "", "copilot.microsoft.com" },
+		        { "Coding", "GitHub", "GitHub Copilot", "Sanctioned", "github copilot", "", "copilot.exe", "api.githubcopilot.com" },
+		        { "Coding", "Anysphere", "Cursor", "Unsanctioned", "cursor", "anysphere", "cursor.exe", "cursor.com" },
+		        { "Coding", "Codeium", "Windsurf", "Unsanctioned", "windsurf", "codeium", "windsurf.exe", "codeium.com" },
+		        { "Coding", "Tabnine", "Tabnine", "Unsanctioned", "tabnine", "tabnine", "tabnine.exe", "tabnine.com" },
+		        { "Local model", "Ollama", "Ollama", "Unsanctioned", "ollama", "ollama", "ollama.exe", "ollama.com" },
+		        { "Local model", "LM Studio", "LM Studio", "Unsanctioned", "lm studio", "lm studio", "lm studio.exe", "lmstudio.ai" },
+		        { "Local model", "Nomic AI", "GPT4All", "Unsanctioned", "gpt4all", "nomic", "gpt4all.exe", "gpt4all.io" },
+		        { "Local model", "Msty", "Msty", "Unsanctioned", "msty", "msty", "msty.exe", "msty.app" },
+		        { "Local model", "Mintplex Labs", "AnythingLLM", "Unsanctioned", "anythingllm", "mintplex", "anythingllm.exe", "anythingllm.com" },
+		        { "API endpoint", "OpenAI", "OpenAI API", "Unsanctioned", "", "", "", "api.openai.com" },
+		        { "API endpoint", "Anthropic", "Anthropic API", "Unsanctioned", "", "", "", "api.anthropic.com" },
+		        { "API endpoint", "Google", "Gemini API", "Unsanctioned", "", "", "", "generativelanguage.googleapis.com" },
+		        { "API endpoint", "Hugging Face", "Hugging Face", "Unsanctioned", "", "", "", "huggingface.co" }
+		    })
+	lineageTag: d3e38250-adb0-474d-b296-a5ea13bf33fa
+
+	annotation PBI_ResultType = Table
+
+/// One column of ShadowAiWatchlist as a quoted, comma-separated KQL term list. Blank entries are
+/// dropped, so a tool with no process name contributes nothing to the process query.
+expression FnWatchTerms =
+		(column as text) as text =>
+		let
+		    Vals = List.Select(Table.Column(ShadowAiWatchlist, column), each _ <> null and Text.Trim(_) <> ""),
+		    Quoted = List.Transform(List.Distinct(Vals), each "'" & Text.Lower(Text.Trim(_)) & "'")
+		in
+		    Text.Combine(Quoted, ", ")
+	lineageTag: 7aa87ca5-1a2b-4a2c-969d-1f7deeda429b
+
+	annotation PBI_ResultType = Function
+
+/// The watchlist row whose term for `column` appears in `value`, or null. Longest term wins, so
+/// "Claude Code" resolves to its own row rather than the shorter "claude" one regardless of row order.
+expression FnWatchMatch =
+		(value as nullable text, column as text) as nullable record =>
+		let
+		    V = Text.Lower(if value = null then "" else value),
+		    Candidates = Table.SelectRows(ShadowAiWatchlist, each Text.Trim(Record.Field(_, column)) <> ""),
+		    Ranked = Table.AddColumn(Candidates, "TermLen", each Text.Length(Record.Field(_, column)), Int64.Type),
+		    Sorted = Table.Sort(Ranked, {{"TermLen", Order.Descending}}),
+		    Hits = Table.SelectRows(Sorted, each Text.Contains(V, Text.Lower(Text.Trim(Record.Field(_, column))))),
+		    First = if Table.IsEmpty(Hits) then null else Hits{0}
+		in
+		    First
+	lineageTag: dbef0bb7-e58d-40de-804d-1a11a02b0895
+
+	annotation PBI_ResultType = Function
+
+/// A KQL prefix test per watched term - "SoftwareName startswith 'cursor' or ...".
+/// Used instead of has_any for software inventory because has is token-based: "cursor" is a
+/// token of "node-cli-cursor", so has_any reported an npm terminal-cursor package as the
+/// Cursor editor. A prefix test cannot do that, and it keeps the precision on the server so
+/// the top-N cap is spent on real hits rather than noise.
+expression FnWatchPrefix =
+		(column as text, field as text) as text =>
+		let
+		    Vals = List.Select(Table.Column(ShadowAiWatchlist, column), each _ <> null and Text.Trim(_) <> ""),
+		    Tests = List.Transform(List.Distinct(Vals), each field & " startswith '" & Text.Lower(Text.Trim(_)) & "'")
+		in
+		    Text.Combine(Tests, " or ")
+	lineageTag: 80db2c97-7a96-4a50-879b-c8a3dcc29010
+
+	annotation PBI_ResultType = Function
+
+/// The watchlist row for one software-inventory entry, or null if it is not a watched tool.
+/// Deliberately stricter than FnWatchMatch: the name must START with the term. Contains-matching
+/// mapped the npm packages "node-cli-cursor" and "restore-cursor" onto Cursor and reported a
+/// build agent as running an unsanctioned AI editor. A vendor match is still accepted on its own,
+/// so "Anysphere Cursor" is caught by its vendor even though the name does not lead with the term.
+expression FnInstalledMatch =
+		(name as nullable text, vendor as nullable text) as nullable record =>
+		let
+		    N = Text.Lower(if name = null then "" else Text.Trim(name)),
+		    Candidates = Table.SelectRows(ShadowAiWatchlist, each Text.Trim([SoftwareMatch]) <> ""),
+		    Ranked = Table.AddColumn(Candidates, "TermLen", each Text.Length([SoftwareMatch]), Int64.Type),
+		    Sorted = Table.Sort(Ranked, {{"TermLen", Order.Descending}}),
+		    ByName = Table.SelectRows(Sorted, each Text.StartsWith(N, Text.Lower(Text.Trim([SoftwareMatch])))),
+		    ByVendor = FnWatchMatch(vendor, "VendorMatch")
+		in
+		    if not Table.IsEmpty(ByName) then ByName{0} else ByVendor
+	lineageTag: 39581c50-540a-4f3f-9ee6-7c03eb527ff2
+
+	annotation PBI_ResultType = Function
+
+/// Runs one Microsoft Defender advanced hunting query and returns its rows.
+/// Two deliberate choices here:
+/// 1. The base URL is a literal and everything variable goes in RelativePath and Query. That keeps this
+/// a STATIC data source, which is what lets scheduled refresh run in the service with no gateway.
+/// Concatenating the KQL into the URL would make it dynamic and the service would refuse it.
+/// To use a regional host - uk. eu. us. au. - edit the literal below; do not make it a parameter.
+/// 2. A failure returns an empty table rather than propagating. Defender may be unlicensed, have no
+/// onboarded devices, or refuse the account for want of AdvancedQuery.Read; none of that should stop
+/// the other sixteen tables refreshing. Same contract as FnDataverseOptional.
+expression FnHunt =
+		(query as text, columns as list) as table =>
+		let
+		    Fetch = () =>
+		        let
+		            Raw = Web.Contents(
+		                      "https://api.security.microsoft.com",
+		                      [RelativePath = "api/advancedqueries", Query = [key = query], Timeout = #duration(0, 0, 4, 0)]),
+		            Parsed = Json.Document(Raw),
+		            Items = if Record.HasFields(Parsed, "Results") then Parsed[Results] else {},
+		            Tbl = FnRecordsToTable(Items, columns)
+		        in
+		            Table.Buffer(Tbl),
+		    Attempt = try FnRetry(Fetch, Text.Length(query))
+		in
+		    if Attempt[HasError] then #table(columns, {}) else Attempt[Value]
+	lineageTag: a68ffcfa-b770-435b-901f-4764982b188e
+
+	annotation PBI_ResultType = Function
+
+/// Layer 1 - AI tools INSTALLED on managed devices, from Defender Vulnerability Management's software
+/// inventory. Catches packaged desktop apps. Misses portable binaries and anything run from a CLI.
+/// Matched on a name PREFIX, not a contains: package registries inventory things like
+/// "node-cli-cursor" and a contains-match reports them as the Cursor editor.
+expression SrcShadowInstalled =
+		let
+		    Kql = "DeviceTvmSoftwareInventory"
+		        & " | where (" & FnWatchPrefix("SoftwareMatch", "SoftwareName") & ")"
+		        & " or SoftwareVendor has_any (" & FnWatchTerms("VendorMatch") & ")"
+		        & " | summarize DeviceCount = dcount(DeviceId) by SoftwareName, SoftwareVendor"
+		        & " | top 200 by DeviceCount desc",
+		    Rows = FnHunt(Kql, {"SoftwareName", "SoftwareVendor", "DeviceCount"}),
+		    Kept = List.Select(Table.ToRecords(Rows), each FnInstalledMatch([SoftwareName], [SoftwareVendor]) <> null),
+		    Recs = List.Transform(Kept, (r) =>
+		               let
+		                   W = FnInstalledMatch(r[SoftwareName], r[SoftwareVendor])
+		               in
+		                   [ Layer = "Installed",
+		                     Category = W[Category],
+		                     Vendor = W[Vendor],
+		                     AppName = W[AppName],
+		                     Posture = W[Posture],
+		                     Detected = r[SoftwareName],
+		                     DeviceCount = r[DeviceCount],
+		                     UserCount = null,
+		                     LastSeen = null ]),
+		    Out = FnRecordsToTable(Recs, {"Layer", "Category", "Vendor", "AppName", "Posture", "Detected", "DeviceCount", "UserCount", "LastSeen"})
+		in
+		    Out
+	lineageTag: 6117c3b9-ec5f-4e64-a17f-9f19f07f57ee
+
+	annotation PBI_ResultType = Table
+
+/// Layer 2 - AI tools actually EXECUTED in the last 30 days, from process telemetry. This is the layer
+/// that catches CLI tooling such as Claude Code and GitHub Copilot CLI, which never appears in software
+/// inventory because it is installed per user without an installer.
+/// Matched with in~ rather than has_any: FileName holds exactly the file name, so an exact
+/// case-insensitive list match is both precise and indexed.
+expression SrcShadowExecuted =
+		let
+		    Kql = "DeviceProcessEvents"
+		        & " | where Timestamp > ago(30d)"
+		        & " | where FileName in~ (" & FnWatchTerms("ProcessName") & ")"
+		        & " | summarize DeviceCount = dcount(DeviceId), UserCount = dcount(AccountUpn), LastSeen = max(Timestamp) by FileName, ProcessVersionInfoCompanyName"
+		        & " | top 200 by DeviceCount desc",
+		    Rows = FnHunt(Kql, {"FileName", "ProcessVersionInfoCompanyName", "DeviceCount", "UserCount", "LastSeen"}),
+		    Recs = List.Transform(Table.ToRecords(Rows), (r) =>
+		               let
+		                   W = FnWatchMatch(r[FileName], "ProcessName")
+		               in
+		                   [ Layer = "Executed",
+		                     Category = if W = null then "Unclassified" else W[Category],
+		                     Vendor = if W = null then r[ProcessVersionInfoCompanyName] else W[Vendor],
+		                     AppName = if W = null then r[FileName] else W[AppName],
+		                     Posture = if W = null then "Unsanctioned" else W[Posture],
+		                     Detected = r[FileName],
+		                     DeviceCount = r[DeviceCount],
+		                     UserCount = r[UserCount],
+		                     LastSeen = FnToDateTime(r[LastSeen]) ]),
+		    Out = FnRecordsToTable(Recs, {"Layer", "Category", "Vendor", "AppName", "Posture", "Detected", "DeviceCount", "UserCount", "LastSeen"})
+		in
+		    Out
+	lineageTag: e351df52-d47d-4b27-b32f-63a966f66fd2
+
+	annotation PBI_ResultType = Table
+
+/// Layer 3 - devices TALKING to AI service endpoints in the last 30 days. Catches browser and script
+/// use where nothing is installed and no recognisable process runs, which is the majority of shadow AI.
+expression SrcShadowNetwork =
+		let
+		    Kql = "DeviceNetworkEvents"
+		        & " | where Timestamp > ago(30d)"
+		        & " | where isnotempty(RemoteUrl)"
+		        & " | where RemoteUrl has_any (" & FnWatchTerms("Domain") & ")"
+		        & " | summarize DeviceCount = dcount(DeviceId), UserCount = dcount(InitiatingProcessAccountUpn), LastSeen = max(Timestamp) by RemoteUrl"
+		        & " | top 200 by DeviceCount desc",
+		    Rows = FnHunt(Kql, {"RemoteUrl", "DeviceCount", "UserCount", "LastSeen"}),
+		    Recs = List.Transform(Table.ToRecords(Rows), (r) =>
+		               let
+		                   W = FnWatchMatch(r[RemoteUrl], "Domain")
+		               in
+		                   [ Layer = "Network",
+		                     Category = if W = null then "Unclassified" else W[Category],
+		                     Vendor = if W = null then "" else W[Vendor],
+		                     AppName = if W = null then r[RemoteUrl] else W[AppName],
+		                     Posture = if W = null then "Unsanctioned" else W[Posture],
+		                     Detected = r[RemoteUrl],
+		                     DeviceCount = r[DeviceCount],
+		                     UserCount = r[UserCount],
+		                     LastSeen = FnToDateTime(r[LastSeen]) ]),
+		    Out = FnRecordsToTable(Recs, {"Layer", "Category", "Vendor", "AppName", "Posture", "Detected", "DeviceCount", "UserCount", "LastSeen"})
+		in
+		    Out
+	lineageTag: 69cdfa3e-3fe2-47ce-8852-5ee9cf04c939
+
+	annotation PBI_ResultType = Table
+
+/// Device-grain detail behind ShadowAiSignal: which machines, and for executed tools which user and when.
+/// Capped at 5,000 rows per layer - this is a drill-down, not an export.
+expression SrcShadowDevice =
+		let
+		    KqlInstalled = "DeviceTvmSoftwareInventory"
+		        & " | where (" & FnWatchPrefix("SoftwareMatch", "SoftwareName") & ")"
+		        & " or SoftwareVendor has_any (" & FnWatchTerms("VendorMatch") & ")"
+		        & " | project DeviceName, Detected = SoftwareName, Vendor = SoftwareVendor, Detail = SoftwareVersion"
+		        & " | take 5000",
+		    Installed = FnHunt(KqlInstalled, {"DeviceName", "Detected", "Vendor", "Detail"}),
+		    InstalledKept = List.Select(Table.ToRecords(Installed), each FnInstalledMatch([Detected], [Vendor]) <> null),
+		    InstalledRecs = List.Transform(InstalledKept, (r) =>
+		               let
+		                   W = FnInstalledMatch(r[Detected], r[Vendor])
+		               in
+		                   [ Layer = "Installed",
+		                     DeviceName = r[DeviceName],
+		                     AppName = W[AppName],
+		                     Posture = W[Posture],
+		                     Detected = r[Detected],
+		                     Detail = r[Detail],
+		                     UserUpn = null,
+		                     LastSeen = null ]),
+		    KqlRun = "DeviceProcessEvents"
+		        & " | where Timestamp > ago(30d)"
+		        & " | where FileName in~ (" & FnWatchTerms("ProcessName") & ")"
+		        & " | summarize LastSeen = max(Timestamp), Runs = count() by DeviceName, FileName, AccountUpn"
+		        & " | top 5000 by LastSeen desc",
+		    Run = FnHunt(KqlRun, {"DeviceName", "FileName", "AccountUpn", "LastSeen", "Runs"}),
+		    RunRecs = List.Transform(Table.ToRecords(Run), (r) =>
+		               let
+		                   W = FnWatchMatch(r[FileName], "ProcessName")
+		               in
+		                   [ Layer = "Executed",
+		                     DeviceName = r[DeviceName],
+		                     AppName = if W = null then r[FileName] else W[AppName],
+		                     Posture = if W = null then "Unsanctioned" else W[Posture],
+		                     Detected = r[FileName],
+		                     Detail = if r[Runs] = null then "" else Text.From(r[Runs]) & " runs",
+		                     UserUpn = r[AccountUpn],
+		                     LastSeen = FnToDateTime(r[LastSeen]) ]),
+		    Cols = {"Layer", "DeviceName", "AppName", "Posture", "Detected", "Detail", "UserUpn", "LastSeen"},
+		    Out = Table.Combine({FnRecordsToTable(InstalledRecs, Cols), FnRecordsToTable(RunRecs, Cols)})
+		in
+		    Out
+	lineageTag: fdbc6dc4-9192-48ab-a6d5-5f379e96da1c
+
+	annotation PBI_ResultType = Table
+
+expression DataverseUrl = "https://contoso.crm.dynamics.com" meta [IsParameterQuery = true, Type = "Text", IsParameterQueryRequired = true]
+	lineageTag: 873e4f19-edfd-4479-86d4-8cf2b1a4b148
+
+	annotation PBI_ResultType = Text
+
+	annotation PBI_NavigationStepName = Navigation
+
+/// First date in the generated Date table. Must be on or before the earliest agent CreatedAt.
+expression DateStart = "2023-09-01" meta [IsParameterQuery = true, Type = "Text", IsParameterQueryRequired = true]
+	lineageTag: a198a239-b993-4d03-9925-c52399663372
+
+	annotation PBI_ResultType = Exception
+
+	annotation PBI_NavigationStepName = Navigation
+
+expression FnDataverse =
+		(entitySet as text, columns as list) as table =>
+		let
+		    Fetch = () =>
+		        let
+		            Feed = OData.Feed(DataverseUrl & "/api/data/v9.2", null, [Implementation = "2.0", ODataVersion = 4]),
+		            Tbl  = Feed{[Name = entitySet]}[Data],
+		            Kept = Table.SelectColumns(Tbl, columns, MissingField.UseNull)
+		        in
+		            Table.Buffer(Kept)
+		in
+		    FnRetry(Fetch, Text.Length(entitySet))
+	lineageTag: 95435784-c391-4c21-9e86-66ad85bb14d3
+
+	annotation PBI_ResultType = Function
+
+expression FnDataverseOptional =
+		(entitySet as text, columns as list) as table =>
+		let
+		    Fetch = () =>
+		        let
+		            Feed = OData.Feed(DataverseUrl & "/api/data/v9.2", null, [Implementation = "2.0", ODataVersion = 4]),
+		            Found = Table.SelectRows(Feed, each [Name] = entitySet),
+		            Tbl = if Table.IsEmpty(Found)
+		                  then #table(columns, {})
+		                  else Table.SelectColumns(Found{0}[Data], columns, MissingField.UseNull)
+		        in
+		            Table.Buffer(Tbl)
+		in
+		    FnRetry(Fetch, Text.Length(entitySet))
+	lineageTag: 9a52fa39-94e8-4eac-b083-658902b43b66
+
+	annotation PBI_ResultType = Function
+
+/// Raw poc_copilotinteractions rows. Split out so Interaction itself accesses no data source - see FnDataverse.
+expression SrcInteraction =
+		let
+		    Source = FnDataverse("poc_copilotinteractions", {"poc_creationtime", "poc_appidentity", "poc_userid", "poc_apphost", "poc_operation", "poc_threadid", "poc_resourcecount", "poc_resources"})
+		in
+		    Source
+	lineageTag: 461ec3c8-5d23-4c5a-baf3-1d7f17e0f7e6
+
+	annotation PBI_ResultType = Table
+
+/// Just the AppIdentity column of poc_copilotinteractions, for CopilotSurface. Split out for the same firewall reason as SrcInteraction.
+expression SrcSurfaceKey =
+		let
+		    Source = FnDataverse("poc_copilotinteractions", {"poc_appidentity"})
+		in
+		    Source
+	lineageTag: d63e886b-fe25-426a-91c8-1d1a351c23bd
+
+	annotation PBI_ResultType = Table
+
+/// Raw poc_agentknowledgesources rows - the named knowledge sources swept out of every environment's Dataverse. Split out for the same firewall reason as SrcInteraction, and optional so the model still refreshes before the collector has ever run.
+expression SrcKnowledgeSource =
+		let
+		    Source = FnDataverseOptional("poc_agentknowledgesources", {"poc_sourceid", "poc_agentkey", "poc_sourcename", "poc_knowledgetype", "poc_sourcekind", "poc_isexternal", "poc_locator", "poc_locatorhost", "poc_collectedat"})
+		in
+		    Source
+	lineageTag: 0af2c4a7-074e-4d52-a761-cc3309296206
+
+	annotation PBI_ResultType = Table
+
+/// Raw SharePoint .agent inventory reconstructed by SharePointAgentLogging from SharePoint file-operation audit records.
+expression SrcSharePointAgent =
+		let
+		    Source = FnDataverseOptional("poc_sharepointagents", {"poc_agentkey", "poc_name", "poc_filename", "poc_siteurl", "poc_objecturl", "poc_sourcerelativeurl", "poc_siteid", "poc_webid", "poc_listid", "poc_itemid", "poc_firstseenat", "poc_lastseenat", "poc_collectedat", "poc_lastoperation", "poc_lastactor", "poc_applicationid", "poc_applicationname", "poc_isdeleted", "poc_eventcount", "poc_auditrecordid", "poc_flowrunid"})
+		in
+		    Source
+	lineageTag: 4f132a0b-7313-46b2-8404-3a385213f7a8
+
+	annotation PBI_ResultType = Table
+
+expression FnDistinctKey =
+		(t as table, col as text) as table =>
+		let
+		    Sorted = Table.Sort(t, {{col, Order.Ascending}}),
+		    Folded = Table.AddColumn(Sorted, "__fold", each Text.Lower(Record.Field(_, col)), type text),
+		    Unique = Table.Distinct(Folded, {"__fold"})
+		in
+		    Table.RemoveColumns(Unique, {"__fold"})
+	lineageTag: 05dd7b2e-ba86-4396-9fc7-681dd73b45bb
+
+	annotation PBI_ResultType = Function
+
+expression FnHexRun =
+		(s as text) as logical =>
+		    List.AllTrue(List.Transform(Text.ToList(s), each Text.Contains("0123456789abcdefABCDEF-", _)))
+	lineageTag: 67c70127-c863-4047-9eae-3b9452a4b86a
+
+	annotation PBI_ResultType = Function
+
+expression FnLooksGuid =
+		(s as text) as logical =>
+		    Text.Length(s) >= 36
+		    and Text.Middle(s, 8, 1) = "-" and Text.Middle(s, 13, 1) = "-"
+		    and Text.Middle(s, 18, 1) = "-" and Text.Middle(s, 23, 1) = "-"
+		    and FnHexRun(Text.Start(s, 36))
+	lineageTag: 4f536970-2a3c-47da-87c6-6a426fe899d8
+
+	annotation PBI_ResultType = Function
+
+expression FnSpo =
+		// A SharePoint agent is a .agent file in a document library, and the audit log identifies it
+		// as SPO_<base64url of "siteId,webId,listId">_<drive item id>. SharePointAgentLogging lands
+		// ListItemUniqueId as the inventory key, so the final segment must be base32-decoded to the
+		// same GUID. It uses A-Z2-7 and never contains an underscore, so splitting on the LAST
+		// underscore is safe even though base64url uses one.
+		(appIdentity as nullable text) as record =>
+		let
+		    a = if appIdentity = null then "" else Text.Trim(appIdentity),
+		    DecodeItemGuid = (driveItemId as text) as text =>
+		        let
+		            Encoded = if Text.StartsWith(driveItemId, "01") then Text.Range(driveItemId, 2) else driveItemId,
+		            Alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567",
+		            Values = List.Transform(Text.ToList(Text.Upper(Encoded)), each Text.PositionOf(Alphabet, _)),
+		            Valid = Text.Length(Encoded) = 32 and List.AllTrue(List.Transform(Values, each _ >= 0)),
+		            Bits = if not Valid then {} else List.Combine(List.Transform(Values, (v) =>
+		                List.Transform({4, 3, 2, 1, 0}, (power) => Number.Mod(Number.IntegerDivide(v, Number.Power(2, power)), 2)))),
+		            Bytes = if not Valid then {} else List.Transform(List.Split(Bits, 8), (octet) =>
+		                List.Sum(List.Transform(List.Positions(octet), (i) => octet{i} * Number.Power(2, 7 - i)))),
+		            GuidBytes = if List.Count(Bytes) = 20 then List.Range(Bytes, 4, 16) else {},
+		            Hex = (n as number) as text =>
+		                Text.Range("0123456789abcdef", Number.IntegerDivide(n, 16), 1)
+		                & Text.Range("0123456789abcdef", Number.Mod(n, 16), 1),
+		            JoinHex = (items as list) as text => Text.Combine(List.Transform(items, each Hex(_))),
+		            Value =
+		                if List.Count(GuidBytes) <> 16 then ""
+		                else JoinHex(List.Reverse(List.FirstN(GuidBytes, 4))) & "-"
+		                    & JoinHex(List.Reverse(List.Range(GuidBytes, 4, 2))) & "-"
+		                    & JoinHex(List.Reverse(List.Range(GuidBytes, 6, 2))) & "-"
+		                    & JoinHex(List.Range(GuidBytes, 8, 2)) & "-"
+		                    & JoinHex(List.Range(GuidBytes, 10, 6))
+		        in
+		            Value,
+		    Empty = [SiteId = "", WebId = "", ListId = "", ItemId = "", ItemGuid = "", Ok = false],
+		    r =
+		        if not Text.StartsWith(a, "SPO_") then Empty
+		        else
+		            let
+		                body = Text.Range(a, 4),
+		                cut  = Text.PositionOf(body, "_", Occurrence.Last),
+		                blob = if cut > 0 then Text.Start(body, cut) else "",
+		                item = if cut > 0 then Text.Range(body, cut + 1) else body,
+		                std  = Text.Replace(Text.Replace(blob, "-", "+"), "_", "/"),
+		                pad  = std & Text.Repeat("=", Number.Mod(4 - Number.Mod(Text.Length(std), 4), 4)),
+		                dec  = try Text.FromBinary(Binary.FromText(pad, BinaryEncoding.Base64), TextEncoding.Utf8) otherwise "",
+		                ids  = Text.Split(dec, ","),
+		                itemGuid = DecodeItemGuid(item)
+		            in
+		                // A malformed site blob still leaves the item GUID usable, so the site fields
+		                // degrade to empty rather than losing an otherwise exact inventory join.
+		                if List.Count(ids) = 3 and Text.Length(dec) > 0
+		                then [SiteId = ids{0}, WebId = ids{1}, ListId = ids{2}, ItemId = item, ItemGuid = itemGuid, Ok = itemGuid <> ""]
+		                else [SiteId = "", WebId = "", ListId = "", ItemId = item, ItemGuid = itemGuid, Ok = itemGuid <> ""]
+		in
+		    r
+	lineageTag: 8c5d21f7-40be-4a13-97c6-2b90ef54a8d1
+
+	annotation PBI_ResultType = Function
+
+expression FnSurface =
+		(appIdentity as nullable text) as record =>
+		let
+		    a = if appIdentity = null then "" else Text.Trim(appIdentity),
+		    Mk = (t as text, p as text, k as text, o as text, n as text, ag as logical) as record =>
+		        [SurfaceType = t, Platform = p, MatchKey = k, MatchOn = o, DisplayName = n, IsAgent = ag],
+		
+		    // Copilot Studio agent in the default environment: org id then '-' then schema name.
+		    csDefault =
+		        let
+		            rest = Text.Range(a, 23),
+		            hit  = List.Select({32, 33, 34, 35, 36}, each
+		                       Text.Length(rest) > _ + 1
+		                       and Text.Middle(rest, _, 1) = "-"
+		                       and FnHexRun(Text.Start(rest, _)))
+		        in
+		            if List.IsEmpty(hit) then null
+		            else Mk("Copilot Studio agent", "Copilot Studio", Text.Range(rest, List.First(hit) + 1), "SchemaName", a, true),
+		
+		    // Copilot Studio agent in a named environment: a 36 character GUID then '-' then schema name.
+		    csNamed =
+		        let rest = Text.Range(a, 15) in
+		        if FnLooksGuid(rest) and Text.Middle(rest, 36, 1) = "-" and Text.Length(rest) > 37
+		        then Mk("Copilot Studio agent", "Copilot Studio", Text.Range(rest, 37), "SchemaName", a, true)
+		        else null,
+		
+		    // Microsoft first party agents: MicrosoftAgent.<name>.<BuiltIn_*|P_*>
+		    ms1p =
+		        let
+		            rest  = Text.Range(a, 15),
+		            cands = List.Select({Text.PositionOf(rest, ".BuiltIn_"), Text.PositionOf(rest, ".P_")}, each _ > 0)
+		        in
+		            if List.IsEmpty(cands) then null
+		            else Mk("Microsoft 1P agent", "M365 Copilot", "", "", Text.Start(rest, List.Min(cands)), false),
+		
+		    r =
+		        if a = "" then
+		            Mk("M365 Copilot (base)", "M365 Copilot", "", "", "M365 Copilot - no app identity", false)
+		        else if Text.StartsWith(a, "Copilot.Studio.Declarative.T_") then
+		            Mk("Agent Builder agent", "M365 Copilot", Text.Range(a, 27), "TitleId", a, true)
+		        else if Text.StartsWith(a, "TeamsToolkit.Declarative.T_") then
+		            Mk("Teams Toolkit agent", "M365 Copilot", Text.Range(a, 25), "TitleId", "Teams Toolkit agent " & Text.Middle(a, 27, 8), true)
+		        else if Text.StartsWith(a, "U_") then
+		            Mk("Personal agent", "M365 Copilot", a, "TitleId", "Personal agent " & Text.Middle(a, 2, 8), true)
+		        // SharePoint agents carry no TitleId or SchemaName because they are files, not Power
+		        // Platform resources. CopilotSurface joins them separately to SharePointAgent on the
+		        // decoded ListItemUniqueId.
+		        else if Text.StartsWith(a, "SPO_") then
+		            let sid = FnSpo(a)[ItemId] in
+		            Mk("SharePoint agent", "SharePoint", "", "", "SharePoint agent " & (if Text.Length(sid) <= 6 then sid else Text.End(sid, 6)), true)
+		        else if Text.StartsWith(a, "Copilot.Studio.CustomEngine.T_") then
+		            Mk("Custom engine agent", "M365 Copilot", Text.Range(a, 28), "TitleId", a, true)
+		        else if Text.StartsWith(a, "Copilot.Studio.Default-") and csDefault <> null then csDefault
+		        else if Text.StartsWith(a, "Copilot.Studio.") and csNamed <> null then csNamed
+		        else if Text.StartsWith(a, "T_") then
+		            Mk("Declarative agent", "M365 Copilot", a, "TitleId", a, true)
+		        else if Text.StartsWith(a, "MicrosoftAgent.AgentBuilder") or a = "AgentBuilder" then
+		            Mk("Agent Builder authoring", "M365 Copilot", "", "", "Agent Builder (authoring)", false)
+		        else if Text.StartsWith(a, "MicrosoftAgent.") and ms1p <> null then ms1p
+		        else if Text.StartsWith(a, "Copilot.M365Copilot.") then
+		            Mk("M365 Copilot (base)", "M365 Copilot", "", "", "M365 Copilot - " & Text.Range(a, 20), false)
+		        else if Text.StartsWith(a, "Copilot.Fabric.") then
+		            Mk("Fabric / Power BI copilot", "Fabric", "", "", Text.Range(a, 15), false)
+		        else if Text.StartsWith(a, "Copilot.") and Text.Contains(a, "PowerBI") then
+		            Mk("Fabric / Power BI copilot", "Power BI", "", "", Text.Range(a, 8), false)
+		        else if Text.StartsWith(a, "Copilot.Studio.") then
+		            Mk("Copilot Studio (other)", "Copilot Studio", "", "", a, false)
+		        else if Text.StartsWith(a, "Copilot.") then
+		            Mk("Other Microsoft copilot", "Microsoft 365", "", "", a, false)
+		        else
+		            Mk("Unknown", "Unknown", "", "", a, false)
+		in
+		    r
+	lineageTag: eb0c03bb-e14c-42a7-bf27-4d0e020af5f3
+
+	annotation PBI_ResultType = Function
+
+expression FnAgentLookup =
+		() as table =>
+		let
+		    Titles  = Table.SelectRows(Agent, each [TitleId] <> null and [TitleId] <> ""),
+		    T       = Table.AddColumn(Titles, "MatchIndex", each "TitleId|" & Text.Lower(Text.Trim([TitleId])), type text),
+		    Schemas = Table.SelectRows(Agent, each [SchemaName] <> null and [SchemaName] <> ""),
+		    S       = Table.AddColumn(Schemas, "MatchIndex", each "SchemaName|" & Text.Lower(Text.Trim([SchemaName])), type text),
+		    Both    = Table.Combine({
+		                  Table.SelectColumns(T, {"MatchIndex", "AgentKey", "AgentName"}),
+		                  Table.SelectColumns(S, {"MatchIndex", "AgentKey", "AgentName"})})
+		in
+		    Table.Distinct(Both, {"MatchIndex"})
+	lineageTag: 050e1085-f891-40d9-9a27-c0807254f70d
+
+	annotation PBI_ResultType = Function
+
+expression FnSharePointAgentLookup =
+		() as table =>
+		let
+		    Rows = Table.SelectRows(SharePointAgent, each [AgentKey] <> null and [AgentKey] <> ""),
+		    Kept = Table.SelectColumns(Rows, {"AgentKey", "AgentName", "SiteUrl", "ObjectUrl", "IsDeleted"}),
+		    Keyed = Table.TransformColumns(Kept, {{"AgentKey", each Text.Lower(Text.Trim(_)), type text}})
+		in
+		    Table.Distinct(Keyed, {"AgentKey"})
+	lineageTag: 6de6fcb6-531e-42e0-9b7f-5f451ad74278
+
+	annotation PBI_ResultType = Function

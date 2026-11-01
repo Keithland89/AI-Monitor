@@ -74,7 +74,12 @@
     {
       "name": "ai-cost-meters.csv",
       "rows": 390
+    },
+    {
+      "name": "m365-usage.json",
+      "rows": 5
     }
   ],
-  "syntheticCost": true
+  "syntheticCost": true,
+  "syntheticM365": true
 }

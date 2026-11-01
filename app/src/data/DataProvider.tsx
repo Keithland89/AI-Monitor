@@ -5,7 +5,7 @@ import { loadSample } from './sample'
 import { AgentDrawer } from '../ui/AgentDrawer'
 
 const HOST_TIMEOUT_MS = 3000
-const MODE_KEY = 'agent-inventory-mode'
+const MODE_KEY = 'ai-monitor-mode'
 
 /** Bumped on every load so a slower, superseded load cannot overwrite a newer one. */
 let latestLoad = 0

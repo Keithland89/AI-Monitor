@@ -29,7 +29,7 @@ test('the launcher template refuses bad values and stray placeholders', () => {
   assert.throws(() => installScript('caf\u00e9 {{VERSION}}', { version: '1.2.3', sha256: SHA }), /plain ASCII/);
 });
 
-test('the zip holds the installer, the four managed solutions and the app\'s build, and reads back', (t) => {
+test('the zip holds the installer, the managed solutions and the app\'s build, and reads back', (t) => {
   const w = workDir('release');
   t.after(w.cleanup);
   const root = w.dir;
@@ -37,7 +37,7 @@ test('the zip holds the installer, the four managed solutions and the app\'s bui
     mkdirSync(dirname(join(root, p)), { recursive: true });
     writeFileSync(join(root, p), s);
   };
-  for (const p of ['installer/package.json', 'installer/package-lock.json', 'installer/README.md', 'installer/managed-cli/package.json', 'installer/managed-cli/package-lock.json', 'installer/bin/agent-inventory-install.js', 'installer/src/cli.js', 'installer/src/web/index.html']) put(p);
+  for (const p of ['installer/package.json', 'installer/package-lock.json', 'installer/README.md', 'installer/managed-cli/package.json', 'installer/managed-cli/package-lock.json', 'installer/bin/ai-monitor-install.js', 'installer/src/cli.js', 'installer/src/web/index.html']) put(p);
   for (const s of SOLUTIONS) put(`solution/${s.file}`);
   put('solution/CopilotInteractionLogging.zip');
   put('installer/node_modules/x/index.js');
@@ -49,7 +49,7 @@ test('the zip holds the installer, the four managed solutions and the app\'s bui
   const files = releaseFiles(root);
   assert.ok(files.includes('installer/src/web/index.html'));
   assert.ok(files.includes('app/dist/assets/app.js'));
-  assert.equal(files.filter((f) => f.startsWith('solution/')).length, 4, 'only the managed solutions');
+  assert.equal(files.filter((f) => f.startsWith('solution/')).length, SOLUTIONS.length, 'only the managed solutions');
   assert.ok(!files.some((f) => f.includes('node_modules') || f.startsWith('app/src')));
 
   const zip = makeZip(files.map((name) => ({ name, data: readFileSync(join(root, name)) })));

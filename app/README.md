@@ -1,15 +1,15 @@
-# Agent Monitor: the app
+# AI-Monitor: the app
 
-A Copilot Managed App version of the Agent Monitor Power BI report. It runs entirely in the browser inside the Managed Apps player, reads the same sources as the report through four connectors, and computes every column and measure in TypeScript. Nothing is sent anywhere else.
+A Copilot Managed App version of the AI-Monitor Power BI report. It runs entirely in the browser inside the Managed Apps player, reads the same sources as the report through four connectors, and computes every column and measure in TypeScript. Nothing is sent anywhere else.
 
-It covers all 16 report pages in nine tabs with sub-views. It adds a **Chat & Cowork** view built from the same audit-log lane, a **Cost & consumption** tab that the report doesn't have, and three computed views (**Lifecycle & review**, **Habit stages**, cost against use) that reuse data the app already loads.
+It covers all 16 report pages in ten tabs with sub-views. It adds a **Chat & Cowork** view built from the same audit-log lane, a **Cost & consumption** tab that the report doesn't have, three computed views (**Lifecycle & review**, **Habit stages**, cost against use) that reuse data the app already loads, and a **Work patterns** view built from the Microsoft 365 usage reports (lane G).
 
 | Tab | Sub-views | Report pages |
 |---|---|---|
 | Overview | | Overview |
 | Inventory | All agents · Agent inventory · Creators & ownership · SharePoint agents | All Agents, Agent Inventory, Creators, SharePoint Agents |
 | Usage | Agent analytics · Usage & popularity · Adoption & activity · **Lifecycle & review** (new) | Agent Analytics, Usage & Popularity, Adoption |
-| Copilot activity | Interactions · **Chat & Cowork** (new) · **Habit stages** (new) | Copilot Interactions |
+| Copilot activity | Interactions · **Chat & Cowork** (new) · **Habit stages** (new) · **Work patterns** (new) | Copilot Interactions |
 | Governance & risk | | Governance & Risk |
 | Integrations | Tools · Knowledge & grounding · Knowledge sources | Tools, Knowledge & Grounding, Knowledge Sources |
 | Azure AI Foundry | | Azure AI Foundry |
@@ -37,7 +37,7 @@ The app registers four connector data sources by name. Every user signs in to th
 | `powerplatformadminv2` | Power Platform for Admins V2 | A: agents, environments, usage records, agent flows · Copilot Credits per agent and the tenant credit pool | Power Platform Administrator (or another role that can query Power Platform inventory and licensing) |
 | `arm` | Azure Resource Manager | Azure AI Foundry accounts, projects and hubs · Azure AI spend from Cost Management | Reader on the subscriptions to include, and Cost Management Reader (or Reader) for spend. Subscriptions that return 403 are skipped. |
 | `wdatp` | Microsoft Defender ATP | F: Shadow AI (advanced hunting) | Security Reader with the `AdvancedQuery.Read` permission |
-| `commondataserviceforapps` | Microsoft Dataverse (current environment) | C: Copilot interactions · D: named knowledge sources · E: SharePoint agents · run logs · user names | Read on the landing tables and on `systemusers` in the landing environment |
+| `commondataserviceforapps` | Microsoft Dataverse (current environment) | C: Copilot interactions · D: named knowledge sources · E: SharePoint agents · G: Microsoft 365 usage reports · run logs · user names | Read on the landing tables and on `systemusers` in the landing environment |
 
 Lane A uses `QueryResources` against `PowerPlatformResources` with skip-token paging, ordered by id, and projects the full property bag in TypeScript (`src/data/transforms.ts` ports the report's KQL projections). Foundry lists subscriptions and then `Resources_List` per subscription. Lane F runs the report's advanced hunting queries (`src/data/shadow.ts`).
 
@@ -92,6 +92,7 @@ The Dataverse connector reads the environment the app is deployed to. **Deploy t
 | C: Copilot interactions | `poc_copilotinteractions` | `poc_copilotinteractionflowrunses` |
 | D: Named knowledge sources | `poc_agentknowledgesources` | `poc_knowledgesweepruns` |
 | E: SharePoint agents | `poc_sharepointagents` | `poc_sharepointagentloggingruns` |
+| G: Microsoft 365 usage reports | `poc_m365usagereports` | none: each row holds its report's HTTP status and collection time |
 | Names for owners and creators | `systemusers` | |
 
 A table that does not exist shows as "not set up", never as an error. The tables can be created after the app is deployed; reload the app once they hold data.
@@ -106,7 +107,7 @@ To deploy by hand with the `ms` CLI (`@microsoft/managed-apps-cli` 0.29.0, Node 
 cd app
 npm ci
 npm run build
-ms app init --repo none --display-name "Agent Monitor" --build-type none --build-path ./dist --environment-id <landing environment id>
+ms app init --repo none --display-name "AI-Monitor" --build-type none --build-path ./dist --environment-id <landing environment id>
 foreach ($c in 'powerplatformadminv2', 'arm', 'wdatp', 'commondataserviceforapps') {
   ms app add data-source --connector $c --as action --use-sso --skip-codegen --non-interactive --json
 }
@@ -145,14 +146,17 @@ The script keeps about 1,500 agents and every row related to them, keeps all Cop
 | `src/data/surface.ts` | Copilot surface classification and SharePoint agent identity decoding (FnSurface, FnSpo). |
 | `src/data/live.ts` | Live loaders for every lane, paging and error classification. |
 | `src/data/sample.ts` | Sample loader. |
+| `src/data/m365.ts` | Parses lane G's stored Microsoft 365 usage reports. |
 | `src/data/build.ts` | Assembles the dataset both modes share. |
 | `src/data/static.ts` | Static tables from the model: risk factors, agent gaps, API coverage, telemetry coverage, Shadow AI watchlist. |
-| `src/metrics/` | Measures (`measures.ts`) and Chat & Cowork metrics (`chat.ts`). |
+| `src/metrics/` | Measures (`measures.ts`), Chat & Cowork metrics (`chat.ts`) and Work patterns (`patterns.ts`). |
 | `src/ask/` | The Ask panel: grounding summary (`context.ts`), Cowork bridge client (`cowork.ts`) and the panel. |
 | `src/pages/` | One file per tab. |
 | `src/ui/` | Shared components: tables, charts, drawer, dialogs. |
 | `scripts/prepare-sample.mjs` | Builds `public/sample`. |
-| `scripts/sample-cost.mjs` | Adds the synthetic cost CSVs to `public/sample`, seeded so they're the same every run. `npm run sample` runs both. |
+| `scripts/sample-cost.mjs` | Adds the synthetic cost CSVs to `public/sample`, seeded so they're the same every run. `npm run sample` runs all three. |
+| `scripts/sample-m365.mjs` | Writes a seeded, synthetic `public/sample/m365-usage.json` in the shape lane G stores, because the source sample has no usage reports. |
+| `../solution/work-patterns/build.mjs` | Generates lane G's `M365UsageReports` solution zips (managed and unmanaged). Run `node solution/work-patterns/build.mjs` from the repo root after changing the flow. |
 
 ## Faithfulness to the report
 
