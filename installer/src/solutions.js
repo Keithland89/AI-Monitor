@@ -1,6 +1,6 @@
 // @ts-check
 /**
- * The four managed solutions, in the order they're imported, and what each one needs: its
+ * The five managed solutions, in the order they're imported, and what each one needs: its
  * environment variables, its Dataverse connection reference and the flows it brings.
  *
  * The flow and solution IDs below are the solutions' own component IDs. They're the same in every
@@ -78,6 +78,20 @@ export const SOLUTIONS = [
       { id: '4d5bca93-3fb2-49ef-90d6-a2f7c4e861b0', name: 'SharePoint agent inventory (manual)', kind: 'manual' },
     ],
     holdsData: true,
+  },
+  {
+    key: 'workpatterns',
+    uniqueName: 'M365UsageReports',
+    file: 'M365UsageReports_managed.zip',
+    version: '1.0.0.0',
+    lane: 'G',
+    title: 'Microsoft 365 usage reports',
+    app: 'audit',
+    vars: { tenant: 'poc_WP_Tenant', appId: 'poc_WP_AppRegID', secret: 'poc_WP_Secret', usingAkv: 'poc_WP_UsingAKVtruefalse', keyVault: 'poc_WP_KeyVaultSecret' },
+    connectionReferences: ['poc_sharedcommondataserviceforapps_m365use'],
+    // The table belongs to the installer, like lane D's, so removing the solution keeps the rows.
+    flows: [{ id: 'b6e2a0d4-5c3f-4e1a-9d87-2f4b6c8e0a13', name: 'Microsoft 365 usage reports (daily)', kind: 'scheduled', runNow: true }],
+    holdsData: false,
   },
   {
     key: 'appusers',

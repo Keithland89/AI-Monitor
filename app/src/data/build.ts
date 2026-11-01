@@ -76,6 +76,7 @@ export function buildDataset(raw: RawData, opt: BuildOptions): Dataset {
     creditPool: raw.creditPool,
     aiCostDaily: raw.aiCostDaily,
     aiCostMeters: raw.aiCostMeters,
+    m365: raw.m365,
     lanes: opt.lanes,
     runs: opt.runs,
     appEnvironment: opt.appEnvironment,

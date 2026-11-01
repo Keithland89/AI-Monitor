@@ -61,10 +61,11 @@ Six lanes feed one semantic model:
 | **D** — named knowledge sources | The real sites, indexes and connectors agents are grounded on | A **sweep** reads `botcomponents` in every environment and writes one landing table | **Dataverse** connector → `poc_agentknowledgesources` |
 | **E** — SharePoint agent inventory | `.agent` files observed across SharePoint, with current/deleted state, names, sites and URLs | A separate **Power Automate cloud flow** reconstructs latest state from SharePoint file-operation audit records | **Dataverse** connector → `poc_sharepointagents` |
 | **F** — shadow AI on endpoints | Unsanctioned AI desktop tools on managed devices — Claude Code, Copilot CLI, Ollama, Cursor | Power BI queries **Defender advanced hunting** at refresh time | **Web** connector → `api.security.microsoft.com` |
+| **G** — Microsoft 365 work patterns *(the app only, for now)* | 30-day counts of Microsoft 365 apps, email, Teams and Copilot use, for the app's Work patterns view | A daily **Power Automate cloud flow** copies five Microsoft Graph usage reports into one landing table | **Dataverse** connector → `poc_m365usagereports` |
 
 **The semantic model only ever talks to three connectors: Azure Resource Graph, Dataverse and the Defender advanced hunting API.** It never calls Purview, never calls Power Automate, and never touches the 500-plus per-environment Dataverse endpoints. Lanes C, D and E are *collectors*, not data sources: they run on their own schedule, outside the dataset refresh, and deposit rows into the one Dataverse the model reads like any other table. That indirection is what keeps the whole solution gateway-free.
 
-> Lanes A, B and F need nothing installed. Lanes C and E can reuse one `AuditLogsQuery.Read.All` app registration; lane D uses its own Dataverse application user. See [Out-of-band collection lanes](#out-of-band-collection-lanes-c-d-and-e).
+> Lanes A, B and F need nothing installed. Lanes C and E can reuse one `AuditLogsQuery.Read.All` app registration, and lane G adds `Reports.Read.All` to it; lane D uses its own Dataverse application user. See [Out-of-band collection lanes](#out-of-band-collection-lanes-c-d-and-e).
 
 
 ### Star schema

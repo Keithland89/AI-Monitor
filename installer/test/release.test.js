@@ -29,7 +29,7 @@ test('the launcher template refuses bad values and stray placeholders', () => {
   assert.throws(() => installScript('caf\u00e9 {{VERSION}}', { version: '1.2.3', sha256: SHA }), /plain ASCII/);
 });
 
-test('the zip holds the installer, the four managed solutions and the app\'s build, and reads back', (t) => {
+test('the zip holds the installer, the managed solutions and the app\'s build, and reads back', (t) => {
   const w = workDir('release');
   t.after(w.cleanup);
   const root = w.dir;
@@ -49,7 +49,7 @@ test('the zip holds the installer, the four managed solutions and the app\'s bui
   const files = releaseFiles(root);
   assert.ok(files.includes('installer/src/web/index.html'));
   assert.ok(files.includes('app/dist/assets/app.js'));
-  assert.equal(files.filter((f) => f.startsWith('solution/')).length, 4, 'only the managed solutions');
+  assert.equal(files.filter((f) => f.startsWith('solution/')).length, SOLUTIONS.length, 'only the managed solutions');
   assert.ok(!files.some((f) => f.includes('node_modules') || f.startsWith('app/src')));
 
   const zip = makeZip(files.map((name) => ({ name, data: readFileSync(join(root, name)) })));
