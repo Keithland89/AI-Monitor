@@ -100,7 +100,7 @@ test('the JSON is found after other output', () => {
 
 test('init puts the app in the landing environment', () => {
   assert.deepEqual(initArgs({ displayName: APP_NAME, environmentId: ENV_ID }), [
-    'app', 'init', '--repo', 'none', '--display-name', 'AI-Monitor', '--build-type', 'none', '--build-path', './dist', '--environment-id', ENV_ID,
+    'app', 'init', '--repo', 'none', '--display-name', 'Agent-Monitor', '--build-type', 'none', '--build-path', './dist', '--environment-id', ENV_ID,
   ]);
 });
 
@@ -300,11 +300,13 @@ test('uninstall deletes the app the record names; one already gone is fine', asy
   assert.equal(record.managedApp, undefined);
 });
 
-test('the app work folder is %LOCALAPPDATA%\\AI-Monitor\\app, or the one an install from before the rename made', () => {
+test('the app work folder is %LOCALAPPDATA%\\Agent-Monitor\\app, or the one an install from before the rename made', () => {
   const env = { LOCALAPPDATA: join('C:', 'Users', 'someone', 'AppData', 'Local') };
-  const fresh = join(env.LOCALAPPDATA, 'AI-Monitor', 'app');
+  const fresh = join(env.LOCALAPPDATA, 'Agent-Monitor', 'app');
   const legacy = join(env.LOCALAPPDATA, 'AgentInventory', 'app');
+  const aiMonitor = join(env.LOCALAPPDATA, 'AI-Monitor', 'app');
   assert.equal(defaultWorkDir(env, () => false), fresh);
   assert.equal(defaultWorkDir(env, (p) => p === legacy), legacy);
-  assert.equal(defaultWorkDir(env, (p) => p === legacy || p === fresh), fresh);
+  assert.equal(defaultWorkDir(env, (p) => p === aiMonitor || p === legacy), aiMonitor);
+  assert.equal(defaultWorkDir(env, (p) => p === aiMonitor || p === legacy || p === fresh), fresh);
 });

@@ -9,10 +9,11 @@ import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync 
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 
-export const RECORD_FILE = 'ai-monitor-install.json';
-export const RECORD_FOLDER = 'AI-Monitor';
+export const RECORD_FILE = 'agent-monitor-install.json';
+export const RECORD_FOLDER = 'Agent-Monitor';
 /** Where installs from before the renames keep their record, newest first. */
 export const LEGACY_RECORDS = /** @type {const} */ ([
+  ['AI-Monitor', 'ai-monitor-install.json'],
   ['Agent Monitor', 'agent-inventory-install.json'],
   ['Copilot Inventory', 'agent-inventory-install.json'],
 ]);
@@ -74,8 +75,8 @@ export const RECORD_VERSION = 1;
 export const emptyRecord = () => ({ version: RECORD_VERSION, options: {}, solutions: {}, flows: {}, handoffs: [] });
 
 /**
- * Documents\AI-Monitor\ai-monitor-install.json, or a record that an install from before a rename left in
- * Documents\Agent Monitor or Documents\Copilot Inventory, when there's none in the new folder.
+ * Documents\Agent-Monitor\agent-monitor-install.json, or a record that an install from before a rename left in
+ * Documents\AI-Monitor, Documents\Agent Monitor or Documents\Copilot Inventory, when there's none in the new folder.
  * @param {NodeJS.ProcessEnv} [env]
  * @param {(path: string) => boolean} [exists]
  */

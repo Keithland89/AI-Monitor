@@ -1,11 +1,11 @@
 <#
-AI-Monitor installer {{VERSION}}, started from PowerShell.
+Agent-Monitor installer {{VERSION}}, started from PowerShell.
 
 Downloads the release zip from GitHub (the installer, the three managed solutions and the app's
-build), checks its SHA-256, unpacks it under %LOCALAPPDATA%\AI-Monitor\installer and opens the
+build), checks its SHA-256, unpacks it under %LOCALAPPDATA%\Agent-Monitor\installer and opens the
 installer in your browser. It needs no admin rights and installs nothing system-wide.
 
-  irm https://github.com/Keithland89/AI-Monitor/releases/download/installer-v{{VERSION}}/install.ps1 | iex
+  irm https://github.com/Keithland89/Agent-Monitor/releases/download/installer-v{{VERSION}}/install.ps1 | iex
 
 Or download this file and run it where your execution policy allows scripts:
 
@@ -15,14 +15,14 @@ If your organisation's policy blocks this, don't work around it: run the install
 of the repo with Node.js (see installer/README.md), or ask your IT team.
 
 Options:
-  -ZipPath <file>  Use an ai-monitor-installer.zip you downloaded yourself, for example when a
+  -ZipPath <file>  Use an agent-monitor-installer.zip you downloaded yourself, for example when a
                    proxy blocks GitHub's download host. It must be the zip from the same release.
   -Proxy <url>     Download through this proxy, signed in as you.
   -Uninstall       Remove the unpacked installer and its command. Your install record in
-                   Documents\AI-Monitor stays, and so does everything the installer set up in
+                   Documents\Agent-Monitor stays, and so does everything the installer set up in
                    your tenant: the installer's own uninstall command removes that.
 Anything else goes to the installer, for example: status, or install --device-code.
-With irm | iex, set $env:AI_MONITOR_ZIP or $env:AI_MONITOR_PROXY instead.
+With irm | iex, set $env:AGENT_MONITOR_ZIP or $env:AGENT_MONITOR_PROXY instead.
 
 It needs Node.js 22.13 or later on the PATH. Deploying the app needs Node.js 24.11 or later.
 Works in Windows PowerShell 5.1 and PowerShell 7. The release build fills in {{VERSION}} and
@@ -34,14 +34,14 @@ Works in Windows PowerShell 5.1 and PowerShell 7. The release build fills in {{V
 
   $Version = '{{VERSION}}'
   $Sha256 = '{{SHA256}}'
-  $ZipName = 'ai-monitor-installer.zip'
-  $ZipUrl = "https://github.com/Keithland89/AI-Monitor/releases/download/installer-v$Version/$ZipName"
-  $Again = "irm https://github.com/Keithland89/AI-Monitor/releases/download/installer-v$Version/install.ps1 | iex"
-  $Releases = 'https://github.com/Keithland89/AI-Monitor/releases?q=installer-v'
+  $ZipName = 'agent-monitor-installer.zip'
+  $ZipUrl = "https://github.com/Keithland89/Agent-Monitor/releases/download/installer-v$Version/$ZipName"
+  $Again = "irm https://github.com/Keithland89/Agent-Monitor/releases/download/installer-v$Version/install.ps1 | iex"
+  $Releases = 'https://github.com/Keithland89/Agent-Monitor/releases?q=installer-v'
 
   # Launcher options; the rest go to the installer as typed.
-  $ZipPath = if ($env:AI_MONITOR_ZIP) { $env:AI_MONITOR_ZIP } else { $env:AGENT_INVENTORY_ZIP }
-  $Proxy = if ($env:AI_MONITOR_PROXY) { $env:AI_MONITOR_PROXY } else { $env:AGENT_INVENTORY_PROXY }
+  $ZipPath = @($env:AGENT_MONITOR_ZIP, $env:AI_MONITOR_ZIP, $env:AGENT_INVENTORY_ZIP) | Where-Object { $_ } | Select-Object -First 1
+  $Proxy = @($env:AGENT_MONITOR_PROXY, $env:AI_MONITOR_PROXY, $env:AGENT_INVENTORY_PROXY) | Where-Object { $_ } | Select-Object -First 1
   $Uninstall = $false
   $Forward = @()
   for ($i = 0; $i -lt $args.Count; $i++) {
@@ -54,10 +54,10 @@ Works in Windows PowerShell 5.1 and PowerShell 7. The release build fills in {{V
 
   if ($env:OS -ne 'Windows_NT') { throw 'This launcher runs on Windows. Elsewhere, run the installer from a clone of the repo with Node.js: see installer/README.md.' }
   $FullLanguage = $ExecutionContext.SessionState.LanguageMode -eq 'FullLanguage'
-  $InvHome = Join-Path $env:LOCALAPPDATA 'AI-Monitor'
+  $InvHome = Join-Path $env:LOCALAPPDATA 'Agent-Monitor'
   $Base = Join-Path $InvHome 'installer'
   $Root = Join-Path $Base $Version
-  $Shim = Join-Path $InvHome 'ai-monitor-install.cmd'
+  $Shim = Join-Path $InvHome 'agent-monitor-install.cmd'
   $Marker = '.unpacked'
   $Tar = Join-Path $env:SystemRoot 'System32\tar.exe'
 
@@ -65,7 +65,7 @@ Works in Windows PowerShell 5.1 and PowerShell 7. The release build fills in {{V
     if (-not (Test-Path -LiteralPath $Base)) { Write-Host 'Nothing to remove.'; return }
     Remove-Item -LiteralPath $Base -Recurse -Force
     Remove-Item -LiteralPath $Shim -Force -ErrorAction SilentlyContinue
-    Write-Host "Removed $Base. Your install record in Documents\AI-Monitor is still there, and so is the app's work folder in $InvHome\app."
+    Write-Host "Removed $Base. Your install record in Documents\Agent-Monitor is still there, and so is the app's work folder in $InvHome\app."
     return
   }
 
@@ -100,7 +100,7 @@ Works in Windows PowerShell 5.1 and PowerShell 7. The release build fills in {{V
     } else {
       $zip = Join-Path $Base "$Version.zip.partial-$PID"
       $downloaded = $true
-      Write-Host "Downloading the AI-Monitor installer $Version..."
+      Write-Host "Downloading the Agent-Monitor installer $Version..."
       if ($FullLanguage) {
         # Windows PowerShell 5.1 may not offer TLS 1.2 by default, and doesn't sign in to the system proxy.
         try {
@@ -117,7 +117,7 @@ Works in Windows PowerShell 5.1 and PowerShell 7. The release build fills in {{V
         $status = 0
         try { $status = [int]$_.Exception.Response.StatusCode } catch { }
         if ($status -eq 404) { throw "Release installer-v$Version is no longer available. Get the current installer from $Releases." }
-        throw "Couldn't download $ZipUrl ($($_.Exception.Message)). If a proxy blocks it, download $ZipName from the release in a browser and run this again with -ZipPath, or set `$env:AI_MONITOR_ZIP to its path."
+        throw "Couldn't download $ZipUrl ($($_.Exception.Message)). If a proxy blocks it, download $ZipName from the release in a browser and run this again with -ZipPath, or set `$env:AGENT_MONITOR_ZIP to its path."
       }
     }
 
@@ -132,7 +132,7 @@ Works in Windows PowerShell 5.1 and PowerShell 7. The release build fills in {{V
     $actual = $actual.ToLowerInvariant()
     if ($actual -ne $Sha256.ToLowerInvariant()) {
       if ($downloaded) { Remove-Item -LiteralPath $zip -Force -ErrorAction SilentlyContinue }
-      throw "$zip isn't the AI-Monitor installer $Version (its SHA-256 is $actual, not $Sha256). Download $ZipName from release installer-v$Version again."
+      throw "$zip isn't the Agent-Monitor installer $Version (its SHA-256 is $actual, not $Sha256). Download $ZipName from release installer-v$Version again."
     }
 
     Write-Host 'Unpacking it...'
@@ -186,46 +186,46 @@ Works in Windows PowerShell 5.1 and PowerShell 7. The release build fills in {{V
   $Docs = $null
   if ($FullLanguage) { try { $Docs = [Environment]::GetFolderPath('MyDocuments') } catch { } }
   if (-not $Docs) { $Docs = Join-Path $env:USERPROFILE 'Documents' }
-  $Work = Join-Path $Docs 'AI-Monitor'
+  $Work = Join-Path $Docs 'Agent-Monitor'
   # Installs from before the renames keep their record in the old folder until the new one exists.
   if (-not (Test-Path -LiteralPath $Work)) {
-    foreach ($old in 'Agent Monitor', 'Copilot Inventory') {
-      $Legacy = Join-Path $Docs $old
-      if (Test-Path -LiteralPath (Join-Path $Legacy 'agent-inventory-install.json')) { $Work = $Legacy; break }
+    foreach ($old in @(@('AI-Monitor', 'ai-monitor-install.json'), @('Agent Monitor', 'agent-inventory-install.json'), @('Copilot Inventory', 'agent-inventory-install.json'))) {
+      $Legacy = Join-Path $Docs $old[0]
+      if (Test-Path -LiteralPath (Join-Path $Legacy $old[1])) { $Work = $Legacy; break }
     }
   }
   New-Item -ItemType Directory -Path $Work -Force | Out-Null
 
-  $script = Join-Path $Root 'installer\bin\ai-monitor-install.js'
-  # A command for later, such as "ai-monitor-install.cmd status", that runs this version.
+  $script = Join-Path $Root 'installer\bin\agent-monitor-install.js'
+  # A command for later, such as "agent-monitor-install.cmd status", that runs this version.
   $AgainCmd = $Again -replace '\|', '^|'
   Set-Content -LiteralPath $Shim -Encoding Ascii -Value @(
     '@echo off'
-    'rem Runs the AI-Monitor installer that install.ps1 unpacked. install.ps1 writes this file.'
+    'rem Runs the Agent-Monitor installer that install.ps1 unpacked. install.ps1 writes this file.'
     'setlocal'
     "set `"INV_SCRIPT=$script`""
     'if not exist "%INV_SCRIPT%" ('
-    "  echo This copy of the AI-Monitor installer has been removed or replaced. In PowerShell, run: $AgainCmd"
+    "  echo This copy of the Agent-Monitor installer has been removed or replaced. In PowerShell, run: $AgainCmd"
     '  exit /b 1'
     ')'
-    'set "AI_MONITOR_LAUNCHER=pwsh"'
-    'set "AI_MONITOR_SHIM=%~f0"'
+    'set "AGENT_MONITOR_LAUNCHER=pwsh"'
+    'set "AGENT_MONITOR_SHIM=%~f0"'
     "cd /d `"$Work`""
     'if "%~1"=="" (node "%INV_SCRIPT%" --ui) else (node "%INV_SCRIPT%" %*)'
   )
 
   if (-not $Forward.Count) { $Forward = @('--ui') }
-  $saved = @{ Launcher = $env:AI_MONITOR_LAUNCHER; Shim = $env:AI_MONITOR_SHIM }
+  $saved = @{ Launcher = $env:AGENT_MONITOR_LAUNCHER; Shim = $env:AGENT_MONITOR_SHIM }
   Push-Location -LiteralPath $Work
   try {
-    $env:AI_MONITOR_LAUNCHER = 'pwsh'
-    $env:AI_MONITOR_SHIM = $Shim
+    $env:AGENT_MONITOR_LAUNCHER = 'pwsh'
+    $env:AGENT_MONITOR_SHIM = $Shim
     & $node $script @Forward
     $global:LASTEXITCODE = $LASTEXITCODE
   } finally {
     Pop-Location
-    $env:AI_MONITOR_LAUNCHER = $saved.Launcher
-    $env:AI_MONITOR_SHIM = $saved.Shim
+    $env:AGENT_MONITOR_LAUNCHER = $saved.Launcher
+    $env:AGENT_MONITOR_SHIM = $saved.Shim
   }
 } @args
 if ($MyInvocation.MyCommand.Path -and $LASTEXITCODE) { exit $LASTEXITCODE }

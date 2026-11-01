@@ -252,7 +252,7 @@ export default function App() {
                 <path d="M7 9h14M7 14h14M7 19h9" stroke="#c9c8ee" strokeWidth="2.6" strokeLinecap="round" />
               </svg>
               <div>
-                <h1>AI-Monitor</h1>
+                <h1>Agent-Monitor</h1>
                 <p>Agent inventory, ownership and risk across the tenant</p>
               </div>
             </div>

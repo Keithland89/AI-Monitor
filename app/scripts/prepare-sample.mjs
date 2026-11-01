@@ -1,6 +1,6 @@
 // Builds the trimmed, internally consistent sample the app ships in public/sample.
 // Usage: node scripts/prepare-sample.mjs [folder-of-csvs | sample.zip]
-// Default source: ../sample-data/ai-monitor-sample-data.zip (the anonymised sample in this repo).
+// Default source: ../sample-data/agent-monitor-sample-data.zip (the anonymised sample in this repo).
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { basename, dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -9,7 +9,7 @@ import Papa from 'papaparse'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const appDir = resolve(here, '..')
-const source = resolve(process.argv[2] ?? join(appDir, '..', 'sample-data', 'ai-monitor-sample-data.zip'))
+const source = resolve(process.argv[2] ?? join(appDir, '..', 'sample-data', 'agent-monitor-sample-data.zip'))
 const outDir = join(appDir, 'public', 'sample')
 const TARGET_AGENTS = 1500
 const BUDGET_BYTES = 6 * 1024 * 1024

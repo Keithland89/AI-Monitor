@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // @ts-check
 /**
- * Builds a release into installer/release/: ai-monitor-installer.zip, the install.ps1 that
+ * Builds a release into installer/release/: agent-monitor-installer.zip, the install.ps1 that
  * downloads it (with its version and SHA-256 filled in) and SHA256SUMS. Upload all three to a
  * GitHub release tagged installer-v<version>.
  *   node packaging/build-release.js [--version 1.2.3]

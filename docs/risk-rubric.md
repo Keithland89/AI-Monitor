@@ -1,6 +1,6 @@
 # Agent risk rubric
 
-AI-Monitor gives every agent a risk score, a band and the reasons behind it. The Power BI model (the `Agent` and `RiskDetail` tables) and the app (`app/src/data/transforms.ts`) both apply this rubric, and tests in both hold them to it.
+Agent-Monitor gives every agent a risk score, a band and the reasons behind it. The Power BI model (the `Agent` and `RiskDetail` tables) and the app (`app/src/data/transforms.ts`) both apply this rubric, and tests in both hold them to it.
 
 The rubric reads only inventory columns. It needs no usage data, no Agent 365 export and no Agent 365 licence.
 
@@ -38,7 +38,7 @@ For these two platforms:
 
 ## Where the columns come from
 
-The column names above are Analytics Hub's table layout, so the rubric gives the same answer however AI-Monitor is fed:
+The column names above are Analytics Hub's table layout, so the rubric gives the same answer however Agent-Monitor is fed:
 
 - **Live**: Power Query reads Azure Resource Graph and shapes the rows into these tables.
 - **Analytics Hub**: the model reads the same tables from an Analytics Hub store. Until that store has `arg_agent_detail`, there are no last-used dates, so the model treats every agent as having no usage signal: "Shared tenant-wide and never used" does not fire and nothing counts as never used.

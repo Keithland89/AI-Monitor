@@ -1,5 +1,5 @@
 node_modules/
-ai-monitor-install*.json
+agent-monitor-install*.json
 plan.md
 *.tmp
 test/.work/

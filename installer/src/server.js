@@ -47,7 +47,7 @@ function json(res, status, body) {
  */
 function page(res, status, message) {
   res.writeHead(status, { ...HEADERS, 'Content-Type': 'text/html; charset=utf-8' });
-  res.end(`<!doctype html><meta charset="utf-8"><title>AI-Monitor installer</title><p style="font:16px system-ui;margin:48px">${message}</p>`);
+  res.end(`<!doctype html><meta charset="utf-8"><title>Agent-Monitor installer</title><p style="font:16px system-ui;margin:48px">${message}</p>`);
 }
 
 /**
@@ -339,7 +339,7 @@ export async function runWizard(o) {
     },
   });
   ui.subscribe(mirror(write));
-  write(`${c.bold(`AI-Monitor installer ${o.version}`)}\n`);
+  write(`${c.bold(`Agent-Monitor installer ${o.version}`)}\n`);
   write(`${o.open ? 'The installer is opening in your browser. If it doesn\'t, go to:' : 'Open the installer in your browser:'}\n\n  ${server.launchUrl}\n\n`);
   write(`${c.dim('Only this computer can reach it. Keep this window open; press Ctrl+C to stop.')}\n`);
   const input = o.stdin ?? process.stdin;
