@@ -57,13 +57,12 @@ export const RECORD_VERSION = 1;
  * @property {string} [tenantId]
  * @property {{ upn?: string, oid?: string }} [user]
  * @property {{ id: string, name?: string, url: string }} [environment]
- * @property {{ scopeMode?: 'Agents' | 'Dataverse', secretMode?: 'envvar' | 'keyvault', keyVault?: { name: string, id?: string }, viewerGroup?: string, reviewerEmail?: string, maxGrants?: number, secretMonths?: number }} options
+ * @property {{ scopeMode?: 'Agents' | 'Dataverse', secretMode?: 'envvar' | 'keyvault', keyVault?: { name: string, id?: string }, viewerGroup?: string, maxGrants?: number, secretMonths?: number, sharePoint?: boolean }} options
  * @property {AppRegistration} [auditApp]
  * @property {AppRegistration} [sweepApp]
  * @property {{ id: string, created?: boolean, status?: string }} [connection]
  * @property {Record<string, { version: string, importedAt: string }>} solutions
  * @property {boolean} [tablesProvisioned]
- * @property {boolean} [workPatternsTable]
  * @property {Record<string, 'on' | 'off'>} flows
  * @property {{ whatIfAt?: string, inScope?: number, missing?: number, approvedAt?: string, declinedAt?: string }} [appUserGrant]
  * @property {ManagedAppRecord} [managedApp]

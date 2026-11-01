@@ -2,7 +2,7 @@
 // back to it and is checked there. Text is set with textContent only, never as HTML.
 
 const COMMANDS = {
-  install: ['Install or carry on', 'Sign in, check, show the plan, then set up every lane once you approve it.'],
+  install: ['Install or carry on', 'Sign in, check, show the plan, then set up the inventory lanes once you approve it.'],
   preview: ['Preview the plan', 'What install would do, without signing in.'],
   prereqs: ['Check prerequisites', 'Your roles, tenant settings and licences. Read-only.'],
   status: ['Status', 'What the install record says is installed. No sign-in.'],

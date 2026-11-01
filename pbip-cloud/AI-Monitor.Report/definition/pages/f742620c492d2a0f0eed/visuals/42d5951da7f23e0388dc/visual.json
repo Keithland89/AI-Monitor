@@ -56,11 +56,11 @@
                       "Entity": "Metrics"
                     }
                   },
-                  "Property": "Agents with Interactions"
+                  "Property": "Agents Last Used"
                 }
               },
-              "queryRef": "Metrics.Agents with Interactions",
-              "nativeQueryRef": "Agents with Interactions"
+              "queryRef": "Metrics.Agents Last Used",
+              "nativeQueryRef": "Agents Last Used"
             }
           ]
         }
@@ -146,7 +146,7 @@
             }
           },
           "selector": {
-            "metadata": "Metrics.Agents with Interactions"
+            "metadata": "Metrics.Agents Last Used"
           }
         }
       ],
@@ -178,7 +178,7 @@
             "text": {
               "expr": {
                 "Literal": {
-                  "Value": "'Built vs used, by month'"
+                  "Value": "'Created vs last used, by month'"
                 }
               }
             },

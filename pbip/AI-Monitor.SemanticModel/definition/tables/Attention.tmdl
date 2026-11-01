@@ -26,7 +26,7 @@ table Attention
 				    Source = #table(
 				        type table [SortOrder = Int64.Type, Action = text, #"Where to look" = text],
 				        {
-				            { 1, "Retire: no use in 90+ days, not shared tenant-wide", "Adoption · Agents in use" },
+				            { 1, "Retire: no use in 90+ days, not shared tenant-wide", "Risk · Agents to review" },
 				            { 2, "High-risk agents with no owner on record", "Risk · Agents to review" },
 				            { 3, "Shared tenant-wide but never used", "Risk · Agents to review" },
 				            { 4, "Read outside the tenant with no authentication", "Risk · Knowledge reach" },

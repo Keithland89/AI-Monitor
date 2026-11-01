@@ -397,7 +397,7 @@
             "text": {
               "expr": {
                 "Literal": {
-                  "Value": "'verified against the tenant - explains every zero on the Usage page'"
+                  "Value": "'verified against the tenant - explains why some agents show No usage signal'"
                 }
               }
             },

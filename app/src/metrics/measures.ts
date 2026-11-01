@@ -1,5 +1,6 @@
 import { isActive30 } from '../data/transforms'
-import type { Agent, AgentConnector, AgentKnowledge, CopilotSurface, Interaction, KnowledgeSource, RiskDetail } from '../data/types'
+import { hasUsageSignal } from './lifecycle'
+import type { Agent, AgentConnector, AgentKnowledge, KnowledgeSource, RiskDetail } from '../data/types'
 
 /* ---------- generic helpers ---------- */
 
@@ -87,14 +88,11 @@ export const A = {
   envsWithAgents: (a: Agent[]) => distinct(a, (x) => x.envId.toLowerCase()),
   active7: (a: Agent[]) => count(a, (x) => x.activityStatus === 'Active (7d)'),
   active30: (a: Agent[]) => count(a, (x) => isActive30(x.activityStatus)),
-  idle: (a: Agent[]) => count(a, (x) => x.activityStatus === 'Idle (90d)'),
-  dormant: (a: Agent[]) => count(a, (x) => x.activityStatus === 'Dormant (90d+)'),
-  neverUsed: (a: Agent[]) => count(a, (x) => !x.lastUsed),
+  idle: (a: Agent[]) => count(a, (x) => hasUsageSignal(x) && x.activityStatus === 'Idle (90d)'),
+  dormant: (a: Agent[]) => count(a, (x) => hasUsageSignal(x) && x.activityStatus === 'Dormant (90d+)'),
+  neverUsed: (a: Agent[]) => count(a, (x) => !x.lastUsed && hasUsageSignal(x)),
+  noUsageSignal: (a: Agent[]) => count(a, (x) => !hasUsageSignal(x)),
   used: (a: Agent[]) => count(a, (x) => !!x.lastUsed),
-  adoptionRate: (a: Agent[]) => div(A.active30(a), a.length),
-  activeEnvs: (a: Agent[]) => distinct(a, (x) => (x.lastUsed ? x.envId.toLowerCase() : '')),
-  envAdoption: (a: Agent[]) => div(A.activeEnvs(a), A.envsWithAgents(a)),
-  usageCoverage: (a: Agent[]) => div(A.used(a), a.length),
   avgDaysSinceUse: (a: Agent[]) => {
     const d = a.map((x) => x.daysSinceLastUse).filter((n): n is number => n !== null)
     return div(sum(d, (n) => n), d.length)
@@ -108,8 +106,8 @@ export const A = {
   medium: (a: Agent[]) => count(a, (x) => x.riskBand === 'Medium'),
   atRisk: (a: Agent[]) => count(a, (x) => x.riskBand !== 'Low'),
   avgRisk: (a: Agent[]) => div(sum(a, (x) => x.riskScore), a.length),
-  /** Shared tenant-wide with no usage signal from either Power Platform or the audit log. */
-  orphan: (a: Agent[]) => count(a, (x) => x.sharedTenantWide && !x.lastActivityAt),
+  /** Shared tenant-wide with no Power Platform last-used date. */
+  orphan: (a: Agent[]) => count(a, (x) => x.sharedTenantWide && !x.lastUsed),
   noRiskFactors: (a: Agent[]) => count(a, (x) => x.riskFactorCount === 0),
   avgRiskFactors: (a: Agent[]) => div(sum(a, (x) => x.riskFactorCount), a.length),
   topics: (a: Agent[]) => sum(a, (x) => x.topicCount),
@@ -130,56 +128,6 @@ export const A = {
   graphConnector: (a: Agent[]) => count(a, (x) => x.hasGraphConnector),
   withInstructions: (a: Agent[]) => count(a, (x) => x.hasInstructions),
   distinctModels: (a: Agent[]) => distinct(a, (x) => x.model),
-}
-
-/* ---------- Interaction measures ---------- */
-
-export const I = {
-  count: (r: Interaction[]) => r.length,
-  users: (r: Interaction[]) => distinct(r, (x) => x.user),
-  sessions: (r: Interaction[]) => distinct(r, (x) => x.threadId),
-  activeUsers: (r: Interaction[]) => distinct(r, (x) => (x.agentKey ? x.user : '')),
-  agentsWithInteractions: (r: Interaction[]) => distinct(r, (x) => x.agentKey),
-  autonomous: (r: Interaction[]) => count(r, (x) => x.appHost === 'Autonomous'),
-  grounded: (r: Interaction[]) => count(r, (x) => x.resourceCount > 0),
-  bySurfaceType: (type: string, surfaces: Map<string, CopilotSurface>) => (r: Interaction[]) => count(r, (x) => surfaces.get(x.surfaceKey)?.type === type),
-  /** Sum over each conversation-day of the time between its first and last interaction. */
-  runTimeHours: (r: Interaction[]) => {
-    const span = new Map<string, [number, number]>()
-    for (const x of r) {
-      const t = Date.parse(x.time + 'Z')
-      if (Number.isNaN(t)) continue
-      const k = `${x.threadId}\u0000${x.date}`
-      const s = span.get(k)
-      if (!s) span.set(k, [t, t])
-      else {
-        if (t < s[0]) s[0] = t
-        if (t > s[1]) s[1] = t
-      }
-    }
-    let seconds = 0
-    for (const [a, b] of span.values()) seconds += Math.round((b - a) / 1000)
-    return seconds / 3600
-  },
-  avgSessionMinutes: (r: Interaction[]) => div(I.runTimeHours(r) * 60, I.sessions(r)),
-}
-
-/**
- * Agents the audit log shows in use that the Power Platform usage signal misses.
- * The DAX version compares against an agent table already filtered to "used" agents and always returns 0;
- * this implements what the tile describes.
- */
-export function telemetryUplift(agents: Agent[], interactions: Interaction[]): number {
-  const touched = new Set(interactions.map((i) => i.agentKey).filter(Boolean))
-  return count(agents, (a) => touched.has(a.key) && !a.lastUsed)
-}
-
-export function perAgentUsage(interactions: Interaction[]): Map<string, { users: number; sessions: number; interactions: number }> {
-  const out = new Map<string, { users: number; sessions: number; interactions: number }>()
-  for (const [k, rs] of groupBy(interactions.filter((i) => i.agentKey), (i) => i.agentKey)) {
-    out.set(k, { users: I.users(rs), sessions: I.sessions(rs), interactions: rs.length })
-  }
-  return out
 }
 
 /* ---------- risk detail ---------- */

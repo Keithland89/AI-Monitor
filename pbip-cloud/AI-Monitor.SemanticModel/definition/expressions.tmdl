@@ -1,4 +1,4 @@
-/// Dataverse environment URL holding poc_copilotinteraction, e.g. https://contoso.crm.dynamics.com
+/// Dataverse environment URL holding the knowledge-source and SharePoint agent tables, e.g. https://contoso.crm.dynamics.com
 expression DataverseUrl = "https://contoso.crm.dynamics.com" meta [IsParameterQuery = true, Type = "Text", IsParameterQueryRequired = true]
 	lineageTag: 873e4f19-edfd-4479-86d4-8cf2b1a4b148
 
@@ -116,27 +116,7 @@ expression FnDataverseOptional =
 
 	annotation PBI_ResultType = Function
 
-/// Raw poc_copilotinteractions rows. Split out so Interaction itself accesses no data source - see FnDataverse.
-expression SrcInteraction =
-		let
-		    Source = FnDataverse("poc_copilotinteractions", {"poc_creationtime", "poc_appidentity", "poc_userid", "poc_apphost", "poc_operation", "poc_threadid", "poc_resourcecount", "poc_resources"})
-		in
-		    Source
-	lineageTag: 461ec3c8-5d23-4c5a-baf3-1d7f17e0f7e6
-
-	annotation PBI_ResultType = Table
-
-/// Just the AppIdentity column of poc_copilotinteractions, for CopilotSurface. Split out for the same firewall reason as SrcInteraction.
-expression SrcSurfaceKey =
-		let
-		    Source = FnDataverse("poc_copilotinteractions", {"poc_appidentity"})
-		in
-		    Source
-	lineageTag: d63e886b-fe25-426a-91c8-1d1a351c23bd
-
-	annotation PBI_ResultType = Table
-
-/// Raw poc_agentknowledgesources rows - the named knowledge sources swept out of every environment's Dataverse. Split out for the same firewall reason as SrcInteraction, and optional so the model still refreshes before the collector has ever run.
+/// Raw poc_agentknowledgesources rows - the named knowledge sources swept out of every environment's Dataverse. Split out into its own query to keep the Power Query firewall happy, and optional so the model still refreshes before the collector has ever run.
 expression SrcKnowledgeSource =
 		let
 		    Source = FnDataverseOptional("poc_agentknowledgesources", {"poc_sourceid", "poc_agentkey", "poc_sourcename", "poc_knowledgetype", "poc_sourcekind", "poc_isexternal", "poc_locator", "poc_locatorhost", "poc_collectedat"})
@@ -165,23 +145,6 @@ expression FnDistinctKey =
 		in
 		    Table.RemoveColumns(Unique, {"__fold"})
 	lineageTag: 05dd7b2e-ba86-4396-9fc7-681dd73b45bb
-
-	annotation PBI_ResultType = Function
-
-expression FnHexRun =
-		(s as text) as logical =>
-		    List.AllTrue(List.Transform(Text.ToList(s), each Text.Contains("0123456789abcdefABCDEF-", _)))
-	lineageTag: 67c70127-c863-4047-9eae-3b9452a4b86a
-
-	annotation PBI_ResultType = Function
-
-expression FnLooksGuid =
-		(s as text) as logical =>
-		    Text.Length(s) >= 36
-		    and Text.Middle(s, 8, 1) = "-" and Text.Middle(s, 13, 1) = "-"
-		    and Text.Middle(s, 18, 1) = "-" and Text.Middle(s, 23, 1) = "-"
-		    and FnHexRun(Text.Start(s, 36))
-	lineageTag: 4f536970-2a3c-47da-87c6-6a426fe899d8
 
 	annotation PBI_ResultType = Function
 
@@ -241,111 +204,6 @@ expression FnSpo =
 		in
 		    r
 	lineageTag: 3a0f7c41-92d6-4ee8-b5a1-7c4e0d81f6b2
-
-	annotation PBI_ResultType = Function
-
-expression FnSurface =
-		(appIdentity as nullable text) as record =>
-		let
-		    a = if appIdentity = null then "" else Text.Trim(appIdentity),
-		    Mk = (t as text, p as text, k as text, o as text, n as text, ag as logical) as record =>
-		        [SurfaceType = t, Platform = p, MatchKey = k, MatchOn = o, DisplayName = n, IsAgent = ag],
-		
-		    // Copilot Studio agent in the default environment: org id then '-' then schema name.
-		    csDefault =
-		        let
-		            rest = Text.Range(a, 23),
-		            hit  = List.Select({32, 33, 34, 35, 36}, each
-		                       Text.Length(rest) > _ + 1
-		                       and Text.Middle(rest, _, 1) = "-"
-		                       and FnHexRun(Text.Start(rest, _)))
-		        in
-		            if List.IsEmpty(hit) then null
-		            else Mk("Copilot Studio agent", "Copilot Studio", Text.Range(rest, List.First(hit) + 1), "SchemaName", a, true),
-		
-		    // Copilot Studio agent in a named environment: a 36 character GUID then '-' then schema name.
-		    csNamed =
-		        let rest = Text.Range(a, 15) in
-		        if FnLooksGuid(rest) and Text.Middle(rest, 36, 1) = "-" and Text.Length(rest) > 37
-		        then Mk("Copilot Studio agent", "Copilot Studio", Text.Range(rest, 37), "SchemaName", a, true)
-		        else null,
-		
-		    // Microsoft first party agents: MicrosoftAgent.<name>.<BuiltIn_*|P_*>
-		    ms1p =
-		        let
-		            rest  = Text.Range(a, 15),
-		            cands = List.Select({Text.PositionOf(rest, ".BuiltIn_"), Text.PositionOf(rest, ".P_")}, each _ > 0)
-		        in
-		            if List.IsEmpty(cands) then null
-		            else Mk("Microsoft 1P agent", "M365 Copilot", "", "", Text.Start(rest, List.Min(cands)), false),
-		
-		    r =
-		        if a = "" then
-		            Mk("M365 Copilot (base)", "M365 Copilot", "", "", "M365 Copilot - no app identity", false)
-		        else if Text.StartsWith(a, "Copilot.Studio.Declarative.T_") then
-		            Mk("Agent Builder agent", "M365 Copilot", Text.Range(a, 27), "TitleId", a, true)
-		        else if Text.StartsWith(a, "TeamsToolkit.Declarative.T_") then
-		            Mk("Teams Toolkit agent", "M365 Copilot", Text.Range(a, 25), "TitleId", "Teams Toolkit agent " & Text.Middle(a, 27, 8), true)
-		        else if Text.StartsWith(a, "U_") then
-		            Mk("Personal agent", "M365 Copilot", a, "TitleId", "Personal agent " & Text.Middle(a, 2, 8), true)
-		        // SharePoint agents carry no TitleId or SchemaName because they are files, not Power
-		        // Platform resources. CopilotSurface joins them separately to SharePointAgent on the
-		        // decoded ListItemUniqueId.
-		        else if Text.StartsWith(a, "SPO_") then
-		            let sid = FnSpo(a)[ItemId] in
-		            Mk("SharePoint agent", "SharePoint", "", "", "SharePoint agent " & (if Text.Length(sid) <= 6 then sid else Text.End(sid, 6)), true)
-		        else if Text.StartsWith(a, "Copilot.Studio.CustomEngine.T_") then
-		            Mk("Custom engine agent", "M365 Copilot", Text.Range(a, 28), "TitleId", a, true)
-		        else if Text.StartsWith(a, "Copilot.Studio.Default-") and csDefault <> null then csDefault
-		        else if Text.StartsWith(a, "Copilot.Studio.") and csNamed <> null then csNamed
-		        else if Text.StartsWith(a, "T_") then
-		            Mk("Declarative agent", "M365 Copilot", a, "TitleId", a, true)
-		        else if Text.StartsWith(a, "MicrosoftAgent.AgentBuilder") or a = "AgentBuilder" then
-		            Mk("Agent Builder authoring", "M365 Copilot", "", "", "Agent Builder (authoring)", false)
-		        else if Text.StartsWith(a, "MicrosoftAgent.") and ms1p <> null then ms1p
-		        else if Text.StartsWith(a, "Copilot.M365Copilot.") then
-		            Mk("M365 Copilot (base)", "M365 Copilot", "", "", "M365 Copilot - " & Text.Range(a, 20), false)
-		        else if Text.StartsWith(a, "Copilot.Fabric.") then
-		            Mk("Fabric / Power BI copilot", "Fabric", "", "", Text.Range(a, 15), false)
-		        else if Text.StartsWith(a, "Copilot.") and Text.Contains(a, "PowerBI") then
-		            Mk("Fabric / Power BI copilot", "Power BI", "", "", Text.Range(a, 8), false)
-		        else if Text.StartsWith(a, "Copilot.Studio.") then
-		            Mk("Copilot Studio (other)", "Copilot Studio", "", "", a, false)
-		        else if Text.StartsWith(a, "Copilot.") then
-		            Mk("Other Microsoft copilot", "Microsoft 365", "", "", a, false)
-		        else
-		            Mk("Unknown", "Unknown", "", "", a, false)
-		in
-		    r
-	lineageTag: eb0c03bb-e14c-42a7-bf27-4d0e020af5f3
-
-	annotation PBI_ResultType = Function
-
-expression FnAgentLookup =
-		() as table =>
-		let
-		    Titles  = Table.SelectRows(Agent, each [TitleId] <> null and [TitleId] <> ""),
-		    T       = Table.AddColumn(Titles, "MatchIndex", each "TitleId|" & Text.Lower(Text.Trim([TitleId])), type text),
-		    Schemas = Table.SelectRows(Agent, each [SchemaName] <> null and [SchemaName] <> ""),
-		    S       = Table.AddColumn(Schemas, "MatchIndex", each "SchemaName|" & Text.Lower(Text.Trim([SchemaName])), type text),
-		    Both    = Table.Combine({
-		                  Table.SelectColumns(T, {"MatchIndex", "AgentKey", "AgentName"}),
-		                  Table.SelectColumns(S, {"MatchIndex", "AgentKey", "AgentName"})})
-		in
-		    Table.Distinct(Both, {"MatchIndex"})
-	lineageTag: 050e1085-f891-40d9-9a27-c0807254f70d
-
-	annotation PBI_ResultType = Function
-
-expression FnSharePointAgentLookup =
-		() as table =>
-		let
-		    Rows = Table.SelectRows(SharePointAgent, each [AgentKey] <> null and [AgentKey] <> ""),
-		    Kept = Table.SelectColumns(Rows, {"AgentKey", "AgentName", "SiteUrl", "ObjectUrl", "IsDeleted"}),
-		    Keyed = Table.TransformColumns(Kept, {{"AgentKey", each Text.Lower(Text.Trim(_)), type text}})
-		in
-		    Table.Distinct(Keyed, {"AgentKey"})
-	lineageTag: 6de6fcb6-531e-42e0-9b7f-5f451ad74278
 
 	annotation PBI_ResultType = Function
 

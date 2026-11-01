@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useData } from '../data/store'
 import type { Agent } from '../data/types'
-import { A, ACTIVITY_ORDER, bars, groupBy, perAgentUsage } from '../metrics/measures'
+import { A, ACTIVITY_ORDER, bars, groupBy } from '../metrics/measures'
 import { BarList, ColumnChart, Treemap } from '../ui/charts'
 import { DataTable } from '../ui/DataTable'
 import { dec1, int, knowledgeLabel, regionLabel } from '../ui/format'
@@ -32,12 +32,6 @@ export function AllAgents() {
     () => scope.agents.filter((a) => (!status || a.activityStatus === status) && (!check || check.test(a))),
     [scope.agents, status, check],
   )
-  const interactions = useMemo(() => {
-    if (!status && !check) return scope.interactions
-    const keys = new Set(agents.map((a) => a.key))
-    return scope.interactions.filter((i) => keys.has(i.agentKey))
-  }, [scope.interactions, agents, status, check])
-  const usage = useMemo(() => perAgentUsage(interactions), [interactions])
   const mix = useMemo(() => activityMix(agents), [agents])
   const rows = useMemo(() => rowsOf(agents, (a) => a.key), [agents])
 
@@ -61,16 +55,15 @@ export function AllAgents() {
             rows={rows}
             search={search}
             onRowClick={(a) => openAgent(a.key)}
-            initialSort={{ key: 'users', desc: true }}
+            initialSort={{ key: 'shared', desc: true }}
             columns={[
               agentCol(nameOf),
               text('status', 'Activity', (a: Agent) => a.activityStatus),
               date('quarantined', 'Quarantined', (a: Agent) => a.quarantinedAt),
               text('platform', 'Platform', (a: Agent) => a.platform),
               text('risk', 'Risk', (a: Agent) => a.riskBand),
-              num('users', 'Active users', (a: Agent) => usage.get(a.key)?.users ?? 0, { bar: COLOR.agent }),
-              num('sessions', 'Sessions', (a: Agent) => usage.get(a.key)?.sessions ?? 0),
-              num('shared', 'Shared users', (a: Agent) => a.sharedUserCount),
+              num('shared', 'Shared users', (a: Agent) => a.sharedUserCount, { bar: COLOR.agent }),
+              date('used', 'Last used', (a: Agent) => a.lastUsed),
               date('published', 'Last published', (a: Agent) => a.lastPublishedAt),
             ]}
           />

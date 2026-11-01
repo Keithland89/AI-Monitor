@@ -280,7 +280,7 @@
             "text": {
               "expr": {
                 "Literal": {
-                  "Value": "'the adoption truth'"
+                  "Value": "'Resource Graph lastUsed'"
                 }
               }
             },

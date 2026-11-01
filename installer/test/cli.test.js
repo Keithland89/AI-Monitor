@@ -25,6 +25,9 @@ test('flags become options', () => {
   assert.equal(parseCli(['rotate-secret', '--app', 'sweep']).options.app, 'sweep');
   assert.equal(parseCli(['uninstall', '--delete-data']).options.deleteData, true);
   assert.equal(parseCli(['--ui', '--no-open']).open, false);
+  assert.equal(parseCli([]).options.sharePoint, undefined, 'lane E follows the record, or is on');
+  assert.equal(parseCli(['--skip-sharepoint']).options.sharePoint, false);
+  assert.equal(parseCli(['--sharepoint']).options.sharePoint, true);
 });
 
 test('flags that don\'t make sense are refused with a reason', () => {
@@ -35,6 +38,8 @@ test('flags that don\'t make sense are refused with a reason', () => {
     [['install', '--ui'], /Leave out the command/],
     [['--ui', '--yes'], /--ui and --yes/],
     [['--device-code', '--use-az'], /--device-code and --use-az/],
+    [['--sharepoint', '--skip-sharepoint'], /--sharepoint and --skip-sharepoint/],
+    [['--reviewer-email', 'someone@example.test'], /reviewer-email/],
     [['--scope-mode', 'All'], /Agents or Dataverse/],
     [['rotate-secret', '--app', 'other'], /audit or sweep/],
     [['install', '--app', 'audit'], /goes with rotate-secret/],
@@ -78,7 +83,8 @@ test('preview prints the plan offline and saves it as Markdown', async (t) => {
   });
   assert.equal(code, 0);
   assert.match(text(), /Lane D: grant the knowledge sweep/);
-  assert.match(text(), /CopilotInteractionLogging/);
+  assert.match(text(), /SharePointAgentLogging/);
+  assert.doesNotMatch(text(), /CopilotInteractionLogging|M365UsageReports|Reports\.Read\.All/);
   const md = written[join(w.dir, 'plan.md')];
   assert.ok(md, 'the plan was saved');
   assert.match(md, /^# /m);
@@ -101,14 +107,18 @@ test('status and update need an install record', async (t) => {
     tenantId: '00000000-0000-0000-0000-000000000000',
     environment: { id: 'env-test', name: 'Landing', url: 'https://org.example.test' },
     options: { scopeMode: 'Agents', secretMode: 'envvars' },
-    solutions: { interactions: { version: '1.0.0.8', importedAt: '2025-01-01T00:00:00Z' } },
+    solutions: {
+      interactions: { version: '1.0.0.8', importedAt: '2024-01-01T00:00:00Z' },
+      sharepoint: { version: '1.0.0.0', importedAt: '2025-01-01T00:00:00Z' },
+    },
     flows: {},
     handOffs: [],
   }));
   const c = quietUi();
   assert.equal(await main(['status', '--config', config], { deps: { ui: c.ui } }), 0);
   assert.match(c.text(), /Landing environment: Landing/);
-  assert.match(c.text(), /CopilotInteractionLogging 1\.0\.0\.8/);
+  assert.match(c.text(), /SharePointAgentLogging 1\.0\.0\.0/);
+  assert.doesNotMatch(c.text(), /CopilotInteractionLogging/, 'an earlier lane C import is left alone and not listed');
 });
 
 /** @param {Record<string, unknown>} claims */

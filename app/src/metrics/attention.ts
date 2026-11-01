@@ -27,8 +27,8 @@ export const ATTENTION: AttentionCheck[] = [
   {
     id: 'shared-unused',
     label: 'Shared tenant-wide but never used',
-    help: 'Published to everyone, with no usage in Power Platform or the audit log: retire it, or tell people it exists.',
-    test: (a) => a.sharedTenantWide && !a.lastActivityAt,
+    help: 'Published to everyone, with no last-used date in Power Platform: retire it, or tell people it exists.',
+    test: (a) => a.sharedTenantWide && !a.lastUsed,
   },
   {
     id: 'owner-unresolved',
@@ -36,7 +36,6 @@ export const ATTENTION: AttentionCheck[] = [
     help: 'The owner on record does not resolve to a user in Microsoft Entra ID, often because they left.',
     test: (a) => a.ownerPrincipalType === 'Not resolved in Entra',
   },
-
 ]
 
 export const attentionCheck = (id: string) => ATTENTION.find((c) => c.id === id)

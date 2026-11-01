@@ -3,12 +3,12 @@ import type { Agent } from '../data/types'
 import { ATTENTION, attentionCheck, attentionCounts } from './attention'
 
 const agent = (o: Partial<Agent>): Agent =>
-  ({ key: 'a', riskBand: 'Low', hasOwner: true, sharedTenantWide: false, authentication: 'Microsoft Entra ID', lastActivityAt: '2026-09-01', ownerPrincipalType: 'User', ...o }) as Agent
+  ({ key: 'a', riskBand: 'Low', hasOwner: true, sharedTenantWide: false, authentication: 'Microsoft Entra ID', lastUsed: '2026-09-01T00:00:00', ownerPrincipalType: 'User', ...o }) as Agent
 
 describe('attention checks', () => {
   const agents = [
     agent({ riskBand: 'High', hasOwner: false }),
-    agent({ sharedTenantWide: true, authentication: 'None', lastActivityAt: '' }),
+    agent({ sharedTenantWide: true, authentication: 'None', lastUsed: '' }),
     agent({ sharedTenantWide: true, authentication: '' }),
     agent({ ownerPrincipalType: 'Not resolved in Entra' }),
     agent({}),

@@ -22,10 +22,6 @@ export interface LaneProblem {
 const FIX: Partial<Record<LaneId, string>> = {
   shadow: 'Advanced hunting needs Security Reader and the AdvancedQuery.Read permission on the Defender connection.',
   foundry: 'Foundry needs Reader on each subscription that holds Azure AI resources.',
-  aicost: 'Cost Management needs Cost Management Reader, or Reader, on each subscription that holds Azure AI resources.',
-  credits: 'The licensing API needs a Power Platform administrator (or Dynamics 365 administrator) on the connection.',
-  creditpool: 'The licensing API needs a Power Platform administrator (or Dynamics 365 administrator) on the connection.',
-  m365usage: 'The usage reports need Reports.Read.All on the audit collector app and the daily Microsoft 365 usage flow. Run the installer to add both.',
 }
 const SETUP = 'Run the installer, or add the connection in the app settings.'
 
@@ -58,6 +54,5 @@ export const unknownFrom = (p: LaneProblem | null | undefined) => (p && p.kind !
 /** The lanes each section depends on beyond the core inventory, so the nav can flag a section whose data did not load. */
 export const TAB_LANES: Partial<Record<TabId, LaneId[]>> = {
   foundry: ['foundry', 'flows'],
-  cost: ['credits', 'creditpool', 'aicost'],
   shadow: ['shadow'],
 }

@@ -23,11 +23,11 @@
                       "Entity": "Metrics"
                     }
                   },
-                  "Property": "SharePoint Agent Interactions"
+                  "Property": "SharePoint Inventory Age (days)"
                 }
               },
-              "queryRef": "Metrics.SharePoint Agent Interactions",
-              "nativeQueryRef": "SharePoint Agent Interactions"
+              "queryRef": "Metrics.SharePoint Inventory Age (days)",
+              "nativeQueryRef": "SharePoint Inventory Age (days)"
             }
           ]
         }
@@ -124,7 +124,7 @@
             "text": {
               "expr": {
                 "Literal": {
-                  "Value": "'Interactions'"
+                  "Value": "'Inventory age'"
                 }
               }
             },
@@ -279,7 +279,7 @@
             "text": {
               "expr": {
                 "Literal": {
-                  "Value": "'individually identified'"
+                  "Value": "'days since last collection'"
                 }
               }
             },

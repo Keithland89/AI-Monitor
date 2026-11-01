@@ -5,7 +5,7 @@
  * The zip unpacks to the repo's own layout, so the installer finds the rest at its usual paths:
  *   installer/            the installer, without node_modules (install.ps1 runs npm ci)
  *   installer/managed-cli the pinned managed apps CLI's package files
- *   solution/             the four managed solutions
+ *   solution/             the three managed solutions
  *   app/dist/             the app, built
  */
 import { readdirSync, readFileSync, statSync } from 'node:fs';

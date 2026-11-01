@@ -1,8 +1,8 @@
 // @ts-check
 /**
  * The two app registrations, through Microsoft Graph:
- *   - the audit collector, with Graph's AuditLogsQuery.Read.All and Reports.Read.All application
- *     permissions and admin consent, for lanes C and E and the work patterns reports;
+ *   - the audit collector, with Graph's AuditLogsQuery.Read.All application permission and admin
+ *     consent, for lane E (SharePoint agents). It's only made when lane E is included;
  *   - the knowledge sweep, with no API permissions, registered as a Power Platform admin management
  *     application, for lane D. In Agents scope mode it also needs Reader at the tenant root
  *     management group, which is asked for separately.
@@ -15,10 +15,8 @@ import { HttpError } from './http.js';
 /** Microsoft Graph's own app ID, the same in every tenant. */
 export const GRAPH_APP_ID = '00000003-0000-0000-c000-000000000000';
 export const AUDIT_PERMISSION = 'AuditLogsQuery.Read.All';
-/** For the Microsoft 365 usage reports behind the Work patterns view. */
-export const REPORTS_PERMISSION = 'Reports.Read.All';
-/** Every Graph application permission the audit collector holds. */
-export const AUDIT_PERMISSIONS = [AUDIT_PERMISSION, REPORTS_PERMISSION];
+/** Every Graph application permission the audit collector needs. */
+export const AUDIT_PERMISSIONS = [AUDIT_PERMISSION];
 /** Azure's built-in Reader role. */
 export const READER_ROLE_ID = 'acdd72a7-3385-48ef-bd42-f606fba81ae7';
 export const BAP_BASE = 'https://api.bap.microsoft.com';
@@ -30,7 +28,7 @@ const LEGACY_NOTES = ['Created by the Agent Monitor installer.', 'Created by the
 const legacyNames = (/** @type {string} */ name) => ['Agent Monitor', 'Copilot Inventory'].map((old) => name.replace('AI-Monitor', old));
 
 export const APPS = /** @type {const} */ ({
-  audit: { displayName: 'AI-Monitor - audit collector', purpose: 'Reads the unified audit log for lanes C and E (Copilot interactions and SharePoint agents) and the Microsoft 365 usage reports for work patterns.' },
+  audit: { displayName: 'AI-Monitor - audit collector', purpose: 'Reads the unified audit log for lane E (SharePoint agents).' },
   sweep: { displayName: 'AI-Monitor - knowledge sweep', purpose: 'Reads each environment\'s Dataverse for lane D (agent knowledge sources).' },
 });
 
@@ -94,8 +92,10 @@ export async function ensureApp(graph, { key, existing, requiredResourceAccess =
   if (!app) {
     app = await graph.post('/applications', { displayName, signInAudience: 'AzureADMyOrg', notes: NOTES, requiredResourceAccess }, { once: true });
     created = true;
-  } else if (requiredResourceAccess.length && !sameAccess(app.requiredResourceAccess, requiredResourceAccess)) {
-    await graph.patch(`/applications/${app.id}`, { requiredResourceAccess });
+  } else if (requiredResourceAccess.length) {
+    // Adds what's missing and keeps what's there, so permissions an earlier install added stay.
+    const merged = addAccess(app.requiredResourceAccess, requiredResourceAccess);
+    if (merged) await graph.patch(`/applications/${app.id}`, { requiredResourceAccess: merged });
   }
   if (app.displayName !== displayName) {
     await graph.patch(`/applications/${app.id}`, { displayName, notes: NOTES });
@@ -105,10 +105,28 @@ export async function ensureApp(graph, { key, existing, requiredResourceAccess =
   return { ...(existing ?? {}), appId: app.appId, objectId: app.id, spId: sp, displayName, created };
 }
 
-/** @param {any[] | undefined} have @param {any[]} want */
-function sameAccess(have, want) {
-  const ids = (/** @type {any[] | undefined} */ list) => (list ?? []).flatMap((r) => (r.resourceAccess ?? []).map((/** @type {any} */ a) => `${r.resourceAppId}/${a.id}/${a.type}`)).sort().join();
-  return ids(have) === ids(want);
+/**
+ * The registration's permissions with the wanted ones added, or null when none are missing.
+ * @param {any[] | undefined} have
+ * @param {any[]} want
+ * @returns {any[] | null}
+ */
+export function addAccess(have, want) {
+  const merged = (have ?? []).map((r) => ({ ...r, resourceAccess: [...(r.resourceAccess ?? [])] }));
+  let added = false;
+  for (const w of want) {
+    let entry = merged.find((r) => r.resourceAppId === w.resourceAppId);
+    if (!entry) {
+      entry = { resourceAppId: w.resourceAppId, resourceAccess: [] };
+      merged.push(entry);
+    }
+    for (const a of w.resourceAccess ?? []) {
+      if (entry.resourceAccess.some((/** @type {any} */ x) => x.id === a.id && x.type === a.type)) continue;
+      entry.resourceAccess.push(a);
+      added = true;
+    }
+  }
+  return added ? merged : null;
 }
 
 /**

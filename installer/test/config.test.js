@@ -29,7 +29,7 @@ test('a record saves and loads back the same', (t) => {
   record.tenantId = 'tenant';
   record.environment = { id: 'env', name: 'Landing', url: 'https://landing.example.test' };
   record.auditApp = { appId: 'app', objectId: 'obj', displayName: 'AI-Monitor - audit collector', created: true, consented: true, secretKeyId: 'key', secretExpires: '2025-01-01T00:00:00Z', secretWhere: 'envvar' };
-  record.solutions.interactions = { version: '1.0.0.8', importedAt: '2024-01-01T00:00:00Z' };
+  record.solutions.sharepoint = { version: '1.0.0.8', importedAt: '2024-01-01T00:00:00Z' };
   record.flows['flow-1'] = 'on';
   record.managedApp = { appId: 'managed', environmentId: 'env', buildHash: 'abc', dataSources: ['arm'] };
   addHandOff(record, { id: 'admin-app', who: 'Power Platform Administrator', what: 'Register it.', command: 'New-PowerAppManagementApp -ApplicationId app' });

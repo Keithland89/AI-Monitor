@@ -1,8 +1,9 @@
-// Static reference tables copied verbatim from the semantic model (tables/*.tmdl and expressions.tmdl).
+// Static reference tables, adapted from the semantic model (tables/*.tmdl and expressions.tmdl) for the inventory-only app.
+// Agent 365 is an optional comparison: nothing here is needed to run AI-Monitor.
 
 export interface AgentGap { sortOrder: number; status: 'Open' | 'Closed'; capability: string; whyMissing: string; howToClose: string }
 export interface ApiCoverageRow { sortOrder: number; source: string; endpoint: string; result: string; verdict: string; whatItGives: string }
-export interface TelemetryCoverageRow { sortOrder: number; platform: string; inventory: string; configuration: string; sharing: string; usageSignal: string; messageVolume: string; whyNot: string }
+export interface TelemetryCoverageRow { sortOrder: number; platform: string; inventory: string; configuration: string; sharing: string; usageSignal: string; whyNot: string }
 export interface RiskFactorRow { sortOrder: number; factor: string; score: number; rationale: string }
 export interface WatchItem { category: string; vendor: string; appName: string; posture: string; softwareMatch: string; vendorMatch: string; processName: string; domain: string }
 
@@ -47,31 +48,10 @@ export const AGENT_GAPS: AgentGap[] = [
     "status": "Closed",
     "capability": "SharePoint agent inventory",
     "whyMissing": "SharePoint agents are .agent files in document libraries, not Power Platform resources, so Azure Resource Graph cannot enumerate them.",
-    "howToClose": "Closed by SharePointAgentLogging. A daily Purview sharePointFileOperation query for .agent reconstructs the latest observed state per ListItemUniqueId and lands it in Dataverse. FnSpo decodes each SPO_ usage identity to the same item GUID, so names, sites, URLs and usage join exactly. This is an observed-retention inventory: a file with no operation inside the configured audit window remains invisible."
+    "howToClose": "Closed by SharePointAgentLogging. A daily Purview sharePointFileOperation query for .agent reconstructs the latest observed state per ListItemUniqueId and lands it in Dataverse. This is an observed-retention inventory: a file with no operation inside the configured audit window remains invisible."
   },
   {
     "sortOrder": 7,
-    "status": "Closed",
-    "capability": "Per-conversation telemetry",
-    "whyMissing": "Resource Graph exposes only a lastUsed timestamp, so message and session counts per agent are invisible to it.",
-    "howToClose": "Closed by the Purview CopilotInteraction audit records, which give per-turn, per-thread, per-user detail for every Copilot surface. See the Copilot interactions page."
-  },
-  {
-    "sortOrder": 8,
-    "status": "Closed",
-    "capability": "Agent Builder usage",
-    "whyMissing": "Declarative agents run in the Microsoft 365 Copilot host, not the Power Platform runtime. Verified: 0 of 166 Agent Builder agents emit a Power Platform usage record.",
-    "howToClose": "Closed by the unified audit log, which records every declarative-agent turn under AppIdentity Copilot.Studio.Declarative.T_<titleId>, joining straight to the inventory TitleId."
-  },
-  {
-    "sortOrder": 9,
-    "status": "Closed",
-    "capability": "Per-user adoption",
-    "whyMissing": "Resource Graph does not record who used an agent.",
-    "howToClose": "Closed by the audit record, which carries the requesting user UPN, so per-user adoption is available for every agent and for base M365 Copilot."
-  },
-  {
-    "sortOrder": 10,
     "status": "Closed",
     "capability": "Named knowledge sources",
     "whyMissing": "Resource Graph carries knowledge counts by type only - no URL appears anywhere in an agent properties.",
@@ -94,7 +74,7 @@ export const API_COVERAGE: ApiCoverageRow[] = [
     "endpoint": "PowerPlatformResources / microsoft.powerplatformusage/usagerecords",
     "result": "Working",
     "verdict": "Working",
-    "whatItGives": "Per-resource lastUsed signal. This is the adoption and activity backbone."
+    "whatItGives": "Per-resource lastUsed signal. It drives last-used dates and idle and dormant status."
   },
   {
     "sortOrder": 3,
@@ -125,16 +105,16 @@ export const API_COVERAGE: ApiCoverageRow[] = [
     "source": "Microsoft Graph",
     "endpoint": "/copilot/admin/catalog/packages",
     "result": "Blocked (403)",
-    "verdict": "Needs Agent 365",
-    "whatItGives": "The Copilot agent registry. Officially requires a Microsoft Agent 365 licence, so it is unavailable here."
+    "verdict": "Agent 365 only (optional)",
+    "whatItGives": "The Copilot agent registry. Officially requires a Microsoft Agent 365 licence. AI-Monitor does not need it: Resource Graph gives the same inventory."
   },
   {
     "sortOrder": 7,
     "source": "Microsoft Graph",
     "endpoint": "/beta/copilot/agents",
     "result": "Not available (404)",
-    "verdict": "Needs Agent 365",
-    "whatItGives": "Endpoint does not exist in this tenant."
+    "verdict": "Agent 365 only (optional)",
+    "whatItGives": "Endpoint does not exist in this tenant. AI-Monitor does not need it."
   },
   {
     "sortOrder": 8,
@@ -143,14 +123,6 @@ export const API_COVERAGE: ApiCoverageRow[] = [
     "result": "Blocked (403)",
     "verdict": "Needs consent",
     "whatItGives": "Needs AppCatalog.Read.All, which the Azure CLI token cannot issue. Reachable with a dedicated app registration."
-  },
-  {
-    "sortOrder": 9,
-    "source": "Microsoft Graph",
-    "endpoint": "Copilot usage reports",
-    "result": "Blocked (403)",
-    "verdict": "Needs consent",
-    "whatItGives": "Needs Reports.Read.All. Would add per-user Copilot interaction volumes."
   },
   {
     "sortOrder": 10,
@@ -183,30 +155,6 @@ export const API_COVERAGE: ApiCoverageRow[] = [
     "result": "Failed (400)",
     "verdict": "Failed",
     "whatItGives": "Documented Power Platform inventory endpoint rejected every api-version tried; Resource Graph is the working equivalent."
-  },
-  {
-    "sortOrder": 14,
-    "source": "Microsoft Graph",
-    "endpoint": "/v1.0/security/auditLog/queries (app-only)",
-    "result": "Working",
-    "verdict": "Working",
-    "whatItGives": "Purview unified audit log. Returns every CopilotInteraction record in the tenant - per-turn usage for Agent Builder, Copilot Studio, base M365 Copilot and Microsoft's first-party agents. Needs the AuditLogsQuery.Read.All application role."
-  },
-  {
-    "sortOrder": 15,
-    "source": "Exchange Online PowerShell",
-    "endpoint": "Search-UnifiedAuditLog -RecordType CopilotInteraction",
-    "result": "Working",
-    "verdict": "Working",
-    "whatItGives": "The delegated equivalent of the Graph audit query. Works with an Exchange Administrator role and no app registration; connect with -DisableWAM in headless hosts."
-  },
-  {
-    "sortOrder": 16,
-    "source": "Purview audit record",
-    "endpoint": "CopilotEventData.AppIdentity",
-    "result": "Working",
-    "verdict": "Working",
-    "whatItGives": "The join key that makes per-agent usage possible: Copilot.Studio.Declarative.T_* maps to TitleId, Copilot.Studio.<env>-<schema> maps to SchemaName. CopilotEventData.AgentId and .AgentName are empty in this tenant and cannot be relied on."
   },
   {
     "sortOrder": 17,
@@ -246,7 +194,7 @@ export const API_COVERAGE: ApiCoverageRow[] = [
     "endpoint": "PowerPlatformResources / createdIn (inventory completeness)",
     "result": "Working, verified",
     "verdict": "Working",
-    "whatItGives": "Audited on 4 September 2026 to confirm the agent inventory really is tenant-wide. Three checks: only 1 of the 12 PowerPlatformResources types holds agents; createdIn returns exactly two values that sum to the total with nothing left over (20,499 Copilot Studio + 171 Copilot Studio Lite = 20,670, no blanks and no third authoring surface); and the lane is scoped by Power Platform Administrator rather than Azure RBAC, so there is no per-subscription blind spot. Agent Builder carries a titleId on exactly the 100 agents that are published, because the identifier is minted at publish - the 71 unpublished drafts therefore have no join key to the audit log, which is correct rather than a broken join. One caveat: paging this export with $skipToken is only stable when the query orders by a UNIQUE column. Ordering by titleId, which is empty on most rows, returned the right total but a wrong split of 20,512/158; ordering by id returned the correct 20,499/171."
+    "whatItGives": "Audited on 4 September 2026 to confirm the agent inventory really is tenant-wide. Three checks: only 1 of the 12 PowerPlatformResources types holds agents; createdIn returns exactly two values that sum to the total with nothing left over (20,499 Copilot Studio + 171 Copilot Studio Lite = 20,670, no blanks and no third authoring surface); and the lane is scoped by Power Platform Administrator rather than Azure RBAC, so there is no per-subscription blind spot. Agent Builder carries a titleId on exactly the 100 agents that are published, because the identifier is minted at publish. One caveat: paging this export with $skipToken is only stable when the query orders by a UNIQUE column. Ordering by titleId, which is empty on most rows, returned the right total but a wrong split of 20,512/158; ordering by id returned the correct 20,499/171."
   },
   {
     "sortOrder": 22,
@@ -257,20 +205,12 @@ export const API_COVERAGE: ApiCoverageRow[] = [
     "whatItGives": "The only endpoint that can count Foundry AGENTS. Resource Graph returns one row per project, so the 94 Foundry rows in the Agent table are projects, not agents, and Agent Count therefore mixes two units. Measured, not assumed: the one project that did authorise returned 3 agents where the inventory counts 1. Enumerating the rest needs an Azure AI data-plane role on every project, which a tenant-wide inventory identity is unlikely to hold. Foundry is also the one lane governed by Azure RBAC rather than an Entra role, so ARG returns only the subscriptions the refresh identity can read - 7 here - and missing subscriptions are absent silently rather than erroring."
   },
   {
-    "sortOrder": 23,
-    "source": "Purview audit record",
-    "endpoint": "CopilotEventData.AppIdentity (SPO_ prefix)",
-    "result": "Working, used",
-    "verdict": "Working",
-    "whatItGives": "How SharePoint usage joins to inventory. FnSpo decodes the site, web and list GUIDs, then base32-decodes the final drive-item segment and converts its payload to ListItemUniqueId. That GUID joins exactly to SharePointAgent, so used agents inherit their real file name, site and URL while retaining per-turn and per-user usage."
-  },
-  {
     "sortOrder": 24,
     "source": "Microsoft Graph Purview audit query",
     "endpoint": "/v1.0/security/auditLog/queries (sharePointFileOperation, keyword .agent)",
     "result": "Working, used",
     "verdict": "Working",
-    "whatItGives": "The SharePointAgentLogging inventory lane. A 180-day live query returned 4,991 file-operation records, including 723 .agent events over 64 stable ListItemUniqueId values; latest state was 61 current and 3 deleted or recycled. It uses the same AuditLogsQuery.Read.All application role as interaction telemetry and needs no Sites.Read.All. The limit is audit retention: a .agent file with no operation inside the lookback window is not observable."
+    "whatItGives": "The SharePointAgentLogging inventory lane. A 180-day live query returned 4,991 file-operation records, including 723 .agent events over 64 stable ListItemUniqueId values; latest state was 61 current and 3 deleted or recycled. It needs the AuditLogsQuery.Read.All application role and no Sites.Read.All. The limit is audit retention: a .agent file with no operation inside the lookback window is not observable."
   }
 ]
 
@@ -281,9 +221,8 @@ export const TELEMETRY_COVERAGE: TelemetryCoverageRow[] = [
     "inventory": "Full",
     "configuration": "Full",
     "sharing": "Full",
-    "usageSignal": "Yes - lastUsed + audit log",
-    "messageVolume": "Yes - per turn",
-    "whyNot": "Copilot Studio agents are Dataverse-backed Power Platform resources, so they emit microsoft.powerplatformusage/usagerecords. Verified: 1,648 of 20,354 have ever produced one. Per-turn volume now also comes from Purview CopilotInteraction records, joined on the agent's schema name."
+    "usageSignal": "Yes - lastUsed timestamp",
+    "whyNot": "Copilot Studio agents are Dataverse-backed Power Platform resources, so they emit microsoft.powerplatformusage/usagerecords. Verified: 1,648 of 20,354 have ever produced one. Message and user counts are out of scope here: see Analytics Hub."
   },
   {
     "sortOrder": 2,
@@ -291,9 +230,8 @@ export const TELEMETRY_COVERAGE: TelemetryCoverageRow[] = [
     "inventory": "Full",
     "configuration": "Full",
     "sharing": "Full",
-    "usageSignal": "Yes - Purview audit log",
-    "messageVolume": "Yes - per turn",
-    "whyNot": "Declarative agents run inside the Microsoft 365 Copilot host, not the Power Platform runtime, so they emit no Power Platform usage records at all - 0 of 166 matched. Solved instead by reading CopilotInteraction records from the Purview unified audit log and joining AppIdentity (Copilot.Studio.Declarative.T_*) back to the agent's TitleId. This gives per-turn, per-user usage - better than the lastUsed timestamp Copilot Studio exposes."
+    "usageSignal": "None (see Analytics Hub)",
+    "whyNot": "Declarative agents run inside the Microsoft 365 Copilot host, not the Power Platform runtime, so they emit no Power Platform usage records at all - 0 of 166 matched. AI-Monitor therefore shows them with no usage signal, so idle and dormant status does not apply to them. Their usage comes from the audit log, which Analytics Hub reads."
   },
   {
     "sortOrder": 3,
@@ -302,8 +240,7 @@ export const TELEMETRY_COVERAGE: TelemetryCoverageRow[] = [
     "configuration": "Partial",
     "sharing": "N/A",
     "usageSignal": "None",
-    "messageVolume": "No",
-    "whyNot": "Resource Graph sees Foundry projects but not the agents inside them, and exposes no usage or activity timestamp for them at all - the Power Platform usage-record table only covers Power Platform resources. Verified: 0 of 93 Foundry projects carry any usage or last-activity property. Per-agent inventory and usage need the Foundry data-plane /assistants API on each project's own endpoint, plus Application Insights for invocation telemetry."
+    "whyNot": "Resource Graph sees Foundry projects but not the agents inside them, and exposes no usage or activity timestamp for them at all - the Power Platform usage-record table only covers Power Platform resources. Verified: 0 of 93 Foundry projects carry any usage or last-activity property. Per-agent inventory needs the Foundry data-plane /assistants API on each project's own endpoint."
   },
   {
     "sortOrder": 4,
@@ -312,7 +249,6 @@ export const TELEMETRY_COVERAGE: TelemetryCoverageRow[] = [
     "configuration": "Full",
     "sharing": "N/A",
     "usageSignal": "Yes - lastUsed timestamp",
-    "messageVolume": "No",
     "whyNot": "Agent flows are Power Automate resources and do emit usage records, but verified only 11 of 564 have ever produced one."
   }
 ]

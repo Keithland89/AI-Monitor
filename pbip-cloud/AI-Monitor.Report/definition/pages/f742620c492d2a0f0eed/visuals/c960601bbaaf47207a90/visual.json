@@ -20,7 +20,7 @@
                 "horizontalTextAlignment": "left",
                 "textRuns": [
                   {
-                    "value": "One screen: what you have, whether it is used, whether it is safe, and what to do next",
+                    "value": "What you have, who owns it, whether it is safe and what to fix first. Usage and cost: Analytics Hub.",
                     "textStyle": {
                       "fontFamily": "Segoe UI",
                       "fontSize": "9.5pt",

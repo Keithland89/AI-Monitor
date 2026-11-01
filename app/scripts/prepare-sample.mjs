@@ -1,6 +1,6 @@
 // Builds the trimmed, internally consistent sample the app ships in public/sample.
 // Usage: node scripts/prepare-sample.mjs [folder-of-csvs | sample.zip]
-// Default source: ../sample-data/agent365-sample-data.zip (the anonymised sample in this repo).
+// Default source: ../sample-data/ai-monitor-sample-data.zip (the anonymised sample in this repo).
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { basename, dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -9,7 +9,7 @@ import Papa from 'papaparse'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const appDir = resolve(here, '..')
-const source = resolve(process.argv[2] ?? join(appDir, '..', 'sample-data', 'agent365-sample-data.zip'))
+const source = resolve(process.argv[2] ?? join(appDir, '..', 'sample-data', 'ai-monitor-sample-data.zip'))
 const outDir = join(appDir, 'public', 'sample')
 const TARGET_AGENTS = 1500
 const BUDGET_BYTES = 6 * 1024 * 1024
@@ -58,14 +58,11 @@ const table = (name) => {
 }
 
 const agentsT = table('DimAgent.csv')
-const ixT = table('FactCopilotInteraction.csv')
-const surfT = table('DimCopilotSurface.csv')
 const sourcesT = table('FactAgentKnowledgeSource.csv')
 
-// 1. Choose the agents: everything the audit log touches, every non-Copilot Studio agent,
-//    agents with named knowledge sources, then an even stride over the rest.
+// 1. Choose the agents: every non-Copilot Studio agent, agents with named knowledge sources,
+//    then an even stride over the rest.
 const keep = new Set()
-for (const r of ixT.rows) if (r.AgentKey) keep.add(r.AgentKey)
 for (const a of agentsT.rows) if (a.Platform !== 'Copilot Studio') keep.add(a.AgentKey)
 const withSources = [...new Set(sourcesT.rows.map((r) => r.AgentKey))].filter((k) => k)
 for (const k of withSources.slice(0, 250)) keep.add(k)
@@ -111,40 +108,15 @@ for (const [src, out] of [
   write(out, t.rows.filter((r) => agentKeys.has(r.AgentKey)), t.fields)
 }
 
-// 2. Interactions: keep rows for kept agents and every non-agent row (Chat, Cowork, in-app).
-//    Surfaces, users and threads are written once and referenced by position to stay inside the budget.
-const ix = ixT.rows.filter((r) => !r.AgentKey || agentKeys.has(r.AgentKey))
-const surfIndex = new Map()
-const surfRows = []
-const byKey = new Map(surfT.rows.map((s) => [s.SurfaceKey, s]))
-const userIndex = new Map()
-const threadIndex = new Map()
-const index = (map, key, onNew) => {
-  let i = map.get(key)
-  if (i === undefined) { i = map.size; map.set(key, i); onNew?.(key) }
-  return i
-}
-const ixRows = ix.map((r) => ({
-  CreationTime: r.CreationTime,
-  Surface: index(surfIndex, r.SurfaceKey ?? '', (k) => surfRows.push(byKey.get(k) ?? { SurfaceKey: k, AppIdentity: k })),
-  User: index(userIndex, (r.UserPrincipalName ?? '').toLowerCase()),
-  AppHost: r.AppHost,
-  Thread: index(threadIndex, r.ThreadId ?? ''),
-  ResourceCount: r.ResourceCount === '0' ? '' : r.ResourceCount,
-}))
-write('surfaces.csv', surfRows, surfT.fields)
-write('interaction-users.csv', [...userIndex.keys()].map((u) => ({ UserPrincipalName: u })), ['UserPrincipalName'])
-write('interactions.csv', ixRows, ['CreationTime', 'Surface', 'User', 'AppHost', 'Thread', 'ResourceCount'])
-
-// 3. "Today" for the sample: the latest collection timestamp in the source.
+// 2. "Today" for the sample: the latest collection timestamp in the source.
 const collected = [...table('DimSharePointAgent.csv').rows, ...sourcesT.rows].map((r) => r.CollectedAt ?? '').filter(Boolean).sort()
-const asOf = (collected.at(-1) ?? ixRows.map((r) => r.CreationTime).sort().at(-1)).slice(0, 19).replace(' ', 'T')
-const manifest = { asOf, sourceAgents: agentsT.rows.length, sourceInteractions: ixT.rows.length, files: outputs }
+const asOf = (collected.at(-1) ?? new Date().toISOString()).slice(0, 19).replace(' ', 'T')
+const manifest = { asOf, sourceAgents: agentsT.rows.length, files: outputs }
 writeFileSync(join(outDir, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n')
 
 const total = readdirSync(outDir).reduce((s, f) => s + statSync(join(outDir, f)).size, 0)
 for (const o of outputs) console.log(`${o.name.padEnd(24)} ${String(o.rows).padStart(7)} rows`)
-console.log(`agents kept ${agentKeys.size} of ${agentsT.rows.length}; interactions kept ${ixRows.length} of ${ixT.rows.length}`)
+console.log(`agents kept ${agentKeys.size} of ${agentsT.rows.length}`)
 console.log(`asOf ${asOf}; total ${(total / 1024 / 1024).toFixed(2)} MB`)
 if (total > BUDGET_BYTES) {
   console.error(`Sample exceeds the ${BUDGET_BYTES / 1024 / 1024} MB budget.`)

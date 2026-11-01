@@ -4,13 +4,13 @@
 
 # 📡 AI-Monitor
 
-### Every AI agent in your tenant, who uses it and what needs attention, as an app or a Power BI report.
+### Every AI agent in your tenant, who owns it, what it can reach and what to fix first, as an app or a Power BI report.
 
-**What exists · who uses it · what it costs · what to fix first**
+**What exists · who owns it · what it can reach · what to fix first**
 
 <br>
 
-Agent 365–style tenant agent monitoring, without Agent 365.
+Agent 365–style agent inventory and risk, without Agent 365.
 
 <br>
 
@@ -37,23 +37,23 @@ Agent 365–style tenant agent monitoring, without Agent 365.
 
 ## What you get
 
-- **The app:** a Copilot Managed App with ten tabs, from the agent estate to cost and Shadow AI,
-  plus an **Ask** panel. It opens on an anonymised sample until it's connected.
+- **The app:** a Copilot Managed App with the same inventory and risk views as the report, plus a
+  lifecycle review and an **Ask** panel. It opens on an anonymised sample until it's connected.
 - **A Power BI report** with the same model, if you prefer Power BI.
 - **An installer** that switches every data lane on and deploys the app, after you approve a plan.
 
-A tenant-wide monitoring and governance solution for **Microsoft 365 Copilot Agent Builder**, **Copilot Studio**, **agent flows** and **Azure AI Foundry** — built entirely on APIs available to a normal Power Platform / Azure administrator, with **no Agent 365 licence**.
+A tenant-wide inventory and risk solution for **Microsoft 365 Copilot Agent Builder**, **Copilot Studio**, **SharePoint agents**, **agent flows** and **Azure AI Foundry**: what exists, who owns it, what it can reach and what to fix first. It is built entirely on APIs available to a normal Power Platform / Azure administrator, with **no Agent 365 licence** and no Agent 365 export.
 
-Two Power BI builds of one semantic model — **21 tables, 166 measures, 16 pages, 287 visuals** in each:
+Two Power BI builds of one semantic model — **20 tables, 137 measures, 11 pages (9 visible, plus 2 drill-through pages), 174 visuals** in each:
 
 | Deliverable | Path | What it is |
 |---|---|---|
 | **Power BI project (cloud)** | `pbip-cloud\AI-Monitor.pbip` | The maintained deliverable. Live connections to Azure Resource Graph, Dataverse and Defender advanced hunting, so it refreshes on a schedule in PowerBI.com with **no gateway**. |
 | **Power BI project (CSV)** | `pbip\AI-Monitor.pbip` | The same model and the same report, reading CSV files from a folder instead. For offline or air-gapped review. |
 | **Power BI template** | `template\AI-Monitor.pbit` | A single-file template of the report. Open it in Power BI Desktop, enter the parameters when prompted, and it loads against your own tenant. |
-| **Power Platform solutions** | `solution\*.zip` | Importable Dataverse solutions for interaction telemetry, named knowledge sources and SharePoint agent inventory, plus the flow that provisions the application users lane D depends on. |
-| **Anonymised sample data** | `sample-data\agent365-sample-data.zip` | A full demo-tenant extract, every identifying value replaced, so the CSV build opens with real-shaped data and no tenant access. |
-| **The app** | `app\` | A Copilot Managed App version of the report: the same 16 pages in ten tabs, plus a **Chat & Cowork** view, a **Cost & consumption** tab (Copilot Credits per agent, and Azure AI spend from Cost Management), and lightweight **Lifecycle & review**, **Habit stages** and week-on-week views computed from data it already loads. It reads live data through four connectors, and falls back to an anonymised sample. See [`app\README.md`](app/README.md). |
+| **Power Platform solutions** | `solution\*.zip` | Importable Dataverse solutions for named knowledge sources and SharePoint agent inventory, plus the flow that provisions the application users lane D depends on. |
+| **Anonymised sample data** | `sample-data\ai-monitor-sample-data.zip` | A full demo-tenant extract, every identifying value replaced, so the CSV build opens with real-shaped data and no tenant access. |
+| **The app** | `app\` | A Copilot Managed App version of the report: the same inventory and risk views, plus a **Lifecycle review** (keep, watch, review or retire, from each agent's age, last-used date, risk and owner) and an **Ask** panel. It reads live data through four connectors, and falls back to an anonymised sample. See [`app\README.md`](app/README.md). |
 | **Installer** | `installer\` | A guided installer (browser or terminal) that switches every lane on and deploys the app, after you approve a plan. See [`installer\README.md`](installer/README.md). |
 
 Verified end-to-end against a live Microsoft 365 test tenant.
@@ -61,6 +61,18 @@ Verified end-to-end against a live Microsoft 365 test tenant.
 > **Evaluating this as an Agent 365 alternative?** Start with **[Required permissions](#required-permissions)** — it lists exactly what each data source needs, who has to grant it, and what you still get if you decline any part of it. Everything is read-only; nothing here can create, change or control an agent.
 >
 > **Deploying it?** Follow the **[deployment guide](docs/deployment.md)** — prerequisites, app registrations, environment variables, and how the service principal is provisioned into every environment.
+
+### Usage, value and cost
+
+AI-Monitor answers *what exists, who owns it, what it can reach and what to fix first*. Its only
+per-agent usage signal is the `lastUsed` timestamp Azure Resource Graph returns, which is enough for
+*Active in last 30 days*, *Never used* and *Shared tenant-wide but never used*.
+
+Per-conversation usage, people and active users, Copilot Chat and Cowork, Microsoft 365 work
+patterns, and cost are in the sister product,
+**[Analytics Hub](https://github.com/microsoft/AnalyticsHub-Dashboard)**. Like AI-Monitor, it needs
+no Agent 365 licence and no Agent 365 export. AI-Monitor is designed to be Analytics Hub's free agent
+registry.
 
 ---
 
@@ -79,9 +91,9 @@ anonymised sample (`cd app`, `npm ci`, `npm run dev`).
 **To report on your own tenant** — open `pbip-cloud\AI-Monitor.pbip` in Power BI Desktop, publish
 it to a workspace, set the three data-source credentials to *Organizational account*, and set a
 refresh schedule. Permissions are listed under [Required permissions](#required-permissions);
-the three collected lanes are turned on by importing the solutions in `solution\`.
+the two collected lanes are turned on by importing the solutions in `solution\`.
 
-**To just look at the report** — unzip `sample-data\agent365-sample-data.zip`, open
+**To just look at the report** — unzip `sample-data\ai-monitor-sample-data.zip`, open
 `pbip\AI-Monitor.pbip`, and point its `DataFolder` parameter at the unzipped `data` folder. No
 credentials, no Azure permissions, no tenant access. See [`sample-data\README.md`](sample-data/README.md).
 
@@ -91,21 +103,24 @@ credentials, no Azure permissions, no tenant access. See [`sample-data\README.md
 
 ![Architecture](docs/architecture.png)
 
-Six lanes feed one semantic model:
+Five lanes feed one semantic model:
 
 | Lane | Collects | How it is collected | What the model connects to |
 |---|---|---|---|
 | **A** — agent inventory | Copilot Studio, Agent Builder, Foundry, agent flows, environments | Power BI queries ARG at refresh time | **Azure Resource Graph** connector |
 | **B** — owner & creator identity | Display names for owners and creators | Power BI queries Dataverse at refresh time | **Dataverse** connector → `systemusers` |
-| **C** — interaction telemetry | Per-turn Copilot usage from the Purview audit log, including SharePoint agents | A **Power Automate cloud flow** runs daily and writes rows into Dataverse | **Dataverse** connector → `poc_copilotinteractions` |
 | **D** — named knowledge sources | The real sites, indexes and connectors agents are grounded on | A **sweep** reads `botcomponents` in every environment and writes one landing table | **Dataverse** connector → `poc_agentknowledgesources` |
-| **E** — SharePoint agent inventory | `.agent` files observed across SharePoint, with current/deleted state, names, sites and URLs | A separate **Power Automate cloud flow** reconstructs latest state from SharePoint file-operation audit records | **Dataverse** connector → `poc_sharepointagents` |
+| **E** — SharePoint agent inventory | `.agent` files observed across SharePoint, with current/deleted state, names, sites and URLs | A **Power Automate cloud flow** reconstructs latest state from SharePoint file-operation audit records | **Dataverse** connector → `poc_sharepointagents` |
 | **F** — shadow AI on endpoints | Unsanctioned AI desktop tools on managed devices — Claude Code, Copilot CLI, Ollama, Cursor | Power BI queries **Defender advanced hunting** at refresh time | **Web** connector → `api.security.microsoft.com` |
-| **G** — Microsoft 365 work patterns *(the app only, for now)* | 30-day counts of Microsoft 365 apps, email, Teams and Copilot use, for the app's Work patterns view | A daily **Power Automate cloud flow** copies five Microsoft Graph usage reports into one landing table | **Dataverse** connector → `poc_m365usagereports` |
 
-**The semantic model only ever talks to three connectors: Azure Resource Graph, Dataverse and the Defender advanced hunting API.** It never calls Purview, never calls Power Automate, and never touches the 500-plus per-environment Dataverse endpoints. Lanes C, D and E are *collectors*, not data sources: they run on their own schedule, outside the dataset refresh, and deposit rows into the one Dataverse the model reads like any other table. That indirection is what keeps the whole solution gateway-free.
+The lane letters are unchanged from earlier versions. Lanes C (interaction telemetry) and G
+(Microsoft 365 work patterns) were removed in favour of
+[Analytics Hub](https://github.com/microsoft/AnalyticsHub-Dashboard); to remove them from an
+existing install, see [Upgrading from an earlier version](docs/deployment.md#upgrading-from-an-earlier-version).
 
-> Lanes A, B and F need nothing installed. Lanes C and E can reuse one `AuditLogsQuery.Read.All` app registration, and lane G adds `Reports.Read.All` to it; lane D uses its own Dataverse application user. See [Out-of-band collection lanes](#out-of-band-collection-lanes-c-d-and-e).
+**The semantic model only ever talks to three connectors: Azure Resource Graph, Dataverse and the Defender advanced hunting API.** It never calls Purview, never calls Power Automate, and never touches the 500-plus per-environment Dataverse endpoints. Lanes D and E are *collectors*, not data sources: they run on their own schedule, outside the dataset refresh, and deposit rows into the one Dataverse the model reads like any other table. That indirection is what keeps the whole solution gateway-free.
+
+> Lanes A, B and F need nothing installed. Lane E uses one `AuditLogsQuery.Read.All` app registration, for the SharePoint agent inventory only; lane D uses its own Dataverse application user. See [Out-of-band collection lanes](#out-of-band-collection-lanes-d-and-e).
 
 
 ### Star schema
@@ -121,17 +136,17 @@ Six lanes feed one semantic model:
 | `AgentFlow` | agent flow / M365 agent flow | 565 |
 | `AzureAIResource` | Azure AI / Foundry resource | 298 |
 | `User` | Entra principal resolved from Microsoft Graph, used to name creators and owners | 114 |
-| `Interaction` | one row per Copilot turn from the Purview unified audit log | 48,510 |
-| `CopilotSurface` | one row per distinct `AppIdentity` seen in the audit log, classified into a surface type | 744 |
-| `TelemetryCoverage` | which agents have audit telemetry, and which are invisible to it | 20,764 |
+| `TelemetryCoverage` | which platforms carry a usage signal (ARG `lastUsed`), and which are invisible to it. Per-conversation usage is marked *In Analytics Hub* | reference |
+| `Attention` | the ranked *What needs attention* list on the Overview page | reference |
 | `RiskFactor` / `RiskDetail` | the risk rubric, and the per-agent reasons behind each score | reference |
 | `ApiCoverage` / `AgentGap` | which APIs were reachable, and what Agent 365 gives you that they do not | reference |
+| `ShadowAiCatalog` / `ShadowAiSignal` / `ShadowAiDevice` | the Shadow AI watchlist, and what Defender found against it | see [Shadow AI](#shadow-ai-on-managed-endpoints) |
 | `Date` | date dimension, marked as the model's date table | 1,127 |
-| `Metrics` | measure-only table (166 measures, 12 display folders) | 1 |
+| `Metrics` | measure-only table (137 measures, 11 display folders) | 1 |
 
-Relationships: `Agent[EnvironmentId] → Environment`, `AgentConnector[AgentKey] → Agent`, `AgentKnowledge[AgentKey] → Agent`, `KnowledgeSource[AgentKey] → Agent`, `AgentFlow[EnvironmentId] → Environment`, `Agent[CreatedById] → User`, `Agent[OwnerId] → User`, `Interaction[SurfaceKey] → CopilotSurface`, `Interaction[AgentKey] → Agent`, `CopilotSurface[SharePointAgentKey] → SharePointAgent`, `Interaction[Date] → Date` (active), `Agent[CreatedDate] → Date` and `Agent[LastUsedDate] → Date` (both inactive, driven by `USERELATIONSHIP`).
+Relationships: `Agent[EnvironmentId] → Environment`, `AgentConnector[AgentKey] → Agent`, `AgentKnowledge[AgentKey] → Agent`, `KnowledgeSource[AgentKey] → Agent`, `RiskDetail[AgentKey] → Agent`, `Agent[OwnerId] → User`, `AgentFlow[EnvironmentId] → Environment`, `Agent[CreatedDate] → Date` and `Agent[LastUsedDate] → Date` (both inactive, driven by `USERELATIONSHIP`).
 
-> The two `Agent → Date` relationships **must** be inactive. `Interaction` is the fact table that owns the date grain, so leaving `Agent[CreatedDate]` active creates two paths from `Interaction` to `Date` — one direct, one via `Agent` — and Power BI Desktop refuses to load an ambiguous model.
+> The two `Agent → Date` relationships are inactive because an agent has two dates and only one path to `Date` can be active. Measures that count by created date or by last-used date pick their path with `USERELATIONSHIP`.
 
 ### Agent origin
 
@@ -193,9 +208,8 @@ Current tenant snapshot — live Azure Resource Graph, **4 September 2026**:
 | Human-authored agents | 3,374 |
 | Platform-provisioned agents | 17,296 |
 | Agents with no recorded creator | 94 |
-| **Copilot interactions (Purview audit)** | **48,507** across 94 users and 17,749 threads |
-| Autonomous interactions | 67% — no human in the loop |
-| Agents given a usage signal only by the audit log | 469 |
+
+For per-conversation usage, people and cost, see [Analytics Hub](https://github.com/microsoft/AnalyticsHub-Dashboard).
 
 ---
 
@@ -209,8 +223,8 @@ can click through it before you install anything.
 
 ### Overview
 
-The whole estate on one page: how many agents exist, how many are used, and what needs attention
-first. The app opens with a one-line briefing and a *What needs attention* list.
+The whole estate on one page: how many agents exist, how many have been used recently, and what
+needs attention first. The app opens with a one-line briefing and a *What needs attention* list.
 
 <table>
 <tr><th width="50%">The app</th><th width="50%">The Power BI report</th></tr>
@@ -230,20 +244,6 @@ authentication and risk band. Sortable, and driven by the filters.
 <tr>
 <td><img src="docs/screenshots/app/02-inventory.png" alt="The app's Inventory tab"></td>
 <td><img src="docs/screenshots/02-agent-inventory.png" alt="The report's Agent inventory page"></td>
-</tr>
-</table>
-
-### Copilot activity
-
-Real per-agent usage from the Purview unified audit log, including autonomous runs, which no other
-API reports, and SharePoint agents, which no inventory API reports at all. The app also splits
-Copilot Chat, in-app Copilot, Cowork and agents side by side.
-
-<table>
-<tr><th width="50%">The app</th><th width="50%">The Power BI report</th></tr>
-<tr>
-<td><img src="docs/screenshots/app/05-chat-cowork.png" alt="The app's Chat and Cowork view"></td>
-<td><img src="docs/screenshots/03-copilot-interactions.png" alt="The report's Copilot interactions page"></td>
 </tr>
 </table>
 
@@ -287,24 +287,18 @@ public-network exposure.
 </tr>
 </table>
 
-### More in the app
+### Lifecycle review in the app
 
-Views computed from data the app already loads: which agents to promote or retire, where Copilot
-fits the way people work, and what agents cost in Copilot Credits.
+Which agents to keep, watch, review or retire, from each agent's age, last-used date, risk band
+and owner. It is computed from data the app already loads.
 
-<table>
-<tr><th width="33%">Lifecycle & review</th><th width="33%">Work patterns</th><th width="33%">Cost & consumption</th></tr>
-<tr>
-<td><img src="docs/screenshots/app/04-lifecycle.png" alt="The app's Lifecycle and review view"></td>
-<td><img src="docs/screenshots/app/06-work-patterns.png" alt="The app's Work patterns view"></td>
-<td><img src="docs/screenshots/app/10-cost.png" alt="The app's Cost and consumption tab"></td>
-</tr>
-</table>
+<img src="docs/screenshots/app/04-lifecycle.png" alt="The app's Lifecycle review view" width="50%">
 
-The report's other pages (All agents, Agent analytics, Creators & ownership, Usage & popularity,
-Adoption & activity, Tools & integration, Knowledge & grounding, Data sources & gaps and Shadow AI
-(endpoints)) are in the build, and so are the app's matching views. Shadow AI is deliberately empty
-in the sample; see [Shadow AI on managed endpoints](#shadow-ai-on-managed-endpoints).
+The report has nine pages: Overview; Agents · Estate; Agents · Builders; Agents · Tools &
+knowledge; Agents · SharePoint; Risk · Agents to review; Risk · Knowledge reach; Risk · Shadow AI;
+and Setup & coverage. Two more, All agents and Knowledge & grounding, open as drill-through pages.
+The app has matching views. Shadow AI is deliberately empty in the sample; see
+[Shadow AI on managed endpoints](#shadow-ai-on-managed-endpoints).
 
 ---
 
@@ -365,14 +359,13 @@ These are the only endpoints the solution uses. None is licence-gated.
 | A | ARG `PowerPlatformResources` | Agent inventory, configuration, `lastUsed` |
 | A | ARG `resources` (CognitiveServices / MachineLearningServices) | Azure AI Foundry estate |
 | B | Dataverse `systemusers` | Owner and creator names |
-| C | Graph `/security/auditLog/queries` | `CopilotInteraction` audit records |
 | D | Dataverse `botcomponents` where `componenttype eq 16` | Named knowledge sources |
 | E | Graph `/security/auditLog/queries` with `sharePointFileOperation` + `.agent` | Observed SharePoint agent inventory and latest state |
 | F | Defender `DeviceTvmSoftwareInventory` | AI tools installed on managed devices |
 | F | Defender `DeviceProcessEvents` (30d) | AI tools actually executed, including CLI tooling |
 | F | Defender `DeviceNetworkEvents` (30d) | Devices talking to an AI endpoint |
 
-Lanes C, D and E are not read at refresh time — they land their output in Dataverse first. Lane F *is* read at refresh time, like lanes A and B. See [Architecture](#architecture).
+Lanes D and E are not read at refresh time — they land their output in Dataverse first. Lane F *is* read at refresh time, like lanes A and B. See [Architecture](#architecture).
 
 ---
 
@@ -382,21 +375,21 @@ Lanes C, D and E are not read at refresh time — they land their output in Data
 |---|---|---|
 | Tenant-wide agent inventory | ✅ | ✅ |
 | Agent Builder vs Copilot Studio split | ✅ (`createdIn`) | ✅ |
-| Per-agent last-used telemetry | ✅ | ✅ |
+| Per-agent last-used telemetry | ✅ (`lastUsed`; none for Agent Builder) | ✅ |
 | Connector / MCP-server exposure | ✅ | ✅ |
 | Sharing + authentication posture | ✅ | ✅ |
 | Azure AI Foundry estate | ✅ | Partial |
-| Per-agent message / session volume | ✅ via Purview audit log | ✅ |
-| Purview integration for agent activity | Partial — read-only audit log | ✅ full eDiscovery |
+| Per-agent message / session volume | ❌ here — see [Analytics Hub](https://github.com/microsoft/AnalyticsHub-Dashboard) | ✅ |
+| Purview integration for agent activity | Partial — read-only audit log, for the SharePoint agent inventory only | ✅ full eDiscovery |
 | **Per-agent cost metering** | ❌ | ✅ |
 | Per-agent Entra Agent ID identity records | ✅ ID + blueprint ID, no sign-in history | ✅ |
 | **Conversation-level content + DLP inspection** | ❌ | ✅ |
 | **Agent lifecycle actions (block, quarantine, retire)** | ❌ read-only | ✅ |
-| **Cross-workload agents (SharePoint, Teams, Security Copilot)** | Partial — SharePoint inventory and usage are covered within audit retention; Teams and Security Copilot inventory are not | ✅ |
+| **Cross-workload agents (SharePoint, Teams, Security Copilot)** | Partial — SharePoint inventory is covered within audit retention; Teams and Security Copilot inventory are not | ✅ |
 | Shadow AI — unsanctioned AI tooling on endpoints | ✅ via Defender advanced hunting, needs Defender for Endpoint | ✅ |
 | **Agent 365 licence required** | **No** | Yes |
 
-**Summary:** this covers *discovery, inventory, adoption, usage volume and exposure posture* very well. It cannot cover *identity, content inspection, cost metering, or enforcement* — those are the genuine Agent 365 differentiators.
+**Summary:** this covers *discovery, inventory, ownership, knowledge reach and exposure posture* very well. Usage volume belongs to Analytics Hub. It cannot cover *identity, content inspection, cost metering, or enforcement* — those are the genuine Agent 365 differentiators.
 
 ### Why not just use the Graph agent registry API?
 
@@ -413,19 +406,18 @@ It is not used here for one reason, stated plainly in its own reference page:
 
 > Access to the Package Management API requires a **Microsoft Agent 365** license.
 
-So it is not an alternative route to the same place; it sits behind the very licence this project exists to work without. The Azure Resource Graph lane reaches the same agents with a Power Platform Administrator or Global Reader role and no licence, which is why it is the one wired up. If you *do* hold Agent 365 licences, that Graph endpoint is the better inventory source and this report's ARG lane becomes redundant — the rest of it (audit-log volume, knowledge sources, Shadow AI) does not.
+So it is not an alternative route to the same place; it sits behind the very licence this project exists to work without. The Azure Resource Graph lane reaches the same agents with a Power Platform Administrator or Global Reader role and no licence, which is why it is the one wired up. If you *do* hold Agent 365 licences, that Graph endpoint is the better inventory source and this report's ARG lane becomes redundant — the rest of it (knowledge sources, SharePoint agents, Shadow AI, the risk score) does not.
 
 ### Mirroring the Agent 365 console
 
-Three pages exist specifically to sit alongside the Agent 365 UI so the same questions can be answered without the licence:
+Two pages exist specifically to sit alongside the Agent 365 UI so the same questions can be answered without the licence:
 
 | Page | Mirrors | Carries |
 |---|---|---|
-| **Shadow AI (endpoints)** | the Agent 365 Shadow AI tab | unsanctioned AI tooling found on Defender-managed devices across three detection layers, with a devices-per-tool bar chart, a category donut, the full detection list, the affected devices, and the watchlist itself so an empty page reads as *none present* rather than *nothing was checked*. See [Shadow AI on managed endpoints](#shadow-ai-on-managed-endpoints) |
+| **Risk · Shadow AI** | the Agent 365 Shadow AI tab | unsanctioned AI tooling found on Defender-managed devices across three detection layers, with a devices-per-tool bar chart, a category donut, the full detection list, the affected devices, and the watchlist itself so an empty page reads as *none present* rather than *nothing was checked*. See [Shadow AI on managed endpoints](#shadow-ai-on-managed-endpoints) |
 | **All agents** | the Agent 365 agent registry list | four slicers (platform, environment, risk, status) over a master **Agent registry** table, two detail panels — environment/ownership/sharing and data/tools — and an **Activity mix by platform** bar chart. Selection flows one way only: picking a row in the registry drives both panels, while the panels filter nothing back, so the master list never collapses to the row you just clicked. The chart works the other way round, acting as a one-click filter on the registry, and the header KPI cards deliberately ignore all of it and keep describing the slicer-filtered population |
-| **Agent analytics** | the Agent 365 analytics tab | active users, sessions, run-time and instruction coverage, plus agents by creator, top platforms, trending agents by active user count, and active users over time |
 
-The *Executive overview* KPI strip gained **Active users** and **Agent run-time** to match the Agent 365 landing cards.
+Per-conversation analytics, such as active users and sessions, are in [Analytics Hub](https://github.com/microsoft/AnalyticsHub-Dashboard), not here.
 
 Four things the Agent 365 detail pane shows are **not** reachable this way, and no amount of collector work will change that:
 
@@ -438,15 +430,9 @@ Four things the Agent 365 detail pane shows are **not** reachable this way, and 
 
 **Instructions text** and the **"Can read" capability chips** (`webBrowsing`, `codeInterpreter`) *are* obtainable, but only from Dataverse `botcomponent` where `componenttype eq 15` — the `data` field is YAML carrying `instructions:`, `knowledgeSources:` and `gptCapabilities:`. That needs a per-environment sweep like [lane D](#lane-d--named-knowledge-sources) and is not wired up. The collector does surface `InstructionsCharCount` and `HasInstructions` from ARG, so instruction *coverage* is reportable without it.
 
-#### Run-time is an estimate, and deliberately a conservative one
-
-Nothing in ARG or the audit log records how long an agent worked — only when it was used. `Agent Run-time (hours)` therefore sums the elapsed time within each conversation **on each calendar day**.
-
-The per-day grouping is the whole trick. A Teams `ThreadId` survives for months, so measuring a thread end to end is meaningless: on this tenant's data the longest single thread spanned **2,116 hours** and the naive total came to 8,863 hours. Grouping by thread *and* day caps the longest group at 8.0 hours and lands at **465 hours**, which is **0.81×** a rigorous capped-inter-message-gap estimate over the same data. Read it as a floor, not as a like-for-like match with the Agent 365 figure.
-
 ### No part of this needs an Agent 365 licence
 
-Every endpoint the two collectors actually call is listed in the [the endpoint list](#what-the-collectors-call) and none is licence-gated. The two Agent-365-gated endpoints that do exist — `GET /copilot/admin/catalog/packages` and `GET /beta/copilot/agents` — appear **only** as documented `Blocked (403)` rows in the `ApiCoverage` reference table on the *Data sources & gaps* page. They are evidence of the gap, not a data source; no measure, column or visual reads from them.
+Every endpoint the collectors actually call is listed in [the endpoint list](#what-the-collectors-call) and none is licence-gated. Nor does anything here read an Agent 365 export. The two Agent-365-gated endpoints that do exist — `GET /copilot/admin/catalog/packages` and `GET /beta/copilot/agents` — appear **only** as documented rows (`Blocked (403)` and `Not available (404)`) in the model's `ApiCoverage` reference table. They are evidence of the gap, not a data source; no measure, column or visual reads from them.
 
 ---
 
@@ -472,11 +458,9 @@ Three independent checks, each of which would have exposed a missing bucket:
 
 ### Agent Builder gets a `titleId` only when published
 
-Of the 171 agents, **exactly 100 are published and exactly 100 carry a `titleId`** — the two numbers match because the identifier is minted at publish time. This matters because `titleId` is the *only* join key between an Agent Builder agent and its audit records, which arrive under `Copilot.Studio.Declarative.T_<titleId>`.
+Of the 171 agents, **exactly 100 are published and exactly 100 carry a `titleId`** — the two numbers match because the identifier is minted at publish time. This matters because `titleId` is the *only* join key between an Agent Builder agent and its audit records, which arrive under `Copilot.Studio.Declarative.T_<titleId>`. That is the join [Analytics Hub](https://github.com/microsoft/AnalyticsHub-Dashboard) uses for Agent Builder usage.
 
-So the 71 unpublished drafts can never be joined to usage. That is correct behaviour rather than a broken join: an unpublished agent cannot be used, so "No usage signal" is the truthful answer.
-
-Adoption is genuinely thin, and the telemetry is not at fault — **only 16 of the 100 published Agent Builder agents show any usage in three months**, across 98 turns and 11 users.
+So the 71 unpublished drafts can never be joined to usage. That is correct behaviour rather than a broken join: an unpublished agent cannot be used.
 
 ### The Foundry rows are projects, not agents
 
@@ -493,12 +477,9 @@ A true Foundry agent count is not obtainable from the control plane at all. It r
 
 | Gap | Scale | Cause |
 |---|---|---|
-| M365 app-based agent surfaces | ~245 turns over ~22 surfaces — Personal, Teams Toolkit, Declarative, Custom engine | No inventory source. Needs `/appCatalogs/teamsApps`, which is `Blocked (403)` — `ApiCoverage` row 8 |
-| Deleted agents that were used | 1 Agent Builder agent (2 turns), 53 Copilot Studio surfaces (481 turns) | The audit log remembers agents that ARG no longer returns. Inventory is a snapshot of *now*; the audit log is a record of *then* |
+| M365 app-based agent surfaces — Personal, Teams Toolkit, Declarative, Custom engine | Unknown here; they show up only as usage in the Purview audit log | No inventory source. Needs `/appCatalogs/teamsApps`, which is `Blocked (403)` — `ApiCoverage` row 8 |
 | SharePoint agents with no file operation inside audit retention | Unknown | The inventory is reconstructed from SharePoint file-operation records. A `.agent` file with no operation inside the configured lookback leaves no audit evidence, so the report states this as an observed-retention inventory rather than a guaranteed current census |
 | Foundry agents inside projects | Unknown | Data-plane RBAC, above |
-
-**Overall, 45,941 of 48,507 audit interactions (94.7%) resolve to a named, inventoried agent.** Most of the unattributed 5.3% is not an agent at all: 1,286 turns are M365 Copilot base chat and 241 are Microsoft first-party agents.
 
 > **Method note.** ARG `$skipToken` paging is only stable when the query orders by a *unique* column. An early pass ordered by `titleId` (empty on most rows) and returned the correct total of 20,670 but a wrong split — 20,512 / 158 instead of 20,499 / 171. Ordering by `id` fixed it. A paged export should always be reconciled against a single `summarize`.
 
@@ -506,14 +487,11 @@ A true Foundry agent count is not obtainable from the control plane at all. It r
 
 A SharePoint agent is a `.agent` file sitting in a document library. It is not a Power Platform resource, so it belongs to no environment and Azure Resource Graph cannot enumerate it.
 
-This solution uses two signals from the same Purview audit-query API:
+This solution reads one signal from the Purview audit-query API: `SharePointAgentLogging` queries `sharePointFileOperation` records for `.agent`, groups by the stable `ListItemUniqueId`, and keeps the latest operation as current/deleted state. The live 180-day run returned **4,991 file-operation records**, **723 `.agent` events**, **64 distinct items**, **61 current** and **3 deleted/recycled**, with no row errors.
 
-- **Inventory:** `SharePointAgentLogging` queries `sharePointFileOperation` records for `.agent`, groups by the stable `ListItemUniqueId`, and keeps the latest operation as current/deleted state. The live 180-day run returned **4,991 file-operation records**, **723 `.agent` events**, **64 distinct items**, **61 current** and **3 deleted/recycled**, with no row errors.
-- **Usage:** each Copilot turn carries `SPO_<base64url site,web,list>_<drive item id>`. `FnSpo` base32-decodes the final segment to the same `ListItemUniqueId`, so usage joins exactly to the inventory row and inherits the real agent name, site and URL.
+The **Agents · SharePoint** page shows the complete observed inventory alongside current/deleted state, source application, latest actor and audit event count. Per-conversation usage is not shown here; see [Analytics Hub](https://github.com/microsoft/AnalyticsHub-Dashboard).
 
-The dedicated **SharePoint agents** page shows the complete observed inventory alongside current/deleted state, source application, latest actor, audit event count and usage. The **Copilot interactions** page uses the same joined names for per-turn and per-user analysis.
-
-> This needs no `Sites.Read.All`. It reuses the `AuditLogsQuery.Read.All` application role already required by lane C, but ships as its own independent `SharePointAgentLogging` solution with daily and manual flows.
+> This needs no `Sites.Read.All`. It uses the `AuditLogsQuery.Read.All` application role and ships as its own `SharePointAgentLogging` solution with daily and manual flows.
 
 This is an **observed-retention inventory**, not a guaranteed current SharePoint census. A `.agent` file with no file operation inside the configured audit lookback cannot appear. The report preserves that boundary rather than presenting the 64 observed items as proof that no older untouched file exists.
 
@@ -521,58 +499,19 @@ This is an **observed-retention inventory**, not a guaranteed current SharePoint
 
 ## Telemetry coverage is not uniform
 
-Inventory is complete for Copilot Studio and Agent Builder — see [Is the inventory complete?](#is-the-inventory-complete) for the evidence and for the Foundry caveat. **Usage is not**, and which lane supplies it matters:
+Inventory is complete for Copilot Studio and Agent Builder — see [Is the inventory complete?](#is-the-inventory-complete) for the evidence and for the Foundry caveat. **Usage is not.** AI-Monitor's only usage signal is the `lastUsed` timestamp that lane A reads from Azure Resource Graph, and not every platform has one:
 
-| Platform | Inventory | Config & sharing | `lastUsed` (lane A) | Per-turn usage (lane C) |
+| Platform | Inventory | Config & sharing | `lastUsed` (lane A) | Per-conversation usage |
 |---|---|---|---|---|
-| Copilot Studio | Full | Full | Yes — 1,993 of 20,499 | Yes — 45,920 turns, 491 agents |
-| M365 Copilot Agent Builder | Full | Full | **None — 0 of 171** | **Yes — 98 turns, 17 agents** |
-| SharePoint agents | Observed-retention inventory from lane E | File name, site, URL, latest operation and actor | None | Yes — exact item-level join from `SPO_*` |
-| Azure AI Foundry | **Projects only** — one row per project, not per agent | Partial | None | None |
-| Agent flows | Full | Full | Yes — 16 of 565 | None |
+| Copilot Studio | Full | Full | Yes — 1,993 of 20,499 | In Analytics Hub |
+| M365 Copilot Agent Builder | Full | Full | **None — 0 of 171** | In Analytics Hub |
+| SharePoint agents | Observed-retention inventory from lane E | File name, site, URL, latest operation and actor | None | — |
+| Azure AI Foundry | **Projects only** — one row per project, not per agent | Partial | None | — |
+| Agent flows | Full | Full | Yes — 16 of 565 | — |
 
 **Why lane A misses Agent Builder.** Declarative agents run inside the Microsoft 365 Copilot host, not the Power Platform runtime, so they never emit a Power Platform usage record — matching all 171 against ARG's usage set on both `botId` and `name` returns zero.
 
-**Lane C closes that gap.** Purview `CopilotInteraction` records carry an agent identity for *every* Copilot surface, so with the audit lane running, Agent Builder gets a real usage signal. Tenant-wide the audit log is the only evidence of use for **469 agents** that Power Platform reports as never used — the `Telemetry Uplift` measure. Of the 2,462 agents with any activity signal at all, only 1,993 have a Power Platform usage record.
-
-Without lane C, an Agent Builder zero means *not measurable*, not *not used*. The **Usage & popularity** page says so inline, and **Data sources & gaps** carries the full matrix.
-
-
-### Closing the gap: the Purview unified audit log
-
-Each audit record carries an `AppIdentity`, which `Resolve-Surface` classifies into a surface type. That classification is the value of this lane: it splits one audit stream back into the platforms it came from.
-
-| Surface type | Turns | Agents with usage |
-|---|---|---|
-| Copilot Studio agent | 45,920 | 491 |
-| M365 Copilot (base) | 1,286 | — |
-| Custom engine agent | 417 | 41 |
-| Microsoft 1P agent | 241 | — |
-| Copilot Studio (other) | 149 | — |
-| Fabric / Power BI copilot | 110 | — |
-| Personal agent | 102 | — |
-| Agent Builder agent | 98 | 17 |
-| Teams Toolkit agent | 74 | — |
-| Declarative agent | 69 | — |
-| Agent Builder authoring | 37 | — |
-
-Two things fall out that no inventory API can show: **67% of interactions are autonomous** (no human in the loop, so any "active users" metric measures the wrong third of the estate), and a number of surfaces generate traffic that matches no agent in the inventory at all.
-
-
-#### Usage over time
-
-Because the audit log is the only source with a real timestamp per turn, the **Copilot interactions** page is the one page that can answer "when". It carries a `Between`-mode date-range slicer over `Date[Date]` and a *Sessions and turns by month* clustered column so busy periods stand out:
-
-| Month | Sessions | Turns |
-|---|---|---|
-| 2026-06 | 4,825 | 12,969 |
-| 2026-07 | 5,496 | 15,111 |
-| 2026-08 | 6,793 | 18,769 |
-| 2026-09 | 649 | 1,658 |
-
-The monthly session counts do not sum to the 17,749 total. `DISTINCTCOUNT` of a thread that spans a month boundary counts it in both months — expected for a conversation-level grain, not a defect. Turns *do* sum exactly, because a turn belongs to one day.
-
-The date slicer is sized 288×68 rather than the standard 140×58: two date pickers plus the drag handle do not fit in a normal slicer body.
+So here, *No usage signal* on an Agent Builder agent means *not measurable*, not *not used*. Per-turn usage from the Purview audit log, which does cover Agent Builder, is in [Analytics Hub](https://github.com/microsoft/AnalyticsHub-Dashboard). The `TelemetryCoverage` table on the **Setup & coverage** page carries the full matrix.
 
 ---
 
@@ -594,20 +533,17 @@ Both builds now relabel the null GUID **before** attempting a directory lookup. 
 
 ---
 
-## Activity: two signals, not one
+## Activity: one signal
 
-An agent is only reported as unused when **both** available signals are silent.
+An agent's activity comes from one source: the `lastUsed` timestamp on its Azure Resource Graph record, which ARG derives from Power Platform usage records (`microsoft.powerplatformusage/usagerecords`).
 
 | Signal | Source | Coverage |
 |---|---|---|
-| Power Platform usage record | ARG `microsoft.powerplatformusage/usagerecords` | 1,998 of 20,497 Copilot Studio agents (9.7 %); **0 of 171** Agent Builder |
-| Audit-log interaction | Purview unified audit log (lane C) | every agent that was actually invoked in the retention window |
+| Power Platform usage record | ARG `microsoft.powerplatformusage/usagerecords`, surfaced as `lastUsed` | 1,998 of 20,497 Copilot Studio agents (9.7 %); **0 of 171** Agent Builder |
 
-`Agent[LastActivityAt]` takes the later of the two, `DaysSinceLastActivity` measures from it, and `ActivityStatus` bands the result. Using usage records alone mislabels agents that demonstrably ran: **470 agents carrying real audit-log interactions were reported as "No usage signal"**. The usage-record-only view is retained as `ActivityStatusUsageRecords` for comparison, but nothing on the report reads it by default.
+`Agent[LastActivityAt]` takes `LastUsed`, `DaysSinceLastActivity` measures from it, and `ActivityStatus` bands the result: *Active (7d)*, *Active (30d)*, *Idle (90d)*, *Dormant (90d+)* or *No usage signal*. That is what drives *Active in last 30 days*, *Never used* and the *Shared tenant-wide and never used* risk factor.
 
-`LastActivityAt` deliberately reads the audit maximum with `MAXX ( FILTER ( 'Interaction', ... ) )` rather than the more natural `CALCULATE ( MAX ( 'Interaction'[CreationTime] ) )`. **`CALCULATE` inside a calculated column performs context transition, which takes a dependency on every column of its own table** — including `DaysSinceLastActivity` and `ActivityStatus`, which depend back on `LastActivityAt`. That circle is not reported as an error: the engine resolves it to blank, so the whole audit signal silently disappeared and all 470 agents fell back into "No usage signal" while their interaction counts and active-user figures still showed correctly. `MAXX`/`FILTER` establishes no row context over `Agent`, so it depends only on `Agent[AgentKey]` and resolves. `check-dax-all.js` fails the build if any calculated column uses `CALCULATE` while another calculated column on the same table depends on it.
-
-Because usage records cover no Agent Builder agents at all, the audit log is the *only* activity signal for that platform — so a thin-looking Agent Builder row on the platform-adoption table is a measurement gap, not low adoption.
+Because usage records cover no Agent Builder agents at all, a thin-looking Agent Builder row on the platform-adoption table is a measurement gap, not low adoption. Per-conversation usage, which does cover Agent Builder, is in [Analytics Hub](https://github.com/microsoft/AnalyticsHub-Dashboard).
 
 ### Fallbacks for unresolvable dimensions
 
@@ -678,7 +614,7 @@ This is device telemetry, so it only covers **devices onboarded to Defender for 
 
 ## Two builds: `pbip\` and `pbip-cloud\`
 
-Same sources of truth, same **16 pages / 287 visuals / 21 tables**, different connectors. The two are kept at parity deliberately: every expression, column, measure and page is a verbatim copy, and only the *table partitions* differ. That means a drift between the lanes shows up as a plain text diff rather than as a report that quietly says something different depending on which file you opened.
+Same sources of truth, same **11 pages / 174 visuals / 20 tables**, different connectors. The two are kept at parity deliberately: every expression, column, measure and page is a verbatim copy, and only the *table partitions* differ. That means a drift between the lanes shows up as a plain text diff rather than as a report that quietly says something different depending on which file you opened.
 
 | | `pbip\` | `pbip-cloud\` |
 |---|---|---|
@@ -686,7 +622,6 @@ Same sources of truth, same **16 pages / 287 visuals / 21 tables**, different co
 | Agent grounding | `data\FactAgentKnowledge.csv` | ARG `knowledgeByType`, live |
 | Named knowledge sources | `data\FactAgentKnowledgeSource.csv` | Dataverse `poc_agentknowledgesources` |
 | SharePoint agent inventory | `data\DimSharePointAgent.csv` | Dataverse `poc_sharepointagents` |
-| Interactions | `data\FactCopilotInteraction.csv` | Dataverse `poc_copilotinteractions` via `OData.Feed` |
 | Shadow AI | `data\FactShadowAiSignal.csv` + `FactShadowAiDevice.csv` | Defender advanced hunting via `Web.Contents`, live |
 | Identity | `DimUser.csv` (Microsoft Graph, whole directory) | Dataverse `systemusers`, names resolved in DAX |
 | Refresh in PowerBI.com | needs a gateway (local files) | **no gateway, scheduled refresh works** |
@@ -715,61 +650,31 @@ Three credentials, no gateway. Set the refresh schedule in the dataset settings 
 
 ---
 
-## Out-of-band collection lanes (C, D and E)
+## Out-of-band collection lanes (D and E)
 
-Lanes A, B and F refresh directly from Power BI. Lanes C, D and E cannot, and **all three solve it the same way**: a collector runs on its own schedule and writes rows into the one Dataverse the model reads.
+Lanes A, B and F refresh directly from Power BI. Lanes D and E cannot, and **both solve it the same way**: a collector runs on its own schedule and writes rows into the one Dataverse the model reads.
 
-**Power Platform setup uses two app registrations total.** Lanes C and E reuse one audit app with `AuditLogsQuery.Read.All`; lane D uses a separate knowledge-sweep app with no Graph permission, but it needs a Dataverse application user in each covered environment. Defender uses a signed-in Power BI credential, not another app registration. The exact solution order, variable prefixes and connection-reference names are in the [deployment install map](docs/deployment.md#power-platform-solutions--install-map).
+**Power Platform setup uses two app registrations total.** Lane E uses an audit app with `AuditLogsQuery.Read.All`, for the SharePoint agent inventory only; lane D uses a separate knowledge-sweep app with no Graph permission, but it needs a Dataverse application user in each covered environment. Defender uses a signed-in Power BI credential, not another app registration. The exact solution order, variable prefixes and connection-reference names are in the [deployment install map](docs/deployment.md#power-platform-solutions--install-map).
 
-| | Lane C — interaction telemetry | Lane D — named knowledge sources | Lane E — SharePoint agent inventory |
-|---|---|---|---|
-| **What it adds** | Who used which agent, when, how often | Which SharePoint site / website / index each agent reads | Which `.agent` files have been observed, their latest state, names, sites and URLs |
-| **Why Power BI can't read it** | The audit API is `POST`-only with an Entra audience the Web connector cannot mint | The names live in **one Dataverse per environment** (520+); a computed endpoint is a *dynamic data source*, which the service refuses to refresh | The same audit API is asynchronous and `POST`-only; reconstructing latest state also requires paging and grouping hundreds of file operations |
-| **Permissions** | `AuditLogsQuery.Read.All` (Application), Global Admin consent | **No API permissions** — instead a Dataverse application user per environment | `AuditLogsQuery.Read.All` (Application), reusable from lane C; no `Sites.Read.All` |
-| **Collector** | Power Automate cloud flow, daily — **built and running** | Power Automate cloud flow, daily — **built and running** | Separate Power Automate cloud flow, daily — **built and live-tested** |
-| **Lands in** | `poc_copilotinteractions` | `poc_agentknowledgesources` | `poc_sharepointagents` |
-| **Ships as** | `solution\CopilotInteractionLogging.zip` | `solution\AgentKnowledgeSourceSweep.zip` | `solution\SharePointAgentLogging.zip` |
-| **Pages lost if skipped** | Copilot interactions, usage uplift | Knowledge sources | SharePoint agents inventory page; SharePoint usage remains visible but without inventory names and URLs |
+| | Lane D — named knowledge sources | Lane E — SharePoint agent inventory |
+|---|---|---|
+| **What it adds** | Which SharePoint site / website / index each agent reads | Which `.agent` files have been observed, their latest state, names, sites and URLs |
+| **Why Power BI can't read it** | The names live in **one Dataverse per environment** (520+); a computed endpoint is a *dynamic data source*, which the service refuses to refresh | The audit API is asynchronous and `POST`-only, with an Entra audience the Web connector cannot mint; reconstructing latest state also requires paging and grouping hundreds of file operations |
+| **Permissions** | **No API permissions** — instead a Dataverse application user per environment | `AuditLogsQuery.Read.All` (Application), Global Admin consent; no `Sites.Read.All` |
+| **Collector** | Power Automate cloud flow, daily — **built and running** | Power Automate cloud flow, daily — **built and live-tested** |
+| **Lands in** | `poc_agentknowledgesources` | `poc_sharepointagents` |
+| **Ships as** | `solution\AgentKnowledgeSourceSweep.zip` | `solution\SharePointAgentLogging.zip` |
+| **Lost if skipped** | Named knowledge sources | The SharePoint agent inventory |
 
 Dataverse is a convenience, not a requirement — its only job is to be a cloud-resident store Power BI can refresh from without a gateway. Azure SQL or a Fabric Lakehouse would do the same; swap `FnDataverse` and nothing else in the model changes.
 
-### Lane C — interaction telemetry
-
-Import `solution\CopilotInteractionLogging.zip` (managed for a clean install), point its environment variables at your tenant and app registration, fix the Dataverse connection reference, and turn the daily flow on. **Step-by-step setup is in the [deployment guide](docs/deployment.md#lane-c--copilot-interaction-telemetry);** permission detail is in [Required permissions § 4](#4--copilot-interaction-telemetry-lane-c).
-
-#### The two Power Automate flows
-
-The solution ships two cloud flows. They are identical apart from the trigger, and they are the part of this architecture you are most likely to want to change.
-
-| Flow | Trigger | Use |
-|---|---|---|
-| *Sync Audit Logs to Dataverse* | Recurrence — daily, GMT Standard Time | Keeps the table current |
-| *Manual — Sync Audit Logs to Dataverse* | Manual | Backfills history with a wider look-back |
-
-What the flow does on each run:
-
-1. **Resolves its credential** — reads the client secret either from the `poc_Audit_Secret` environment variable or, when `poc_Audit_UsingAKVtruefalse` is `true`, from Key Vault via `poc_KeyVaultSecret`. It fails fast and logs if neither resolves.
-2. **Computes the window** from `poc_AuditMinutestoLookBack` and `poc_AuditEndTimeMinutesAgo` — the second one deliberately ends the window short of *now*, because audit events surface late.
-3. **Starts an audit query** — `POST https://graph.microsoft.com/beta/security/auditLog/queries` with `ActiveDirectoryOAuth`, filtered to `recordTypeFilters: ["CopilotInteraction"]`.
-4. **Polls until the query completes** — Graph runs this asynchronously; the wait loop allows up to 480 checks over 8 hours.
-5. **Pages the results** and **upserts each record** into `poc_copilotinteractions`, keyed on the audit record id so re-running a window is idempotent.
-6. **Logs the run** to `poc_copilotinteractionflowrunses` with retrieved / created / modified / error counts, and writes any per-record failure to `poc_copilotinteractionflowrunerrorses`.
-
-Every HTTP call is wrapped in its own retry loop (5 attempts), so a transient Graph failure does not lose the run.
-
-**The customisation points**, all environment variables — no flow editing required: the look-back window and lag allowance (`poc_AuditMinutestoLookBack`, `poc_AuditEndTimeMinutesAgo`), where the secret comes from (inline or Key Vault), the token authority and audience (change these for a sovereign cloud), and the failure-notification address. Full list and values in the [deployment guide](docs/deployment.md#3-set-the-environment-variables).
-
-To widen what is collected, edit `recordTypeFilters` in the *AuditLogQuery* action: the same flow shape will pull any unified-audit record type, not just `CopilotInteraction`. Add the matching columns to `poc_copilotinteractions`, then add them to the `Interaction` table in the semantic model.
-
 > Raw flow exports are **deliberately not committed** — the flow API resolves secret-typed environment variables in plaintext, so an export would embed the live client secret. **A solution export does not mask them either**: if a secret-typed environment variable holds a current value, that value leaves the tenant inside the zip. The zips published here were exported with the value cleared to the placeholder `insertsecrethere`, and every zip is scanned before it is committed. Clear the value before you export, and check the export before you share it.
-
-Two things to expect: the audit log lags by up to ~24h, so the sync is structurally a few days behind; and a skipped day is not self-healing — run the manual flow for the gap.
 
 ### Lane D — named knowledge sources
 
 `AgentKnowledge` tells you an agent reads *three SharePoint sites*. This lane tells you **which** sites, because Resource Graph carries knowledge counts only — no URLs.
 
-Import `solution\AgentKnowledgeSourceSweep.zip`, point its environment variables at your tenant and app registration, fix the Dataverse connection reference, and turn the daily flow on — exactly the same shape as lane C. **Step-by-step setup is in the [deployment guide](docs/deployment.md#lane-d--named-knowledge-sources);** permission detail is in [Required permissions § 6](#6--named-knowledge-sources-lane-d).
+Import `solution\AgentKnowledgeSourceSweep.zip`, point its environment variables at your tenant and app registration, fix the Dataverse connection reference, and turn the daily flow on — the same shape as lane E. **Step-by-step setup is in the [deployment guide](docs/deployment.md#lane-d--named-knowledge-sources);** permission detail is in [Required permissions § 5](#5--named-knowledge-sources-lane-d).
 
 #### The daily flow
 
@@ -792,7 +697,7 @@ What the flow does on each run:
 
 The tombstone step is guarded: it re-reads the error count and the fresh-row count **from Dataverse** rather than trusting the flow's own counter variables, because those are incremented inside concurrent loops where increments are not guaranteed to land — and an under-counted failure total would authorise a delete that emptied the table.
 
-> As with lane C, raw flow exports are **deliberately not committed** — the flow API resolves secret-typed environment variables in plaintext, and **a solution export does not mask a secret-typed value either**. The published zip carries the placeholder `insertsecrethere`; set the real value in your own environment after import.
+> As noted above, raw flow exports are **deliberately not committed** — the flow API resolves secret-typed environment variables in plaintext, and **a solution export does not mask a secret-typed value either**. The published zip carries the placeholder `insertsecrethere`; set the real value in your own environment after import.
 
 Agent Builder agents are not covered by this lane — they are never stored in Dataverse, so their grounding is visible at *type* level only.
 
@@ -844,7 +749,7 @@ What it does on each run:
 
 Five deliberate design choices are worth knowing:
 
-- **It authenticates with a client secret, and that is not a free choice.** The obvious design — the *HTTP with Microsoft Entra ID* connector, carrying no credential at all — **cannot work**. Microsoft gates first-party-to-first-party consent behind preauthorization, and that connector is not preauthorized for `api.bap.microsoft.com` or `management.azure.com`; the sign-in fails with `AADSTS65002` and **no tenant admin can consent their way past it**. The flow therefore uses Power Automate's native `Http` action with `ActiveDirectoryOAuth`, the same pattern lanes C, D and E use, which needs no connection and so has nothing to consent to.
+- **It authenticates with a client secret, and that is not a free choice.** The obvious design — the *HTTP with Microsoft Entra ID* connector, carrying no credential at all — **cannot work**. Microsoft gates first-party-to-first-party consent behind preauthorization, and that connector is not preauthorized for `api.bap.microsoft.com` or `management.azure.com`; the sign-in fails with `AADSTS65002` and **no tenant admin can consent their way past it**. The flow therefore uses Power Automate's native `Http` action with `ActiveDirectoryOAuth`, the same pattern lanes D and E use, which needs no connection and so has nothing to consent to.
 - **A 200 from `addAppUser` is not proof.** The endpoint answers `200` optimistically, so the flow only records a grant after the service principal has actually authenticated into that environment. Without that check the manifest accumulates environments the sweep will later fail to read, with no signal that anything went wrong.
 - **Every call is given a deadline.** Power Automate's `Http` action follows the asynchronous pattern by default, so a `202` turns the call into an open-ended poll that can hold a run in *Running* indefinitely — no error, no progress, and nothing to distinguish it from a slow tenant. Each call therefore disables that pattern and carries a hard three-minute ceiling, so one unresponsive environment fails, gets logged and the run moves on.
 - **`addAppUser` is idempotent.** Re-granting an environment that already has the application user returns success, which is what makes `poc_AU_ReassertAll` safe and makes the flow self-healing when a new environment appears.
@@ -860,7 +765,7 @@ It also closes a coverage gap: sweeping as an interactive admin failed in **92 o
 
 ### Lane E — SharePoint agent inventory
 
-Import `solution\SharePointAgentLogging.zip` (managed for a clean install), set its `poc_SP_*` environment variables, bind the Dataverse connection reference and turn on the daily flow. It can reuse lane C's tenant, app id and secret because both collectors need the same `AuditLogsQuery.Read.All` application role, but it remains a separate solution and schedule.
+Import `solution\SharePointAgentLogging.zip` (managed for a clean install), set its `poc_SP_*` environment variables, bind the Dataverse connection reference and turn on the daily flow. It uses its own app registration with the `AuditLogsQuery.Read.All` application role, which here serves the SharePoint agent inventory only.
 
 The daily and manual flows both:
 
@@ -872,7 +777,7 @@ The daily and manual flows both:
 6. Delete stale landing rows only after a successful non-empty query with zero row-write errors.
 7. Write exact run and error counts to `poc_sharepointagentloggingruns` and `poc_sharepointagentloggingerrors`.
 
-The live acceptance run completed with **4,991 records retrieved, 723 `.agent` events, 64 distinct items, 61 current, 3 deleted, 64 rows created and 0 errors**. Power BI reads the result through `SrcSharePointAgent`; `FnSpo` converts each used agent's opaque drive-item id into the same GUID for an exact relationship.
+The live acceptance run completed with **4,991 records retrieved, 723 `.agent` events, 64 distinct items, 61 current, 3 deleted, 64 rows created and 0 errors**. Power BI reads the result through `SrcSharePointAgent`.
 
 The boundary is explicit: this is a retention-window observation, not a crawl of every SharePoint library. Increase `poc_SP_LookbackDays` up to the audit service's available retention if older untouched files matter.
 
@@ -889,11 +794,10 @@ This is the section to read first if you are evaluating this as an Agent 365 alt
 | 1 | Copilot Studio + Agent Builder inventory, config, risk | Signed-in user | **Power Platform Administrator** (or Global Reader, or AI Administrator) | Entra role assignment |
 | 2 | Azure AI Foundry projects and resources | Signed-in user | **Reader** on each Azure subscription in scope | Azure RBAC |
 | 3 | Owner / creator display names | Signed-in user | Any Dataverse security role that can **read `systemuser`** (e.g. Basic User) | Dataverse env admin |
-| 4 | Copilot interaction telemetry *(lane C)* | App registration | **`AuditLogsQuery.Read.All`** (Microsoft Graph, *Application*) | Global Administrator consent |
-| 5 | SharePoint agent inventory *(lane E)* | App registration | **`AuditLogsQuery.Read.All`** — the lane C registration can be reused; no `Sites.Read.All` | Global Administrator consent |
-| 6 | Named knowledge sources *(lane D)* | App registration | **No API permissions.** Instead a Dataverse **application user in every environment**, created via `addAppUser` — provisioned by the shipped flow | Power Platform Administrator |
-| 7 | Publish + scheduled refresh | Signed-in user | **Power BI Pro** (or PPU/Fabric capacity) | Licence assignment |
-| 8 | Shadow AI on endpoints *(lane F)* | Signed-in user | **Security Reader** (or any role granting advanced hunting), plus **Defender for Endpoint** with devices onboarded | Entra role assignment |
+| 4 | SharePoint agent inventory *(lane E)* | App registration | **`AuditLogsQuery.Read.All`** (Microsoft Graph, *Application*); no `Sites.Read.All` | Global Administrator consent |
+| 5 | Named knowledge sources *(lane D)* | App registration | **No API permissions.** Instead a Dataverse **application user in every environment**, created via `addAppUser` — provisioned by the shipped flow | Power Platform Administrator |
+| 6 | Publish + scheduled refresh | Signed-in user | **Power BI Pro** (or PPU/Fabric capacity) | Licence assignment |
+| 7 | Shadow AI on endpoints *(lane F)* | Signed-in user | **Security Reader** (or any role granting advanced hunting), plus **Defender for Endpoint** with devices onboarded | Entra role assignment |
 
 **Not required, at all:** an Agent 365 licence, Copilot Studio licences, Fabric capacity, Power BI Premium, an on-premises data gateway, or any write permission to any agent.
 
@@ -928,16 +832,17 @@ The cloud build resolves display names from the Dataverse `systemusers` table ov
 
 Note this only covers principals present in that Dataverse environment. The CSV build instead resolves names through **`POST /v1.0/directoryObjects/getByIds`**, which — unusually — works with a plain Azure CLI token and no app registration, and therefore covers the whole directory. If broad name coverage matters more to you than being gateway-free, that is the trade-off.
 
-### 4 — Copilot interaction telemetry (lane C)
+### 4 — SharePoint agent inventory (lane E)
 
-Lanes C and E share the audit app registration because both use the Graph audit-log query API, which is `POST`-only and issues tokens for an audience Power Query cannot mint.
+Lane E uses the Graph audit-log query API, which is `POST`-only and issues tokens for an audience Power Query cannot mint, so it runs as a scheduled flow under its own app registration. It reads SharePoint file-operation records only, to build the SharePoint agent inventory.
 
 | Requirement | Value |
 |---|---|
 | API permission | *Microsoft Graph* → **`AuditLogsQuery.Read.All`** (Application) |
 | Consent | **Admin consent required** — a Global Administrator must grant it |
-| Credential | A client secret, stored in Key Vault or a secret-typed environment variable |
+| Credential | A client secret, stored in Key Vault or a secret-typed environment variable, supplied as the `poc_SP_*` environment variables |
 | Tenant setting | **Unified audit logging must be switched on** in Purview |
+| Extra SharePoint scope | **None** — no `Sites.Read.All`, `Files.Read.All` or per-site grant |
 
 `AuditLog.Read.All` is *not* sufficient — `/security/auditLog/queries` is governed by its own `AuditLogsQuery` permission family.
 
@@ -946,22 +851,9 @@ Two things that catch people out:
 - **Admin consent is not optional.** Without it every call returns `401`, and the flow will appear to run successfully while writing nothing.
 - **Audit history starts when logging was enabled.** If it was turned on last week, there is no data from last month, and no permission can retrieve it.
 
-Skip this lane and every other page still works — you lose the interaction-level usage pages and the telemetry-uplift measures.
+The solution reads only Purview audit records, lands rows in its own Dataverse tables and exposes them through the **Agents · SharePoint** page. Skip it and every other page still works — you lose the SharePoint agent inventory.
 
-### 5 — SharePoint agent inventory (lane E)
-
-SharePointAgentLogging uses the same Microsoft Graph permission as lane C:
-
-| Requirement | Value |
-|---|---|
-| API permission | *Microsoft Graph* → **`AuditLogsQuery.Read.All`** (Application) |
-| Consent | Reuse the lane C consent if the same app registration is supplied |
-| Credential | The lane C tenant, client id and secret can be entered again under the separate `poc_SP_*` environment variables |
-| Extra SharePoint scope | **None** — no `Sites.Read.All`, `Files.Read.All` or per-site grant |
-
-The solution reads only Purview audit records, lands rows in its own Dataverse tables and exposes them through the **SharePoint agents** page. Skip it and SharePoint interactions still appear through lane C, but inventory-only agents and the joined file names, sites and URLs are absent.
-
-### 6 — Named knowledge sources (lane D)
+### 5 — Named knowledge sources (lane D)
 
 Unusually, this lane needs **no API permissions at all** — no Graph scopes, no admin consent. What it needs instead is *presence in each environment*.
 
@@ -979,9 +871,9 @@ Two things that catch people out:
 - **Power Platform Administrator alone is not enough to *read* an environment.** The role lets you *create* the application user; it does not let a service principal read Dataverse without one. This is why a tenant-wide sweep needs a per-environment bootstrap.
 - **The grant is broad and wide-reaching.** Hundreds of System Administrator application users is a real security decision, not a formality. Restrict it to environments that actually hold knowledge-bearing agents, keep a record of every grant as your revocation list, and remember that deleting the app registration revokes everything at once.
 
-Skip this lane and every other page still works — you lose only the *Knowledge sources* page. Agent Builder agents are not covered by it in any case.
+Skip this lane and every other page still works — you lose only the named knowledge sources. Agent Builder agents are not covered by it in any case.
 
-### 7 — Power BI
+### 6 — Power BI
 
 - **Power BI Pro** to publish and to share the report; a workspace you can publish into.
 - Scheduled refresh needs **three Organizational-account credentials** — Azure Resource Graph, Dataverse and the Defender advanced hunting host — each set to **Organizational** privacy. If any is set to *Private*, the Data Privacy Firewall blocks the model from combining them and the refresh fails.
@@ -992,17 +884,17 @@ Skip this lane and every other page still works — you lose only the *Knowledge
 Worth stating plainly when proposing this to a security reviewer:
 
 - No permission here allows creating, editing, disabling, deleting or running any agent.
-- No permission grants access to conversation *content*. The audit lane records who used which surface, when, and against how many resources — **not** what was said.
-- Every source is read-only; the only thing written anywhere is rows into your own Dataverse tables in lanes C, D and E.
+- No permission grants access to conversation *content*. The audit lane reads only SharePoint file-operation records for `.agent` files — which file, where, when and by whom — **not** file contents or anything said to an agent.
+- Every source is read-only; the only thing written anywhere is rows into your own Dataverse tables in lanes D and E.
 
 ### Minimum viable
 
 | If you only have… | You still get | You lose |
 |---|---|---|
-| Power Platform Admin (or Global Reader) | Full Copilot Studio + Agent Builder inventory, config, risk scoring, sharing/governance pages | Foundry, identity names, interactions, named sources |
-| \+ Reader on subscriptions | Azure AI Foundry coverage | Identity names, interactions, named sources |
-| \+ Dataverse `systemuser` read | Creator and owner names | Interactions, named sources |
-| \+ App registration with admin consent | Interaction telemetry, SharePoint agent inventory, real usage signal and telemetry-uplift | Named sources |
+| Power Platform Admin (or Global Reader) | Full Copilot Studio + Agent Builder inventory, config, `lastUsed` activity, risk scoring, sharing/governance pages | Foundry, identity names, SharePoint agents, named sources |
+| \+ Reader on subscriptions | Azure AI Foundry coverage | Identity names, SharePoint agents, named sources |
+| \+ Dataverse `systemuser` read | Creator and owner names | SharePoint agents, named sources |
+| \+ App registration with admin consent | SharePoint agent inventory | Named sources |
 | \+ App registration with a per-environment application user | Named knowledge sources — the actual sites and indexes agents read | — |
 
 ---
@@ -1011,8 +903,8 @@ Worth stating plainly when proposing this to a security reviewer:
 
 ```
 pbip-cloud\                    Power BI project, cloud sources - the maintained, published deliverable
-pbip\                          Power BI project, CSV sources - same 16 pages, offline or air-gapped
-solution\                      Lane C, lane D, lane E and app-user provisioning Dataverse solutions (.zip)
+pbip\                          Power BI project, CSV sources - same 11 pages, offline or air-gapped
+solution\                      Lane D, lane E and app-user provisioning Dataverse solutions (.zip)
 app\                           The app (Copilot Managed App): React + TypeScript, live connectors, sample fallback
 installer\                     Guided installer: plan, approve, then set up every lane and deploy the app
 template\                      The report as a single Power BI template (.pbit)
@@ -1025,18 +917,17 @@ data\                          Local CSV folder the local build reads
 There are two copies of the same report. **`pbip-cloud\AI-Monitor.pbip`** connects live to
 Azure Resource Graph, Dataverse and Defender advanced hunting — publish it, set the three
 credentials, and it refreshes on a schedule. **`pbip\AI-Monitor.pbip`** reads CSV files instead,
-and `sample-data\agent365-sample-data.zip` is an anonymised demo-tenant extract that already
-contains the data. Same 16 pages, same measures, same visuals in both.
+and `sample-data\ai-monitor-sample-data.zip` is an anonymised demo-tenant extract that already
+contains the data. Same 11 pages, same measures, same visuals in both.
 
 | Path | Use it for |
 |---|---|
 | `pbip-cloud\AI-Monitor.pbip` | Open in Power BI Desktop, publish, set the three credentials, schedule the refresh |
 | `pbip\AI-Monitor.pbip` | The same report reading CSV files — open it against the anonymised demo-tenant extract |
-| `solution\CopilotInteractionLogging.zip` | Import into Power Platform to turn on lane C (interaction telemetry) |
 | `solution\AgentKnowledgeSourceSweep.zip` | Import into Power Platform to turn on lane D (named knowledge sources) |
 | `solution\SharePointAgentLogging.zip` | Import into Power Platform to turn on lane E (SharePoint agent inventory) |
 | `solution\AgentAppUserProvisioning.zip` | Import into Power Platform to grant the lane D app registration an application user in every agent-bearing environment |
-| `sample-data\agent365-sample-data.zip` | Run the CSV build against anonymised data, with no tenant access |
+| `sample-data\ai-monitor-sample-data.zip` | Run the CSV build against anonymised data, with no tenant access |
 | `docs\deployment.md` | End-to-end setup: app registrations, environment variables, credentials |
 
 ---
@@ -1046,4 +937,5 @@ contains the data. Same 16 pages, same measures, same visuals in both.
 - **M365 app-based agent surfaces have no inventory source.** `/appCatalogs/teamsApps` returns 403 in this tenant — `ApiCoverage` row 8.
 - **SharePoint inventory is retention-bound.** A `.agent` file with no file operation inside the configured audit lookback is not observable.
 - **Shadow AI needs Defender.** Without an advanced-hunting-capable identity the page renders its watchlist with nothing detected against it, which is indistinguishable from a clean estate.
+- **No per-conversation usage, people or cost.** Activity is ARG's `lastUsed` only, and Agent Builder has none. Usage, value and cost are in [Analytics Hub](https://github.com/microsoft/AnalyticsHub-Dashboard).
 - Agent counts drift by a few rows between runs because the tenant is live.

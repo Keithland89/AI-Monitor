@@ -14,8 +14,7 @@ tools/pbir-validate/.schema-cache/
 data/audit-raw-cache.json
 probe/audit-probe/
 
-# Generated tenant extract. ~150 MB of regenerable data, and FactCopilotInteraction.csv
-# carries user-level interaction rows, so it is never committed. The local build reads this
+# Generated tenant extract. Regenerable tenant data, so it is never committed. The local build reads this
 # folder; the anonymised sample in sample-data\ is what ships. pbip-cloud does not need it.
 # Note: a negation cannot rescue a file inside an excluded *directory*, so this
 # excludes the directory's contents rather than the directory itself.
@@ -30,7 +29,7 @@ audit-secret.xml
 # environment variables as ****** - the flow API resolves environment-variable defaults
 # in plaintext, so these embed the live client secret at
 #   properties.definition.parameters.Audit_Secret (poc_Audit_Secret).defaultValue
-# The same flows ship safely in solution\CopilotInteractionLogging*.zip, so these raw
+# The same flows ship safely in solution\SharePointAgentLogging*.zip, so these raw
 # exports are kept locally for reference only and never committed.
 work/flow-*.json
 

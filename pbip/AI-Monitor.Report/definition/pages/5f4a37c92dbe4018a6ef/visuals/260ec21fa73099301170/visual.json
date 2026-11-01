@@ -51,11 +51,11 @@
                       "Entity": "Metrics"
                     }
                   },
-                  "Property": "SharePoint Agents Used"
+                  "Property": "SharePoint Agents"
                 }
               },
-              "queryRef": "Metrics.SharePoint Agents Used",
-              "nativeQueryRef": "SharePoint Agents Used"
+              "queryRef": "Metrics.SharePoint Agents",
+              "nativeQueryRef": "SharePoint Agents"
             },
             {
               "field": {
@@ -65,11 +65,11 @@
                       "Entity": "Metrics"
                     }
                   },
-                  "Property": "SharePoint Agent Interactions"
+                  "Property": "SharePoint Audit Events"
                 }
               },
-              "queryRef": "Metrics.SharePoint Agent Interactions",
-              "nativeQueryRef": "SharePoint Agent Interactions"
+              "queryRef": "Metrics.SharePoint Audit Events",
+              "nativeQueryRef": "SharePoint Audit Events"
             }
           ]
         }
@@ -242,7 +242,7 @@
             "text": {
               "expr": {
                 "Literal": {
-                  "Value": "'Inventory and usage by site'"
+                  "Value": "'Inventory by site'"
                 }
               }
             },

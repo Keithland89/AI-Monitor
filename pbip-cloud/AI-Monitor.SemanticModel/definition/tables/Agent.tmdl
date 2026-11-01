@@ -469,22 +469,21 @@ table Agent
 		lineageTag: 6a3d92e8-40bc-4f17-8e5a-b1c72f9d3054
 		summarizeBy: sum
 
-	/// Most recent evidence the agent ran, taking the later of the Power Platform usage record and the last audit-log interaction.
-	/// Deliberately avoids CALCULATE. Context transition inside a calculated column takes a dependency on every column of its own table, and DaysSinceLastActivity and ActivityStatus both depend on this one - so CALCULATE ( MAX ( 'Interaction'[CreationTime] ) ) is circular here and silently evaluates to blank, reporting agents with real interactions as unused. MAXX over an explicit FILTER depends only on Agent[AgentKey], so it resolves.
-	column LastActivityAt = VAR ArgUse = 'Agent'[LastUsed] VAR K = 'Agent'[AgentKey] VAR Audit = MAXX ( FILTER ( 'Interaction', 'Interaction'[AgentKey] = K ), 'Interaction'[CreationTime] ) RETURN IF ( ISBLANK ( ArgUse ), Audit, IF ( ISBLANK ( Audit ), ArgUse, MAX ( ArgUse, Audit ) ) )
+	/// Most recent evidence the agent ran: the Power Platform usage record (Resource Graph lastUsed). Per-conversation usage lives in Analytics Hub.
+	column LastActivityAt = 'Agent'[LastUsed]
 		dataType: dateTime
 		formatString: yyyy-mm-dd hh:nn:ss
 		lineageTag: 4d81c0a6-7e35-4b92-9f10-3ac6b25e7d18
 		summarizeBy: none
 
-	/// Days since the agent last ran, from either source.
+	/// Days since the agent last ran.
 	column DaysSinceLastActivity = IF ( ISBLANK ( 'Agent'[LastActivityAt] ), BLANK ( ), DATEDIFF ( 'Agent'[LastActivityAt], TODAY ( ), DAY ) )
 		dataType: int64
 		formatString: #,0
 		lineageTag: 8b25f7c1-3d64-4e08-a6b9-71e05c8f42da
 		summarizeBy: sum
 
-	/// Activity from both the Power Platform usage record and the audit log, so an agent with real interactions is never reported as unused.
+	/// Activity bands from the Resource Graph lastUsed timestamp. Declarative (Agent Builder) agents emit no usage record, so they show No usage signal.
 	column ActivityStatus = VAR D = 'Agent'[DaysSinceLastActivity] RETURN IF ( ISBLANK ( D ), "No usage signal", IF ( D <= 7, "Active (7d)", IF ( D <= 30, "Active (30d)", IF ( D <= 90, "Idle (90d)", "Dormant (90d+)" ) ) ) )
 		dataType: string
 		lineageTag: e70a4b39-16cd-42f5-8b7e-9d3f06a1c825

@@ -12,14 +12,14 @@ import { c, createUi } from './ui.js';
 
 export const COMMANDS = ['install', 'update', 'status', 'check', 'deploy-app', 'access', 'rotate-secret', 'uninstall', 'prereqs', 'preview'];
 
-export const help = () => `Switches on AI-Monitor: the audit collectors, the knowledge sweep, the app user grants
-and the app, in one Dataverse environment. It shows a plan and changes nothing until you approve it.
+export const help = () => `Switches on AI-Monitor: the knowledge sweep, the app user grants, the SharePoint agent
+collector and the app, in one Dataverse environment. It shows a plan and changes nothing until you approve it.
 
 Usage: ${commandLine('[command] [options]')}
        ${commandLine('--ui [options]')}
 
 Commands:
-  install          Sign in, check prerequisites, show the plan, then set up every lane (default).
+  install          Sign in, check prerequisites, show the plan, then set up the inventory lanes (default).
                    Run it again to carry on, repair, or pick up a new release
   update           install, for an existing install record
   status           What the install record says is installed. No sign-in
@@ -43,13 +43,15 @@ Options:
   --scope-mode <mode>      Agents (default; needs Reader at the tenant root) or Dataverse
   --key-vault <name>       Keep the client secrets in this Key Vault instead of environment variables
   --viewer-group <id>      Share the app with this Entra group
-  --reviewer-email <addr>  Who gets the knowledge sweep's summary
   --connection-id <id>     Use this Dataverse connection for the flows
   --max-grants <n>         Most app users the grant flow adds in one run (default 25)
   --secret-months <n>      How long new client secrets last (default 12, at most 24)
   --approve-root-reader    Approve Reader at the tenant root without asking (Agents mode)
   --approve-grants         Approve the app user grants without asking, after the what-if run
   --skip-app               Leave out the app
+  --skip-sharepoint        Leave out lane E (SharePoint agents) and its audit collector app
+                           registration with AuditLogsQuery.Read.All. The choice is saved
+  --sharepoint             Include lane E again after --skip-sharepoint
   --solutions <folder>     Where the solution zips are (default: ..\\solution)
   --app-dist <folder>      The app's build (default: ..\\app\\dist, built if missing)
   --save-plan <file.md>    Also save the plan as Markdown
@@ -82,13 +84,14 @@ export function parseCli(argv) {
       'scope-mode': { type: 'string' },
       'key-vault': { type: 'string' },
       'viewer-group': { type: 'string' },
-      'reviewer-email': { type: 'string' },
       'connection-id': { type: 'string' },
       'max-grants': { type: 'string' },
       'secret-months': { type: 'string' },
       'approve-root-reader': { type: 'boolean' },
       'approve-grants': { type: 'boolean' },
       'skip-app': { type: 'boolean' },
+      sharepoint: { type: 'boolean' },
+      'skip-sharepoint': { type: 'boolean' },
       solutions: { type: 'string' },
       'app-dist': { type: 'string' },
       'save-plan': { type: 'string' },
@@ -108,6 +111,7 @@ export function parseCli(argv) {
   if (values.ui && positionals.length) throw new Error('--ui opens a page where you choose what to do. Leave out the command.');
   if (values.ui && values.yes) throw new Error('Choose one of --ui and --yes.');
   if (values['device-code'] && values['use-az']) throw new Error('Choose one of --device-code and --use-az.');
+  if (values.sharepoint && values['skip-sharepoint']) throw new Error('Choose one of --sharepoint and --skip-sharepoint.');
   const scopeMode = values['scope-mode'];
   if (scopeMode !== undefined && !['Agents', 'Dataverse'].includes(scopeMode)) throw new Error('--scope-mode is Agents or Dataverse.');
   const app = values.app;
@@ -136,13 +140,13 @@ export function parseCli(argv) {
     ...(scopeMode ? { scopeMode: /** @type {'Agents' | 'Dataverse'} */ (scopeMode) } : {}),
     ...(values['key-vault'] ? { keyVault: values['key-vault'] } : {}),
     ...(values['viewer-group'] ? { viewerGroup: values['viewer-group'] } : {}),
-    ...(values['reviewer-email'] ? { reviewerEmail: values['reviewer-email'] } : {}),
     ...(values['connection-id'] ? { connectionId: values['connection-id'] } : {}),
     ...(maxGrants !== undefined ? { maxGrants } : {}),
     ...(secretMonths !== undefined ? { secretMonths } : {}),
     ...(values['approve-root-reader'] ? { approveRootReader: true } : {}),
     ...(values['approve-grants'] ? { approveGrants: true } : {}),
     ...(values['skip-app'] ? { skipApp: true } : {}),
+    ...(values.sharepoint ? { sharePoint: true } : values['skip-sharepoint'] ? { sharePoint: false } : {}),
     ...(values.solutions ? { solutions: resolve(values.solutions) } : {}),
     ...(values['app-dist'] ? { appDist: resolve(values['app-dist']) } : {}),
     ...(values['save-plan'] ? { savePlan: resolve(values['save-plan']) } : {}),

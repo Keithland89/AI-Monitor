@@ -23,11 +23,11 @@
                       "Entity": "Metrics"
                     }
                   },
-                  "Property": "Interaction Users"
+                  "Property": "Agents Without Owners"
                 }
               },
-              "queryRef": "Metrics.Interaction Users",
-              "nativeQueryRef": "Interaction Users",
+              "queryRef": "Metrics.Agents Without Owners",
+              "nativeQueryRef": "Agents Without Owners",
               "format": "#,0"
             }
           ]
@@ -125,7 +125,7 @@
             "text": {
               "expr": {
                 "Literal": {
-                  "Value": "'People using Copilot'"
+                  "Value": "'Without owners'"
                 }
               }
             },
@@ -280,7 +280,7 @@
             "text": {
               "expr": {
                 "Literal": {
-                  "Value": "'any Copilot surface, agents included'"
+                  "Value": "'no resolvable owner'"
                 }
               }
             },

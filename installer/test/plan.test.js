@@ -12,8 +12,8 @@ const plan = (more = {}) => buildPlan({ record: emptyRecord(), scopeMode: 'Agent
 test('the plan lists every step in order', () => {
   assert.deepEqual(plan().steps.map((s) => s.id), [
     'sign-in', 'prereqs', 'environment', 'audit-app', 'sweep-app', 'root-reader', 'connection',
-    'solution-interactions', 'solution-sharepoint', 'workpatterns-table', 'solution-workpatterns', 'lane-d-tables', 'solution-appusers', 'appuser-grant', 'solution-sweep',
-    'flows', 'verify', 'app', 'lane-f', 'lane-cost',
+    'solution-sharepoint', 'lane-d-tables', 'solution-appusers', 'appuser-grant', 'solution-sweep',
+    'flows', 'verify', 'app', 'lane-f',
   ]);
 });
 
@@ -34,12 +34,11 @@ test('Dataverse scope mode skips Reader at the tenant root', () => {
 test('installed solutions at the zip version are done, older ones are upgrades', () => {
   const p = plan({
     environment: ENV,
-    zipVersions: { interactions: '1.0.0.8', sharepoint: '1.0.0.0', appusers: '1.0.6.0', sweep: '1.0.4.0' },
-    installed: { interactions: '1.0.0.8', sharepoint: undefined, appusers: '1.0.5.0', sweep: '1.0.4.1' },
+    zipVersions: { sharepoint: '1.0.0.0', appusers: '1.0.6.0', sweep: '1.0.4.0' },
+    installed: { sharepoint: '1.0.0.0', appusers: '1.0.5.0', sweep: '1.0.4.1' },
   });
   const by = (/** @type {string} */ id) => p.steps.find((s) => s.id === id);
-  assert.equal(by('solution-interactions')?.state, 'done');
-  assert.equal(by('solution-sharepoint')?.state, undefined);
+  assert.equal(by('solution-sharepoint')?.state, 'done');
   assert.equal(by('solution-appusers')?.state, undefined);
   assert.match(by('solution-appusers')?.changes[0] ?? '', /Upgrades AgentAppUserProvisioning 1\.0\.5\.0 to 1\.0\.6\.0/);
   assert.equal(by('solution-sweep')?.state, 'done');
@@ -48,12 +47,12 @@ test('installed solutions at the zip version are done, older ones are upgrades',
 
 test('offline, the record says what is installed', () => {
   const record = emptyRecord();
-  record.solutions.interactions = { version: '1.0.0.8', importedAt: '2024-01-01T00:00:00Z' };
+  record.solutions.sharepoint = { version: '1.0.0.0', importedAt: '2024-01-01T00:00:00Z' };
   record.tablesProvisioned = true;
   record.appUserGrant = { approvedAt: '2024-01-01T00:00:00Z' };
   record.sweepApp = { appId: 'a', objectId: 'o', displayName: 'sweep', adminApp: true, rootReaderId: 'r' };
   const p = plan({ record });
-  assert.equal(p.steps.find((s) => s.id === 'solution-interactions')?.state, 'done');
+  assert.equal(p.steps.find((s) => s.id === 'solution-sharepoint')?.state, 'done');
   assert.equal(p.steps.find((s) => s.id === 'sweep-app')?.state, 'done');
   assert.equal(p.steps.find((s) => s.id === 'root-reader')?.state, 'done');
   assert.equal(p.steps.find((s) => s.id === 'lane-d-tables')?.state, 'done');
@@ -88,9 +87,8 @@ test('pending steps leave out checks, done and skipped steps', () => {
   assert.ok(!ids.includes('sign-in'));
   assert.ok(!ids.includes('verify'));
   assert.ok(!ids.includes('lane-f'));
-  assert.ok(!ids.includes('lane-cost'));
   assert.ok(!ids.includes('root-reader'));
-  assert.ok(ids.includes('solution-interactions'));
+  assert.ok(ids.includes('solution-sharepoint'));
   assert.ok(ids.includes('appuser-grant'));
 });
 
@@ -99,9 +97,28 @@ test('the plan saves as Markdown', () => {
   assert.match(md, /^# AI-Monitor install: the plan/);
   assert.match(md, /Made 2024-05-01 10:30 UTC\./);
   assert.match(md, /## 6\. Reader at the tenant root management group \*\(skipped\)\*/);
-  assert.match(md, /## 14\. Lane D: grant the knowledge sweep in each environment \*\(asks again before it runs\)\*/);
+  assert.match(md, /## 11\. Lane D: grant the knowledge sweep in each environment \*\(asks again before it runs\)\*/);
   assert.match(md, /- \*Role:\* System Administrator in the landing environment/);
-  assert.equal((md.match(/^## /gm) ?? []).length, 20);
+  assert.equal((md.match(/^## /gm) ?? []).length, 16);
+});
+
+test('the plan never brings back the usage lanes; the audit permission comes only with lane E', () => {
+  const gone = /CopilotInteraction|M365UsageReport|Reports\.Read\.All|work patterns|interactions|workpatterns|Lane [CG]\b|Cost Management|lane-cost/i;
+  const text = (/** @type {import('../src/plan.js').Plan} */ p) => p.steps.flatMap((s) => [s.id, s.title, ...s.changes]).join('\n');
+  const withE = plan();
+  const withoutE = plan({ sharePoint: false });
+  for (const p of [withE, withoutE]) {
+    assert.doesNotMatch(text(p), gone);
+    assert.doesNotMatch(planMarkdown(p), gone);
+  }
+  assert.match(text(withE), /AuditLogsQuery\.Read\.All/);
+  assert.ok(withE.steps.some((s) => s.id === 'audit-app'));
+  assert.equal(withE.steps.find((s) => s.id === 'solution-sharepoint')?.state, undefined);
+  assert.doesNotMatch(text(withoutE), /AuditLogsQuery\.Read\.All/);
+  assert.ok(!withoutE.steps.some((s) => s.id === 'audit-app'));
+  assert.equal(withoutE.steps.find((s) => s.id === 'solution-sharepoint')?.state, 'skip');
+  assert.ok(!pendingSteps(withoutE).some((s) => s.id === 'solution-sharepoint'));
+  assert.ok(withoutE.facts.some((f) => f.label === 'Lane E (SharePoint agents)' && f.value === 'left out'));
 });
 
 test('hand-offs become next steps with a message to send', () => {

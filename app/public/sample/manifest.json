@@ -1,11 +1,10 @@
 {
   "asOf": "2026-09-05T20:47:21",
   "sourceAgents": 20765,
-  "sourceInteractions": 48510,
   "files": [
     {
       "name": "agents.csv",
-      "rows": 1488
+      "rows": 1490
     },
     {
       "name": "environments.csv",
@@ -37,49 +36,15 @@
     },
     {
       "name": "connectors.csv",
-      "rows": 656
+      "rows": 429
     },
     {
       "name": "knowledge.csv",
-      "rows": 1044
+      "rows": 804
     },
     {
       "name": "knowledge-sources.csv",
-      "rows": 791
-    },
-    {
-      "name": "surfaces.csv",
-      "rows": 742
-    },
-    {
-      "name": "interaction-users.csv",
-      "rows": 97
-    },
-    {
-      "name": "interactions.csv",
-      "rows": 48474
-    },
-    {
-      "name": "credits.csv",
-      "rows": 768
-    },
-    {
-      "name": "credit-pool.csv",
-      "rows": 2
-    },
-    {
-      "name": "ai-cost-daily.csv",
-      "rows": 2481
-    },
-    {
-      "name": "ai-cost-meters.csv",
-      "rows": 390
-    },
-    {
-      "name": "m365-usage.json",
-      "rows": 5
+      "rows": 631
     }
-  ],
-  "syntheticCost": true,
-  "syntheticM365": true
+  ]
 }

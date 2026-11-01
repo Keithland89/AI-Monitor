@@ -23,11 +23,11 @@
                       "Entity": "Metrics"
                     }
                   },
-                  "Property": "Active Users"
+                  "Property": "Agents Never Used"
                 }
               },
-              "queryRef": "Metrics.Active Users",
-              "nativeQueryRef": "Active Users",
+              "queryRef": "Metrics.Agents Never Used",
+              "nativeQueryRef": "Agents Never Used",
               "format": "#,0"
             }
           ]
@@ -43,7 +43,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#0b6a0b'"
+                      "Value": "'#8a6d1f'"
                     }
                   }
                 }
@@ -94,7 +94,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#0b6a0b'"
+                      "Value": "'#8a6d1f'"
                     }
                   }
                 }
@@ -125,7 +125,7 @@
             "text": {
               "expr": {
                 "Literal": {
-                  "Value": "'Active users'"
+                  "Value": "'Never used'"
                 }
               }
             },
@@ -134,7 +134,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#0b6a0b'"
+                      "Value": "'#8a6d1f'"
                     }
                   }
                 }
@@ -280,7 +280,7 @@
             "text": {
               "expr": {
                 "Literal": {
-                  "Value": "'distinct people, audited window'"
+                  "Value": "'no Resource Graph usage record'"
                 }
               }
             },

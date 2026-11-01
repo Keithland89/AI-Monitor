@@ -1,6 +1,6 @@
 // @ts-check
 /**
- * The five managed solutions, in the order they're imported, and what each one needs: its
+ * The three managed solutions, in the order they're imported, and what each one needs: its
  * environment variables, its Dataverse connection reference and the flows it brings.
  *
  * The flow and solution IDs below are the solutions' own component IDs. They're the same in every
@@ -48,22 +48,6 @@ export const PLACEHOLDER_SECRET = 'insertsecrethere';
 /** @type {SolutionDef[]} */
 export const SOLUTIONS = [
   {
-    key: 'interactions',
-    uniqueName: 'CopilotInteractionLogging',
-    file: 'CopilotInteractionLogging_managed.zip',
-    version: '1.0.0.8',
-    lane: 'C',
-    title: 'Copilot interaction logging',
-    app: 'audit',
-    vars: { tenant: 'poc_Audit_Tenant', appId: 'poc_Audit_AppRegID', secret: 'poc_Audit_Secret', usingAkv: 'poc_Audit_UsingAKVtruefalse', keyVault: 'poc_KeyVaultSecret' },
-    connectionReferences: ['poc_sharedcommondataserviceforapps_2dd46'],
-    flows: [
-      { id: '0ba621c2-56c2-f011-bbd3-000d3a180c28', name: 'Copilot interaction audit logs sync (daily)', kind: 'scheduled', runNow: true },
-      { id: 'c1465c26-13d9-f011-8406-7ced8d710f0b', name: 'Copilot interaction audit logs sync (manual)', kind: 'manual' },
-    ],
-    holdsData: true,
-  },
-  {
     key: 'sharepoint',
     uniqueName: 'SharePointAgentLogging',
     file: 'SharePointAgentLogging_managed.zip',
@@ -78,20 +62,6 @@ export const SOLUTIONS = [
       { id: '4d5bca93-3fb2-49ef-90d6-a2f7c4e861b0', name: 'SharePoint agent inventory (manual)', kind: 'manual' },
     ],
     holdsData: true,
-  },
-  {
-    key: 'workpatterns',
-    uniqueName: 'M365UsageReports',
-    file: 'M365UsageReports_managed.zip',
-    version: '1.0.0.0',
-    lane: 'G',
-    title: 'Microsoft 365 usage reports',
-    app: 'audit',
-    vars: { tenant: 'poc_WP_Tenant', appId: 'poc_WP_AppRegID', secret: 'poc_WP_Secret', usingAkv: 'poc_WP_UsingAKVtruefalse', keyVault: 'poc_WP_KeyVaultSecret' },
-    connectionReferences: ['poc_sharedcommondataserviceforapps_m365use'],
-    // The table belongs to the installer, like lane D's, so removing the solution keeps the rows.
-    flows: [{ id: 'b6e2a0d4-5c3f-4e1a-9d87-2f4b6c8e0a13', name: 'Microsoft 365 usage reports (daily)', kind: 'scheduled', runNow: true }],
-    holdsData: false,
   },
   {
     key: 'appusers',
@@ -139,7 +109,6 @@ export const GRANT_FLOW_ID = solution('appusers').flows[0].id;
  * @property {'envvar' | 'keyvault'} secretMode
  * @property {{ audit?: string, sweep?: string }} [secrets]  A fresh client secret, when one was just made. Never saved.
  * @property {{ audit?: string, sweep?: string }} [keyVaultRefs]  Key Vault secret references, in Key Vault mode.
- * @property {string} [reviewerEmail]
  * @property {'Agents' | 'Dataverse'} [scopeMode]
  * @property {boolean} [whatIf]
  * @property {number} [maxGrants]
@@ -172,7 +141,6 @@ export function envVarValues(def, inputs) {
     const secret = inputs.secrets?.[def.app];
     if (secret) values.push({ schemaname: def.vars.secret, value: secret, secret: true });
   }
-  if (def.key === 'interactions' && inputs.reviewerEmail) values.push({ schemaname: 'poc_Audit_ReviewerEmail', value: inputs.reviewerEmail });
   if (def.key === 'appusers') {
     values.push(
       { schemaname: 'poc_AU_ScopeMode', value: inputs.scopeMode ?? 'Agents' },

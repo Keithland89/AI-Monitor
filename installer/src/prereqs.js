@@ -1,7 +1,7 @@
 // @ts-check
 /**
- * Read-only checks of what the signed-in user has and lacks: roles, the audit log, the Managed Apps
- * settings, licences and Node. Nothing here writes anything, and a check that can't be read reports
+ * Read-only checks of what the signed-in user has and lacks: roles, the audit log (for lane E only),
+ * the Managed Apps settings, licences and Node. Nothing here writes anything, and a check that can't be read reports
  * "unknown" rather than failing.
  */
 import { ADMIN_STEPS } from './managed-app/errors.js';
@@ -77,7 +77,6 @@ const why = (err) => {
  * @property {() => Promise<{ allowedToCreateApps?: boolean }>} userRolePermissions
  * @property {() => Promise<'on' | 'off' | 'unknown'>} auditLog
  * @property {() => Promise<{ subscriptionId: string, displayName?: string, state?: string }[]>} subscriptions
- * @property {(subscriptionId: string) => Promise<unknown>} costQuery  A one-row Cost Management query, to see whether it answers.
  */
 
 /**
@@ -94,32 +93,7 @@ export function prereqApi({ graph, arm }) {
     userRolePermissions: async () => (await graph.get('/policies/authorizationPolicy'))?.defaultUserRolePermissions ?? {},
     auditLog: () => auditLogState(graph),
     subscriptions: () => arm.list('/subscriptions?api-version=2020-01-01'),
-    costQuery: (id) => arm.post(`/subscriptions/${id}/providers/Microsoft.CostManagement/query?api-version=2023-03-01`, COST_PROBE, { maxRetries: 1 }),
   };
-}
-
-/** The smallest Cost Management query: this month's total, no grouping. */
-const COST_PROBE = { type: 'ActualCost', timeframe: 'MonthToDate', dataset: { granularity: 'None', aggregation: { totalCost: { name: 'Cost', function: 'Sum' } } } };
-/** Subscriptions the Cost Management check tries; one that answers is enough to show the role works. */
-export const COST_PROBE_LIMIT = 3;
-
-/**
- * Whether Cost Management answers for the signed-in user, trying a few enabled subscriptions.
- * @param {PrereqApi} api
- * @returns {Promise<{ status: PrereqStatus, detail: string }>}
- */
-export async function costAccess(api) {
-  const subs = (await api.subscriptions()).filter((s) => !s.state || s.state === 'Enabled');
-  if (!subs.length) return { status: 'missing', detail: 'You can\'t read any Azure subscription.' };
-  const tried = subs.slice(0, COST_PROBE_LIMIT);
-  const results = await Promise.allSettled(tried.map((s) => api.costQuery(s.subscriptionId)));
-  const ok = results.filter((r) => r.status === 'fulfilled').length;
-  const failed = /** @type {PromiseRejectedResult[]} */ (results.filter((r) => r.status === 'rejected'));
-  const denied = failed.filter((r) => r.reason?.status === 401 || r.reason?.status === 403).length;
-  const of = `${tried.length} of your ${subs.length} ${subs.length === 1 ? 'subscription' : 'subscriptions'}`;
-  if (ok) return { status: 'met', detail: `Cost Management answered for ${ok} of the ${of} checked.` };
-  if (denied === tried.length) return { status: 'missing', detail: `Cost Management refused all ${of} checked.` };
-  return { status: 'unknown', detail: `Cost Management didn't answer for the ${of} checked: ${why(failed[0]?.reason)}` };
 }
 
 /**
@@ -138,11 +112,13 @@ export async function auditLogState(graph) {
 }
 
 /**
- * @param {{ api: PrereqApi, user: { id: string }, scopeMode?: 'Agents' | 'Dataverse', withApp?: boolean, nodeVersion?: string }} ctx
+ * @param {{ api: PrereqApi, user: { id: string }, scopeMode?: 'Agents' | 'Dataverse', withApp?: boolean, sharePoint?: boolean, nodeVersion?: string }} ctx
+ *   sharePoint: lane E is included (the default). Without it, the audit log and admin consent aren't checked.
  * @returns {Promise<Prereq[]>}
  */
 export async function checkPrereqs(ctx) {
   const { api, user } = ctx;
+  const sharePoint = ctx.sharePoint !== false;
   const roles = api.myRoles();
   const eligible = api.eligibleRoles(user.id);
   for (const p of [roles, eligible]) p.catch(() => {});
@@ -197,17 +173,19 @@ export async function checkPrereqs(ctx) {
       howTo: 'Carry on without it: the installer lists the environments you can see, and gives you a command for a Power Platform Administrator to register the app.',
       optional: true,
     }, PP_ADMIN_ROLES),
-    entraRole({
-      id: 'consent-role',
-      label: 'Global Administrator or Privileged Role Administrator',
-      neededFor: 'Granting admin consent for the audit collector\'s AuditLogsQuery.Read.All and Reports.Read.All permissions (lanes C, E and G).',
-      howTo: 'Carry on without it: the installer gives you a link for a Global Administrator or Privileged Role Administrator to approve, then you run it again.',
-      optional: true,
-    }, CONSENT_ROLES),
+    ...(sharePoint
+      ? [entraRole({
+        id: 'consent-role',
+        label: 'Global Administrator or Privileged Role Administrator',
+        neededFor: 'Granting admin consent for the audit collector\'s AuditLogsQuery.Read.All permission (lane E).',
+        howTo: 'Carry on without it: the installer gives you a link for a Global Administrator or Privileged Role Administrator to approve, then you run it again.',
+        optional: true,
+      }, CONSENT_ROLES)]
+      : []),
     guard({
       id: 'create-apps',
       label: 'Can create app registrations',
-      neededFor: 'Creating the audit collector and knowledge sweep app registrations.',
+      neededFor: sharePoint ? 'Creating the knowledge sweep app registration, and the audit collector for lane E.' : 'Creating the knowledge sweep app registration.',
       howTo: 'Ask for Application Administrator or Cloud Application Administrator, or for users to be allowed to register apps.',
     }, async () => {
       const active = (await roles).filter((r) => APP_CREATE_ROLES[r.roleTemplateId]);
@@ -246,24 +224,19 @@ export async function checkPrereqs(ctx) {
       if (!subs.length) return { status: 'missing', detail: 'You can\'t read any Azure subscription.' };
       return { status: 'met', detail: `You can read ${subs.length} ${subs.length === 1 ? 'subscription' : 'subscriptions'}.` };
     }),
-    guard({
-      id: 'cost-reader',
-      label: 'Cost Management Reader (or Reader) on the Azure subscriptions',
-      neededFor: 'The Cost & consumption tab\'s Azure AI spend: the app queries Cost Management in each subscription that holds Azure AI resources.',
-      howTo: 'Ask a subscription owner for Cost Management Reader on each subscription with Azure AI resources. Each viewer needs it too. Some offers, such as free trials and sponsorships, have no Cost Management data.',
-      optional: true,
-    }, () => costAccess(api)),
-    guard({
-      id: 'audit-log',
-      label: 'Unified audit logging',
-      neededFor: 'Lanes C and E: the flows read Copilot and SharePoint agent events from the audit log.',
-      howTo: 'Check it\'s on: Microsoft Purview portal > Audit (if it offers "Start recording user and admin activity", it\'s off), or run Get-AdminAuditLogConfig | Format-List UnifiedAuditLogIngestionEnabled in Exchange Online PowerShell.',
-    }, async () => {
-      const state = await api.auditLog();
-      return state === 'on'
-        ? { status: 'met', detail: 'The audit log answers queries.' }
-        : { status: 'unknown', detail: 'Couldn\'t check from here: your sign-in can\'t query the audit log.' };
-    }),
+    ...(sharePoint
+      ? [guard({
+        id: 'audit-log',
+        label: 'Unified audit logging',
+        neededFor: 'Lane E: the flows read SharePoint agent events from the audit log.',
+        howTo: 'Check it\'s on: Microsoft Purview portal > Audit (if it offers "Start recording user and admin activity", it\'s off), or run Get-AdminAuditLogConfig | Format-List UnifiedAuditLogIngestionEnabled in Exchange Online PowerShell.',
+      }, async () => {
+        const state = await api.auditLog();
+        return state === 'on'
+          ? { status: /** @type {PrereqStatus} */ ('met'), detail: 'The audit log answers queries.' }
+          : { status: /** @type {PrereqStatus} */ ('unknown'), detail: 'Couldn\'t check from here: your sign-in can\'t query the audit log.' };
+      })]
+      : []),
     guard({
       id: 'licence',
       label: 'Power Apps Premium or Copilot Credits',

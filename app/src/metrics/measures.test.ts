@@ -1,44 +1,29 @@
 import { describe, expect, it } from 'vitest'
-import type { Interaction } from '../data/types'
-import { bars, cumulative, div, freshness, I, monthly, monthRange, telemetryUplift } from './measures'
+import type { Agent } from '../data/types'
+import { A, bars, cumulative, div, freshness, monthly, monthRange } from './measures'
 
-const ix = (time: string, threadId: string, extra: Partial<Interaction> = {}): Interaction => ({
-  date: time.slice(0, 10), time, surfaceKey: '', agentKey: '', user: 'u', appHost: 'Office', threadId, resourceCount: 0, ...extra,
-})
-
-describe('interaction measures', () => {
-  it('sums run time per thread and day', () => {
-    const rows = [
-      ix('2026-06-01T10:00:00', 'a'),
-      ix('2026-06-01T10:30:00', 'a'),
-      ix('2026-06-01T10:15:00', 'a'),
-      // Same thread on the next day is a separate span, so the overnight gap is not counted.
-      ix('2026-06-02T09:00:00', 'a'),
-      ix('2026-06-02T09:06:00', 'a'),
-      ix('2026-06-01T12:00:00', 'b'),
-    ]
-    expect(I.runTimeHours(rows)).toBeCloseTo(0.6)
-    expect(I.sessions(rows)).toBe(2)
-    expect(I.avgSessionMinutes(rows)).toBeCloseTo(18)
+describe('agent measures', () => {
+  it('counts tenant-wide agents with no Power Platform last-used date', () => {
+    const agents = [
+      { sharedTenantWide: true, lastUsed: '' },
+      { sharedTenantWide: true, lastUsed: '2026-01-01T00:00:00' },
+      { sharedTenantWide: false, lastUsed: '' },
+    ] as Agent[]
+    expect(A.orphan(agents)).toBe(1)
+    expect(A.neverUsed(agents)).toBe(2)
   })
 
-  it('counts users, agent users, grounding and autonomous runs', () => {
-    const rows = [
-      ix('2026-06-01T10:00:00', 'a', { user: 'x', agentKey: 'k1', resourceCount: 2 }),
-      ix('2026-06-01T10:00:00', 'b', { user: 'y', appHost: 'Autonomous' }),
-      ix('2026-06-01T10:00:00', 'c', { user: '' }),
-    ]
-    expect(I.users(rows)).toBe(2)
-    expect(I.activeUsers(rows)).toBe(1)
-    expect(I.agentsWithInteractions(rows)).toBe(1)
-    expect(I.grounded(rows)).toBe(1)
-    expect(I.autonomous(rows)).toBe(1)
-  })
-
-  it('counts agents the audit log saw that usage records missed', () => {
-    const agents = [{ key: 'k1', lastUsed: '' }, { key: 'k2', lastUsed: '2026-01-01T00:00:00' }, { key: 'k3', lastUsed: '' }] as Parameters<typeof telemetryUplift>[0]
-    const rows = [ix('2026-06-01T10:00:00', 'a', { agentKey: 'k1' }), ix('2026-06-01T10:00:00', 'a', { agentKey: 'k2' })]
-    expect(telemetryUplift(agents, rows)).toBe(1)
+  it('keeps no-signal platforms out of never used, idle and dormant, but not out of the risk reason', () => {
+    const agents = [
+      { platform: 'M365 Copilot Agent Builder', sharedTenantWide: true, lastUsed: '', activityStatus: 'No usage signal' },
+      { platform: 'Copilot Studio', sharedTenantWide: false, lastUsed: '', activityStatus: 'No usage signal' },
+      { platform: 'Copilot Studio', sharedTenantWide: false, lastUsed: '2026-01-01T00:00:00', activityStatus: 'Dormant (90d+)' },
+    ] as Agent[]
+    expect(A.neverUsed(agents)).toBe(1)
+    expect(A.noUsageSignal(agents)).toBe(1)
+    expect(A.dormant(agents)).toBe(1)
+    expect(A.idle(agents)).toBe(0)
+    expect(A.orphan(agents)).toBe(1)
   })
 })
 
