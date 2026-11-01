@@ -1,7 +1,7 @@
 <#
 AI-Monitor installer {{VERSION}}, started from PowerShell.
 
-Downloads the release zip from GitHub (the installer, the four managed solutions and the app's
+Downloads the release zip from GitHub (the installer, the three managed solutions and the app's
 build), checks its SHA-256, unpacks it under %LOCALAPPDATA%\AI-Monitor\installer and opens the
 installer in your browser. It needs no admin rights and installs nothing system-wide.
 

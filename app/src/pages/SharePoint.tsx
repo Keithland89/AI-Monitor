@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useData } from '../data/store'
-import type { Interaction, SharePointAgent } from '../data/types'
+import type { SharePointAgent } from '../data/types'
 import { distinct, groupBy } from '../metrics/measures'
 import { BarList } from '../ui/charts'
 import { DataTable } from '../ui/DataTable'
@@ -16,8 +16,7 @@ const options = (v: string[]) => v.map((x) => ({ value: x, label: x }))
 interface SiteRow {
   site: string
   current: number
-  used: number
-  interactions: number
+  deleted: number
 }
 
 export function SharePointAgents() {
@@ -26,7 +25,6 @@ export function SharePointAgents() {
   const [deleted, setDeleted] = useState('')
   const [app, setApp] = useState('')
   const [op, setOp] = useState('')
-  const filtered = !!(site || deleted || app || op)
   const agents = useMemo(
     () =>
       ds.spAgents.filter(
@@ -35,38 +33,24 @@ export function SharePointAgents() {
     [ds.spAgents, site, deleted, app, op],
   )
   const m = useMemo(() => {
-    const spSurfaces = [...ds.surfaces.values()].filter((s) => s.type === 'SharePoint agent')
-    const keys = new Set(agents.map((a) => a.key))
-    const surfaceToAgent = new Map(spSurfaces.map((s) => [s.key, s.spAgentKey]))
-    // Without a page filter every SharePoint-agent surface counts, matched to an observed file or not.
-    const usage: Interaction[] = ds.interactions.filter((i) => {
-      if (!surfaceToAgent.has(i.surfaceKey)) return false
-      return !filtered || keys.has(surfaceToAgent.get(i.surfaceKey) ?? '')
-    })
-    const byAgent = groupBy(usage.filter((i) => surfaceToAgent.get(i.surfaceKey)), (i) => surfaceToAgent.get(i.surfaceKey) ?? '')
-    const interactionsOf = (a: SharePointAgent) => byAgent.get(a.key)?.length ?? 0
     const sites: SiteRow[] = [...groupBy(agents, (a) => a.siteUrl)].map(([s, rs]) => ({
       site: s,
       current: rs.filter((a) => !a.isDeleted).length,
-      used: rs.filter((a) => byAgent.has(a.key)).length,
-      interactions: rs.reduce((n, a) => n + interactionsOf(a), 0),
+      deleted: rs.filter((a) => a.isDeleted).length,
     }))
     const collected = agents.reduce((mx, a) => (a.collectedAt > mx ? a.collectedAt : mx), '')
     const age = collected ? Math.floor((Date.parse(ds.asOf + 'Z') - Date.parse(collected + 'Z')) / 86_400_000) : NaN
     const count = (key: (a: SharePointAgent) => string) =>
       [...groupBy(agents, (a) => key(a) || '(Blank)')].map(([k, rs]) => ({ key: k, label: k, value: rs.length })).sort((a, b) => b.value - a.value)
     return {
-      usage,
-      interactionsOf,
       sites,
       age,
       current: agents.filter((a) => !a.isDeleted),
-      usedAgents: distinct(usage, (i) => i.surfaceKey),
       bySite: count((a) => (a.isDeleted ? '' : a.siteUrl)).filter((b) => b.key !== '(Blank)').map((b) => ({ ...b, label: shortHost(b.label) })),
       ops: count((a) => a.lastOperation),
       apps: count((a) => a.applicationName),
     }
-  }, [ds.surfaces, ds.interactions, ds.asOf, agents, filtered])
+  }, [ds.asOf, agents])
 
   return (
     <>
@@ -85,7 +69,7 @@ export function SharePointAgents() {
         <Select label="Source application" value={app} onChange={setApp} options={options(uniq(ds.spAgents.map((a) => a.applicationName)))} allLabel="All" />
         <Select label="Last operation" value={op} onChange={setOp} options={options(uniq(ds.spAgents.map((a) => a.lastOperation)))} allLabel="All" />
       </PageFilters>
-      <PageIntro>.agent files observed through Purview file operations. Usage joins to the inventory through the file's list item id.</PageIntro>
+      <PageIntro>.agent files observed through Purview file operations. Each file is one agent, keyed by its list item id.</PageIntro>
       {ds.spAgents.length === 0 ? (
         <Empty>No SharePoint agents were collected. The SharePoint agent logging flow writes this table; see Setup & coverage.</Empty>
       ) : (
@@ -94,8 +78,7 @@ export function SharePointAgents() {
             <Kpi label="Observed agents" value={int(agents.length)} tone="agent" />
             <Kpi label="Current agents" value={int(m.current.length)} />
             <Kpi label="Sites" value={int(distinct(m.current, (a) => a.siteUrl))} />
-            <Kpi label="Used agents" value={int(m.usedAgents)} tone="licensed" help="SharePoint agents with at least one audited interaction." />
-            <Kpi label="Interactions" value={int(m.usage.length)} />
+            <Kpi label="Deleted agents" value={int(agents.length - m.current.length)} help="Agent files that were deleted after they were observed." />
           </KpiRow>
           <Grid cols={3}>
             <Panel title="Current agents by site" span={2}>
@@ -109,17 +92,16 @@ export function SharePointAgents() {
                 <BarList label="SharePoint agents by source application" items={m.apps} color={COLOR.licensed} fmt={int} />
               </Panel>
             </Stack>
-            <Panel title="Inventory and usage by site" span={3}>
+            <Panel title="Inventory by site" span={3}>
               <DataTable
-                label="Inventory and usage by site"
+                label="Inventory by site"
                 rows={rowsOf(m.sites, (r) => r.site)}
                 search={(r) => r.site}
                 initialSort={{ key: 'current', desc: true }}
                 columns={[
                   text('site', 'Site', (r: SiteRow) => shortHost(r.site), '40%'),
                   num('current', 'Current agents', (r: SiteRow) => r.current, { bar: COLOR.licensed }),
-                  num('used', 'Used agents', (r: SiteRow) => r.used),
-                  num('interactions', 'Interactions', (r: SiteRow) => r.interactions),
+                  num('deleted', 'Deleted agents', (r: SiteRow) => r.deleted),
                 ]}
               />
             </Panel>
@@ -137,7 +119,6 @@ export function SharePointAgents() {
                   date('seen', 'Last seen', (a: SharePointAgent) => a.lastSeenAt),
                   num('events', 'Events', (a: SharePointAgent) => a.eventCount),
                   bool('deleted', 'Deleted', (a: SharePointAgent) => a.isDeleted),
-                  num('interactions', 'Interactions', m.interactionsOf),
                 ]}
               />
             </Panel>

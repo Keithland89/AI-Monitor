@@ -12,14 +12,13 @@ const SWEEP = '33333333-3333-3333-3333-333333333333';
 const BASE = { tenantId: TENANT, appIds: { audit: AUDIT, sweep: SWEEP }, secretMode: 'envvar' };
 const asMap = (/** @type {import('../src/solutions.js').EnvValue[]} */ values) => Object.fromEntries(values.map((v) => [v.schemaname, v.value]));
 
-test('the solutions import in order: C, E, G, then D (app users, sweep)', () => {
-  assert.deepEqual(SOLUTIONS.map((s) => s.key), ['interactions', 'sharepoint', 'workpatterns', 'appusers', 'sweep']);
-  assert.deepEqual(SOLUTIONS.map((s) => s.lane), ['C', 'E', 'G', 'D', 'D']);
+test('the solutions import in order: E, then D (app users, sweep)', () => {
+  assert.deepEqual(SOLUTIONS.map((s) => s.key), ['sharepoint', 'appusers', 'sweep']);
+  assert.deepEqual(SOLUTIONS.map((s) => s.lane), ['E', 'D', 'D']);
   assert.equal(GRANT_FLOW_ID, solution('appusers').flows[0].id);
 });
 
-test('lane C and E sign in as the audit collector, lane D as the knowledge sweep', () => {
-  assert.equal(asMap(envVarValues(solution('interactions'), BASE)).poc_Audit_AppRegID, AUDIT);
+test('lane E signs in as the audit collector, lane D as the knowledge sweep', () => {
   assert.equal(asMap(envVarValues(solution('sharepoint'), BASE)).poc_SP_AppRegID, AUDIT);
   assert.equal(asMap(envVarValues(solution('appusers'), BASE)).poc_AU_AppRegID, SWEEP);
   assert.equal(asMap(envVarValues(solution('sweep'), BASE)).poc_KS_AppRegID, SWEEP);
@@ -42,17 +41,12 @@ test('a fresh secret goes into the secret variable, marked secret', () => {
 });
 
 test('Key Vault mode sets UsingAKV and the reference, never the secret', () => {
-  const values = asMap(envVarValues(solution('interactions'), {
+  const values = asMap(envVarValues(solution('sharepoint'), {
     ...BASE, secretMode: 'keyvault', secrets: { audit: 'fresh-secret' }, keyVaultRefs: { audit: '/subscriptions/x/vaults/kv/secrets/agent-inventory-audit-secret' },
   }));
-  assert.equal(values.poc_Audit_UsingAKVtruefalse, 'true');
-  assert.equal(values.poc_KeyVaultSecret, '/subscriptions/x/vaults/kv/secrets/agent-inventory-audit-secret');
-  assert.equal(values.poc_Audit_Secret, undefined);
-});
-
-test('the interaction flow gets the reviewer email when one is given', () => {
-  assert.equal(asMap(envVarValues(solution('interactions'), { ...BASE, reviewerEmail: 'reviewer@example.test' })).poc_Audit_ReviewerEmail, 'reviewer@example.test');
-  assert.equal(asMap(envVarValues(solution('interactions'), BASE)).poc_Audit_ReviewerEmail, undefined);
+  assert.equal(values.poc_SP_UsingAKVtruefalse, 'true');
+  assert.equal(values.poc_SP_KeyVaultSecret, '/subscriptions/x/vaults/kv/secrets/agent-inventory-audit-secret');
+  assert.equal(values.poc_SP_Secret, undefined);
 });
 
 test('the app-user grant starts in what-if mode, Agents scope, 25 grants', () => {
@@ -96,8 +90,8 @@ test('the zips in solution\\ are the solutions and versions the code expects', {
 
 test('a zip holding another solution is refused', () => {
   const def = solution('sweep');
-  const other = solution('interactions');
+  const other = solution('sharepoint');
   if (!existsSync(SOLUTION_DIR)) return;
   const wrong = loadSolutionZip(SOLUTION_DIR, other).bytes;
-  assert.throws(() => loadSolutionZip(SOLUTION_DIR, def, () => wrong), /holds CopilotInteractionLogging/);
+  assert.throws(() => loadSolutionZip(SOLUTION_DIR, def, () => wrong), /holds SharePointAgentLogging/);
 });

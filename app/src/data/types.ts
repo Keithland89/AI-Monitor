@@ -65,9 +65,7 @@ export interface Agent extends AgentBase {
   ownerName: string
   ownerUpn: string
   ownerPrincipalType: string
-  lastActivityAt: string
   daysSinceLastUse: number | null
-  daysSinceLastActivity: number | null
   ageDays: number | null
   createdMonth: string
   lastUsedMonth: string
@@ -175,31 +173,6 @@ export interface AzureAIResource {
   createdAt: string
 }
 
-export interface CopilotSurface {
-  key: string
-  name: string
-  type: string
-  platform: string
-  isAgent: boolean
-  agentKey: string
-  matchOn: string
-  isMatched: boolean
-  spAgentKey: string
-}
-
-export interface Interaction {
-  /** yyyy-mm-dd */
-  date: string
-  /** yyyy-mm-ddThh:mm:ss, UTC */
-  time: string
-  surfaceKey: string
-  agentKey: string
-  user: string
-  appHost: string
-  threadId: string
-  resourceCount: number
-}
-
 export interface UserRecord {
   key: string
   name: string
@@ -230,78 +203,7 @@ export interface ShadowDevice {
   lastSeen: string
 }
 
-/** Copilot Credits one agent consumed in the cost window, for one billing feature. */
-export interface AgentCredit {
-  /** `${environmentId}|${botId}`, or "" when the agent is no longer in the inventory. */
-  agentKey: string
-  envId: string
-  resourceId: string
-  feature: string
-  product: string
-  billed: number
-  nonBilled: number
-  lastRefreshed: string
-}
-
-/** One currency in the tenant's Power Platform capacity pool. */
-export interface CreditPool {
-  currency: string
-  purchased: number
-  allocated: number
-  consumed: number
-  lastUpdated: string
-}
-
-/** Azure AI spend for one resource on one day, from Cost Management. */
-export interface AiCostDaily {
-  /** yyyy-mm-dd */
-  date: string
-  /** Lower-case ARM resource id, as Cost Management returns it. */
-  resourceId: string
-  cost: number
-  currency: string
-}
-
-/** Azure AI spend for one resource and meter over the whole cost window. */
-export interface AiCostMeter {
-  resourceId: string
-  meter: string
-  cost: number
-  currency: string
-}
-
-/** The Office apps Microsoft 365's app usage report counts daily users for. */
-export type M365App = 'outlook' | 'teams' | 'word' | 'excel' | 'powerPoint' | 'oneNote'
-
-/** Where Microsoft 365 Copilot is counted, as the Copilot usage report names it. */
-export type CopilotProduct = 'anyApp' | 'microsoftTeams' | 'outlook' | 'word' | 'excel' | 'powerPoint' | 'oneNote' | 'loop' | 'copilotChat'
-
-/**
- * Tenant-wide Microsoft 365 usage: counts only, from Microsoft Graph's usage reports. A daily flow
- * stores each report's JSON in Dataverse; nothing here names a person.
- */
-export interface M365Usage {
-  /** The newest report refresh date, yyyy-mm-dd. Microsoft's reports run about two days behind. */
-  refreshed: string
-  /** Distinct people active on any Microsoft 365 service in the last 30 days. */
-  active: number | null
-  /** Distinct people active per service in the last 30 days. */
-  services: { key: string; label: string; active: number }[]
-  /** Daily active users per Office app. */
-  appDaily: { date: string; counts: Record<M365App, number> }[]
-  emailDaily: { date: string; sent: number; received: number; read: number; meetingsCreated: number }[]
-  teamsDaily: { date: string; channel: number; chat: number; calls: number; meetings: number }[]
-  /** People licensed for Microsoft 365 Copilot, and those who used it in the last 30 days, per product. */
-  copilot: { product: CopilotProduct; enabled: number; active: number }[]
-  /** Reports the flow could not fetch on its last run. */
-  failed: { name: string; status: string }[]
-  /** When the flow last stored a report. */
-  collectedAt: string
-}
-
-export type LaneId =
-  | 'agents' | 'environments' | 'usage' | 'flows' | 'foundry' | 'users' | 'interactions' | 'knowledge' | 'sharepoint' | 'shadow'
-  | 'credits' | 'creditpool' | 'aicost' | 'm365usage'
+export type LaneId = 'agents' | 'environments' | 'usage' | 'flows' | 'foundry' | 'users' | 'knowledge' | 'sharepoint' | 'shadow'
 
 export type LaneState = 'ok' | 'empty' | 'not-set-up' | 'denied' | 'error' | 'sample' | 'loading'
 
@@ -333,19 +235,9 @@ export interface RawData {
   sources: KnowledgeSource[]
   spAgents: SharePointAgent[]
   aiResources: AzureAIResource[]
-  interactions: Interaction[]
-  /** App identities seen in the audit log; classified and joined to agents by buildDataset. */
-  appIdentities?: string[]
-  /** Pre-classified surfaces (the sample ships them); when absent they are derived from appIdentities. */
-  surfaces?: CopilotSurface[]
   users: UserRecord[]
   shadowSignals: ShadowSignal[]
   shadowDevices: ShadowDevice[]
-  credits: AgentCredit[]
-  creditPool: CreditPool[]
-  aiCostDaily: AiCostDaily[]
-  aiCostMeters: AiCostMeter[]
-  m365?: M365Usage
 }
 
 export interface Dataset {
@@ -361,18 +253,11 @@ export interface Dataset {
   sources: KnowledgeSource[]
   spAgents: SharePointAgent[]
   aiResources: AzureAIResource[]
-  interactions: Interaction[]
-  surfaces: Map<string, CopilotSurface>
   users: UserRecord[]
   /** Whether owner and creator ids were resolved to names, which live mode cannot do yet. */
   namesResolved: boolean
   shadowSignals: ShadowSignal[]
   shadowDevices: ShadowDevice[]
-  credits: AgentCredit[]
-  creditPool: CreditPool[]
-  aiCostDaily: AiCostDaily[]
-  aiCostMeters: AiCostMeter[]
-  m365?: M365Usage
   lanes: LaneStatus[]
   runs: RunInfo[]
   appEnvironment?: string

@@ -20,7 +20,7 @@
                 "horizontalTextAlignment": "left",
                 "textRuns": [
                   {
-                    "value": ".agent files observed through Purview file operations; inventory joins exactly to Copilot usage by ListItemUniqueId",
+                    "value": ".agent files observed through Purview file operations; latest state per ListItemUniqueId",
                     "textStyle": {
                       "fontFamily": "Segoe UI",
                       "fontSize": "10pt",

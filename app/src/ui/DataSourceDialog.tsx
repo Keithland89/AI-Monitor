@@ -16,8 +16,8 @@ export function DataSourceDialog({ open, onClose }: { open: boolean; onClose: ()
           <dd>{dateLabel(ds.asOf.slice(0, 10))}</dd>
           <dt>Agents</dt>
           <dd>{int(ds.agents.length)}</dd>
-          <dt>Interactions</dt>
-          <dd>{int(ds.interactions.length)}</dd>
+          <dt>Knowledge sources</dt>
+          <dd>{int(ds.sources.length)}</dd>
         </dl>
         <p>
           {hostAvailable

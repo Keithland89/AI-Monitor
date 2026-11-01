@@ -10,7 +10,7 @@ model Model
 
 annotation __PBI_TimeIntelligenceEnabled = 0
 
-annotation PBI_QueryOrder = ["Agent","Environment","AgentConnector","AgentKnowledge","KnowledgeSource","SharePointAgent","AgentFlow","AzureAIResource","RiskDetail","User","Interaction","CopilotSurface","Date","ApiCoverage","AgentGap","TelemetryCoverage","RiskFactor","Metrics","DataverseUrl","DateStart","FnToInt","FnToNum","FnToBool","FnToDateTime","FnToDate","FnToLogical","FnRecordsToTable","FnRetry","FnDataverse","FnDataverseOptional","SrcInteraction","SrcSurfaceKey","SrcKnowledgeSource","SrcSharePointAgent","FnDistinctKey","FnHexRun","FnLooksGuid","FnSpo","FnSurface","FnAgentLookup","FnSharePointAgentLookup","FnArg","ShadowAiSignal","ShadowAiDevice","ShadowAiCatalog","ShadowAiWatchlist","FnWatchTerms","FnWatchPrefix","FnWatchMatch","FnInstalledMatch","FnHunt","SrcShadowInstalled","SrcShadowExecuted","SrcShadowNetwork","SrcShadowDevice"]
+annotation PBI_QueryOrder = ["Agent","Environment","AgentConnector","AgentKnowledge","KnowledgeSource","SharePointAgent","AgentFlow","AzureAIResource","RiskDetail","User","Date","ApiCoverage","AgentGap","TelemetryCoverage","RiskFactor","Metrics","DataverseUrl","DateStart","FnToInt","FnToNum","FnToBool","FnToDateTime","FnToDate","FnToLogical","FnRecordsToTable","FnRetry","FnDataverse","FnDataverseOptional","SrcKnowledgeSource","SrcSharePointAgent","FnDistinctKey","FnSpo","FnArg","ShadowAiSignal","ShadowAiDevice","ShadowAiCatalog","ShadowAiWatchlist","FnWatchTerms","FnWatchPrefix","FnWatchMatch","FnInstalledMatch","FnHunt","SrcShadowInstalled","SrcShadowExecuted","SrcShadowNetwork","SrcShadowDevice"]
 
 annotation PBI_ProTooling = ["DevMode"]
 
@@ -24,8 +24,6 @@ ref table AgentFlow
 ref table AzureAIResource
 ref table RiskDetail
 ref table User
-ref table Interaction
-ref table CopilotSurface
 ref table Date
 ref table ApiCoverage
 ref table AgentGap

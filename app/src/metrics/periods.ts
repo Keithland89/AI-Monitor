@@ -1,20 +1,7 @@
-import type { Interaction } from '../data/types'
-
 const DAY = 86_400_000
 
 /** Whole days since 1970-01-01 (UTC) for a yyyy-mm-dd date or ISO timestamp; NaN when blank or invalid. */
 export const dayNum = (d: string | null | undefined) => (d ? Math.floor(Date.parse(d.slice(0, 10) + 'T00:00:00Z') / DAY) : NaN)
-export const dayStr = (n: number) => new Date(n * DAY).toISOString().slice(0, 10)
-
-/**
- * The last day with audit data. Windows end here rather than at the refresh time,
- * so an export that lags by a day or two doesn't read as a fall in use.
- */
-export function lastDataDay(rows: readonly Interaction[]): string {
-  let last = ''
-  for (const r of rows) if (r.date > last) last = r.date
-  return last
-}
 
 /** Splits rows into the `days` ending on `end` and the `days` before that. */
 export function splitPeriods<T>(rows: readonly T[], date: (r: T) => string | null | undefined, end: string, days = 7): [T[], T[]] {

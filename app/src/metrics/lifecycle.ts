@@ -1,99 +1,67 @@
-import type { Agent, Interaction } from '../data/types'
-import { dayNum } from './periods'
+import type { Agent } from '../data/types'
 
-export const LIFECYCLE = ['New', 'Growing', 'Steady', 'Declining', 'Dormant', 'Never used'] as const
+/** Where an agent sits in its life, from its age and the Power Platform last-used date. */
+export const LIFECYCLE = ['New', 'Active', 'Idle', 'Dormant', 'Never used', 'No usage signal'] as const
 export type Lifecycle = (typeof LIFECYCLE)[number]
 
 export const LIFECYCLE_HELP: Record<Lifecycle, string> = {
   New: 'Created in the last 30 days.',
-  Growing: 'At least 2 more users, and 25% more, in the last 4 weeks than in the 4 weeks before.',
-  Steady: 'Used in the last 90 days without a clear rise or fall in users.',
-  Declining: 'At least 2 fewer users, and 25% fewer, in the last 4 weeks than in the 4 weeks before.',
-  Dormant: 'No activity for 90 days or more.',
-  'Never used': 'No usage signal at all, 30 or more days after it was created.',
+  Active: 'Used in the last 30 days.',
+  Idle: 'Last used 31 to 90 days ago.',
+  Dormant: 'Not used for more than 90 days.',
+  'Never used': 'No last-used date at all, 30 or more days after it was created, on a platform that records one.',
+  'No usage signal': 'Built on a platform that records no last-used date (Agent Builder or Azure AI Foundry), so it is not judged on use.',
 }
 
-export const VERDICTS = ['Promote', 'Keep', 'Watch', 'Review', 'Retire'] as const
+/** Platforms whose agents never get a Power Platform last-used date, as in the report's TelemetryCoverage table. */
+export const NO_USAGE_SIGNAL_PLATFORMS: readonly string[] = ['M365 Copilot Agent Builder', 'Azure AI Foundry']
+
+export const hasUsageSignal = (a: Pick<Agent, 'platform'>) => !NO_USAGE_SIGNAL_PLATFORMS.includes(a.platform)
+
+export const VERDICTS = ['Keep', 'Watch', 'Review', 'Retire'] as const
 export type Verdict = (typeof VERDICTS)[number]
 
 export const VERDICT_HELP: Record<Verdict, string> = {
-  Promote: 'Growing, low risk and not yet shared tenant-wide: a candidate to share more widely.',
-  Keep: 'In use with no flags.',
-  Watch: 'Too new to judge, or use is falling.',
+  Keep: 'In use, or with no usage signal to judge, and no flags.',
+  Watch: 'Too new to judge, not used yet, or idle.',
   Review: 'High risk, or no owner. Check it before anything else.',
-  Retire: 'Dormant for 90 days, or never used 60 days after it was created.',
+  Retire: 'Dormant for more than 90 days, or never used 60 days after it was created.',
 }
 
-export interface AgentTrend {
-  /** Distinct users in the last 28 days. */
-  users: number
-  /** Distinct users in the 28 days before that. */
-  prevUsers: number
-  sessions: number
-  /** Of the users in the last 8 weeks, the share active in 2 or more different weeks. */
-  returnRate: number
-  returning: number
-  usersIn8Weeks: number
+/** How often each verdict should come back for review. */
+export const REVIEW_CADENCE: Record<Verdict, string> = {
+  Retire: 'Now: confirm with the owner, then remove or quarantine.',
+  Review: 'This month: fix the risk or find an owner.',
+  Watch: 'Every quarter: check again when the next review runs.',
+  Keep: 'Twice a year, with the full inventory.',
 }
 
-/** Per-agent audit trends over the 8 weeks to `end`, in one pass over the interactions. */
-export function agentTrends(rows: readonly Interaction[], end: string): Map<string, AgentTrend> {
-  const e = dayNum(end)
-  const acc = new Map<string, { cur: Set<string>; prev: Set<string>; sessions: Set<string>; weeks: Map<string, Set<number>> }>()
-  if (Number.isNaN(e)) return new Map()
-  for (const r of rows) {
-    if (!r.agentKey) continue
-    const ago = e - dayNum(r.date)
-    if (!(ago >= 0 && ago < 56)) continue
-    let a = acc.get(r.agentKey)
-    if (!a) acc.set(r.agentKey, (a = { cur: new Set(), prev: new Set(), sessions: new Set(), weeks: new Map() }))
-    if (ago < 28) {
-      if (r.user) a.cur.add(r.user)
-      if (r.threadId) a.sessions.add(r.threadId)
-    } else if (r.user) a.prev.add(r.user)
-    if (r.user) {
-      const w = a.weeks.get(r.user)
-      if (w) w.add(Math.floor(ago / 7))
-      else a.weeks.set(r.user, new Set([Math.floor(ago / 7)]))
-    }
-  }
-  const out = new Map<string, AgentTrend>()
-  for (const [k, a] of acc) {
-    let returning = 0
-    for (const w of a.weeks.values()) if (w.size >= 2) returning++
-    out.set(k, {
-      users: a.cur.size,
-      prevUsers: a.prev.size,
-      sessions: a.sessions.size,
-      returning,
-      usersIn8Weeks: a.weeks.size,
-      returnRate: a.weeks.size ? returning / a.weeks.size : NaN,
-    })
-  }
-  return out
-}
-
-export function lifecycleOf(a: Agent, t: AgentTrend | undefined): Lifecycle {
+export function lifecycleOf(a: Agent): Lifecycle {
+  if (!hasUsageSignal(a)) return 'No usage signal'
   if (a.ageDays !== null && a.ageDays < 30) return 'New'
-  if (!a.lastActivityAt) return 'Never used'
-  if ((a.daysSinceLastActivity ?? Infinity) >= 90) return 'Dormant'
-  const cur = t?.users ?? 0
-  const prev = t?.prevUsers ?? 0
-  if (cur - prev >= 2 && cur >= prev * 1.25) return 'Growing'
-  if (prev - cur >= 2 && cur <= prev * 0.75) return 'Declining'
-  return 'Steady'
+  switch (a.activityStatus) {
+    case 'Active (7d)':
+    case 'Active (30d)':
+      return 'Active'
+    case 'Idle (90d)':
+      return 'Idle'
+    case 'Dormant (90d+)':
+      return 'Dormant'
+    default:
+      return 'Never used'
+  }
 }
 
 export function verdictOf(a: Agent, stage: Lifecycle): { verdict: Verdict; reason: string } {
-  if (stage === 'Dormant') return { verdict: 'Retire', reason: `No activity for ${a.daysSinceLastActivity} days` }
+  if (stage === 'Dormant') return { verdict: 'Retire', reason: `Not used for ${a.daysSinceLastUse ?? 'over 90'} days` }
   if (stage === 'Never used' && (a.ageDays ?? 0) >= 60) return { verdict: 'Retire', reason: `Never used, created ${a.ageDays} days ago` }
   if (a.riskBand === 'High') return { verdict: 'Review', reason: `High risk (score ${a.riskScore})` }
   if (!a.hasOwner) return { verdict: 'Review', reason: 'No owner' }
   if (stage === 'New') return { verdict: 'Watch', reason: 'Created in the last 30 days' }
   if (stage === 'Never used') return { verdict: 'Watch', reason: 'Not used yet' }
-  if (stage === 'Declining') return { verdict: 'Watch', reason: 'Fewer users than the 4 weeks before' }
-  if (stage === 'Growing' && a.riskBand === 'Low' && !a.sharedTenantWide) return { verdict: 'Promote', reason: 'Growing, low risk, not shared tenant-wide' }
-  return { verdict: 'Keep', reason: stage === 'Growing' ? 'Growing' : 'In steady use' }
+  if (stage === 'Idle') return { verdict: 'Watch', reason: `Last used ${a.daysSinceLastUse ?? 'over 30'} days ago` }
+  if (stage === 'No usage signal') return { verdict: 'Keep', reason: 'No usage signal on this platform' }
+  return { verdict: 'Keep', reason: 'Used in the last 30 days' }
 }
 
 export interface AgentReview {
@@ -101,24 +69,11 @@ export interface AgentReview {
   stage: Lifecycle
   verdict: Verdict
   reason: string
-  trend: AgentTrend | undefined
 }
 
-export function reviewAgents(agents: readonly Agent[], trends: Map<string, AgentTrend>): AgentReview[] {
+export function reviewAgents(agents: readonly Agent[]): AgentReview[] {
   return agents.map((agent) => {
-    const trend = trends.get(agent.key)
-    const stage = lifecycleOf(agent, trend)
-    return { agent, stage, trend, ...verdictOf(agent, stage) }
+    const stage = lifecycleOf(agent)
+    return { agent, stage, ...verdictOf(agent, stage) }
   })
-}
-
-/** Across agents: users active in 2 or more weeks, out of all agent users, in the last 8 weeks. */
-export function overallReturnRate(trends: Iterable<AgentTrend>): number {
-  let r = 0
-  let n = 0
-  for (const t of trends) {
-    r += t.returning
-    n += t.usersIn8Weeks
-  }
-  return n ? r / n : NaN
 }

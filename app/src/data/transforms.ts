@@ -1,5 +1,5 @@
 import type {
-  ActivityStatus, Agent, AgentBase, AgentConnector, AgentFlow, AgentKnowledge, AzureAIResource, Environment, Interaction,
+  ActivityStatus, Agent, AgentBase, AgentConnector, AgentFlow, AgentKnowledge, AzureAIResource, Environment,
   RiskBand, RiskDetail, UserRecord,
 } from './types'
 
@@ -376,19 +376,12 @@ export function platformOf(a: AgentBase): string {
 export interface FinaliseOptions {
   asOf: string
   users: UserRecord[]
-  interactions: Interaction[]
   /** False in live mode when no user directory could be read; ids then stand in for names. */
   namesResolved: boolean
 }
 
 export function finaliseAgents(bases: AgentBase[], opt: FinaliseOptions): { agents: Agent[]; riskDetail: RiskDetail[] } {
   const users = new Map(opt.users.map((u) => [u.key.toLowerCase(), u]))
-  const lastTouch = new Map<string, string>()
-  for (const i of opt.interactions) {
-    if (!i.agentKey) continue
-    const prev = lastTouch.get(i.agentKey)
-    if (!prev || i.time > prev) lastTouch.set(i.agentKey, i.time)
-  }
   const seen = new Set<string>()
   const agents: Agent[] = []
   const riskDetail: RiskDetail[] = []
@@ -405,10 +398,6 @@ export function finaliseAgents(bases: AgentBase[], opt: FinaliseOptions): { agen
     const ownerName = b.ownerId === ZERO_GUID ? 'System / platform' : opt.namesResolved ? owner?.name ?? '' : b.ownerId
     const ownerPrincipalType = owner?.type ? owner.type : 'Not resolved in Entra'
 
-    const audit = lastTouch.get(b.key) ?? ''
-    const lastActivityAt = !b.lastUsed ? audit : !audit ? b.lastUsed : b.lastUsed > audit ? b.lastUsed : audit
-    const daysSinceLastActivity = dayBoundaries(lastActivityAt, opt.asOf)
-
     const agentOrigin = !createdByName ? 'Creator unknown' : createdByName === 'System / platform' ? 'Platform-provisioned' : 'Human-built'
     const creatorCategory =
       b.isManaged && (!createdByName || createdByName === 'System / platform') ? 'Microsoft'
@@ -423,13 +412,11 @@ export function finaliseAgents(bases: AgentBase[], opt: FinaliseOptions): { agen
       ownerName,
       ownerUpn: owner?.upn ?? '',
       ownerPrincipalType,
-      lastActivityAt,
       daysSinceLastUse: elapsedDays(b.lastUsed, opt.asOf),
-      daysSinceLastActivity,
       ageDays: elapsedDays(b.createdAt, opt.asOf),
       createdMonth: b.createdAt.slice(0, 7),
       lastUsedMonth: b.lastUsed.slice(0, 7),
-      activityStatus: activityStatus(daysSinceLastActivity),
+      activityStatus: activityStatus(dayBoundaries(b.lastUsed, opt.asOf)),
       riskScore: score,
       riskBand: riskBand(score),
       riskFactorCount: factors.length,
@@ -445,13 +432,3 @@ export function finaliseAgents(bases: AgentBase[], opt: FinaliseOptions): { agen
   return { agents, riskDetail }
 }
 
-/** Environment[AdoptionBand]. */
-export function adoptionBand(agents: number, active: number): string {
-  if (!agents) return 'No agents'
-  const rate = active / agents
-  if (rate === 0) return 'No adoption'
-  if (rate < 0.05) return 'Under 5%'
-  if (rate < 0.1) return '5-10%'
-  if (rate < 0.25) return '10-25%'
-  return '25% and above'
-}

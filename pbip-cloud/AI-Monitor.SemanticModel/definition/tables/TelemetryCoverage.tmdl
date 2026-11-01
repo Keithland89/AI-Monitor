@@ -1,4 +1,4 @@
-/// Which monitoring signals are actually obtainable for each agent platform without an Agent 365 licence. This is what makes the usage gaps on the Usage page explainable rather than mysterious.
+/// Which monitoring signals are obtainable for each agent platform without an Agent 365 licence. Explains why some agents show No usage signal; per-conversation usage lives in Analytics Hub.
 table TelemetryCoverage
 	lineageTag: ca395ccd-668c-4079-9ab8-ed29b997cbdc
 
@@ -51,8 +51,8 @@ table TelemetryCoverage
 				    Source = #table(
 				        type table [SortOrder = Int64.Type, Platform = text, Inventory = text, Configuration = text, Sharing = text, UsageSignal = text, MessageVolume = text, WhyNot = text],
 				        {
-				            { 1, "Copilot Studio", "Full", "Full", "Full", "Yes - lastUsed + audit log", "Yes - per turn", "Copilot Studio agents are Dataverse-backed Power Platform resources, so they emit microsoft.powerplatformusage/usagerecords. Verified: 1,648 of 20,354 have ever produced one. Per-turn volume now also comes from Purview CopilotInteraction records, joined on the agent's schema name." },
-				            { 2, "M365 Copilot Agent Builder", "Full", "Full", "Full", "Yes - Purview audit log", "Yes - per turn", "Declarative agents run inside the Microsoft 365 Copilot host, not the Power Platform runtime, so they emit no Power Platform usage records at all - 0 of 166 matched. Solved instead by reading CopilotInteraction records from the Purview unified audit log and joining AppIdentity (Copilot.Studio.Declarative.T_*) back to the agent's TitleId. This gives per-turn, per-user usage - better than the lastUsed timestamp Copilot Studio exposes." },
+				            { 1, "Copilot Studio", "Full", "Full", "Full", "Yes - lastUsed timestamp", "In Analytics Hub", "Copilot Studio agents are Dataverse-backed Power Platform resources, so they emit microsoft.powerplatformusage/usagerecords. Verified: 1,648 of 20,354 have ever produced one. Per-turn volume comes from the Purview audit log and lives in Analytics Hub." },
+				            { 2, "M365 Copilot Agent Builder", "Full", "Full", "Full", "None", "In Analytics Hub", "Declarative agents run inside the Microsoft 365 Copilot host, not the Power Platform runtime, so they emit no Power Platform usage records at all - 0 of 166 matched. Analytics Hub reads their per-turn usage from the Purview audit log, joining AppIdentity (Copilot.Studio.Declarative.T_*) to TitleId." },
 				            { 3, "Azure AI Foundry", "Projects only", "Partial", "N/A", "None", "No", "Resource Graph sees Foundry projects but not the agents inside them, and exposes no usage or activity timestamp for them at all - the Power Platform usage-record table only covers Power Platform resources. Verified: 0 of 93 Foundry projects carry any usage or last-activity property. Per-agent inventory and usage need the Foundry data-plane /assistants API on each project's own endpoint, plus Application Insights for invocation telemetry." },
 				            { 4, "Agent flows", "Full", "Full", "N/A", "Yes - lastUsed timestamp", "No", "Agent flows are Power Automate resources and do emit usage records, but verified only 11 of 564 have ever produced one." }
 				        }

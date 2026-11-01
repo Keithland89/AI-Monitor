@@ -189,22 +189,6 @@ export function createDataverse(client, opts = {}) {
   }
 
   /**
-   * Every row of a small table, or undefined when the table isn't there.
-   * @param {string} entitySet
-   * @param {string[]} columns
-   * @returns {Promise<any[] | undefined>}
-   */
-  async function allRows(entitySet, columns) {
-    try {
-      const data = await client.get(`/${entitySet}?$select=${columns.join(',')}`);
-      return data?.value ?? [];
-    } catch (err) {
-      if (isNotFound(err)) return undefined;
-      throw err;
-    }
-  }
-
-  /**
    * Deletes a solution. Deleting a managed solution deletes its tables and every row in them.
    * @param {string} uniqueName
    */
@@ -229,7 +213,7 @@ export function createDataverse(client, opts = {}) {
     }
   }
 
-  return { client, solutionVersion, importSolution, waitForAsync, importNeeded, envVar, setEnvVar, setConnectionReference, flowState, setFlowState, restartFlow, latestRow, allRows, deleteSolution, deleteTable };
+  return { client, solutionVersion, importSolution, waitForAsync, importNeeded, envVar, setEnvVar, setConnectionReference, flowState, setFlowState, restartFlow, latestRow, deleteSolution, deleteTable };
 }
 
 /** @typedef {ReturnType<typeof createDataverse>} Dataverse */

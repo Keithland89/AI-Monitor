@@ -39,7 +39,7 @@ test('the zip holds the installer, the managed solutions and the app\'s build, a
   };
   for (const p of ['installer/package.json', 'installer/package-lock.json', 'installer/README.md', 'installer/managed-cli/package.json', 'installer/managed-cli/package-lock.json', 'installer/bin/ai-monitor-install.js', 'installer/src/cli.js', 'installer/src/web/index.html']) put(p);
   for (const s of SOLUTIONS) put(`solution/${s.file}`);
-  put('solution/CopilotInteractionLogging.zip');
+  for (const old of ['CopilotInteractionLogging_managed.zip', 'M365UsageReports_managed.zip', 'Other.zip']) put(`solution/${old}`);
   put('installer/node_modules/x/index.js');
   assert.throws(() => releaseFiles(root), /app\/dist has no build/);
   put('app/dist/index.html', '<html>'.repeat(200));
@@ -50,6 +50,7 @@ test('the zip holds the installer, the managed solutions and the app\'s build, a
   assert.ok(files.includes('installer/src/web/index.html'));
   assert.ok(files.includes('app/dist/assets/app.js'));
   assert.equal(files.filter((f) => f.startsWith('solution/')).length, SOLUTIONS.length, 'only the managed solutions');
+  assert.deepEqual(files.filter((f) => f.startsWith('solution/')).sort(), ['solution/AgentAppUserProvisioning_managed.zip', 'solution/AgentKnowledgeSourceSweep_managed.zip', 'solution/SharePointAgentLogging_managed.zip'], 'no lane C or G solutions');
   assert.ok(!files.some((f) => f.includes('node_modules') || f.startsWith('app/src')));
 
   const zip = makeZip(files.map((name) => ({ name, data: readFileSync(join(root, name)) })));

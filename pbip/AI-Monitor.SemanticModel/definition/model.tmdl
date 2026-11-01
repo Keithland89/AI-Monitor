@@ -16,8 +16,6 @@ ref table AgentFlow
 ref table AzureAIResource
 ref table RiskDetail
 ref table User
-ref table CopilotSurface
-ref table Interaction
 ref table Date
 ref table ApiCoverage
 ref table AgentGap

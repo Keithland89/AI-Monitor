@@ -20,7 +20,7 @@
                 "horizontalTextAlignment": "left",
                 "textRuns": [
                   {
-                    "value": "What each platform reports, and how this report covers the capabilities of a Microsoft Agent 365 licence",
+                    "value": "What each platform reports, and what an optional Agent 365 licence would add. None of this report needs one.",
                     "textStyle": {
                       "fontFamily": "Segoe UI",
                       "fontSize": "9.5pt",

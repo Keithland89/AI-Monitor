@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="2224" height="1510" viewBox="0 0 2224 1510" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif">
-<rect width="2224" height="1510" fill="#ffffff"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="2224" height="1454" viewBox="0 0 2224 1454" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif">
+<rect width="2224" height="1454" fill="#ffffff"/>
 <defs>
 <marker id="h0078D4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0078D4"/></marker>
 <marker id="h107C10" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#107C10"/></marker>
@@ -7,143 +7,120 @@
 <marker id="h0c8599" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0c8599"/></marker>
 </defs>
 <text x="32" y="53" font-size="27" font-weight="600" fill="#1b1b1b" text-anchor="start">Tenant-wide AI agent monitoring</text>
-<text x="32" y="78" font-size="14" font-weight="400" fill="#495057" text-anchor="start">Copilot Studio · M365 Copilot Agent Builder · SharePoint agents · Azure AI Foundry</text>
+<text x="32" y="78" font-size="14" font-weight="400" fill="#495057" text-anchor="start">Copilot Studio · M365 Copilot Agent Builder · SharePoint agents · Azure AI Foundry · Shadow AI</text>
 <text x="32" y="98" font-size="14" font-weight="400" fill="#495057" text-anchor="start">from read-only APIs your tenant already exposes</text>
 <rect x="1860" y="22" width="332" height="104" rx="10" fill="#FDE7E9" stroke="#D13438" stroke-width="2"/>
 <text x="2026" y="56" font-size="18" font-weight="600" fill="#D13438" text-anchor="middle">NO AGENT 365 LICENCE REQUIRED</text>
 <text x="2026" y="86" font-size="14" font-weight="400" fill="#1b1b1b" text-anchor="middle">No Agent 365 API is called</text>
 <text x="2026" y="106" font-size="14" font-weight="400" fill="#1b1b1b" text-anchor="middle">and no Agent 365 table is read</text>
-<rect x="752" y="158" width="344" height="662" rx="10" fill="none" stroke="#F7630C" stroke-width="2" stroke-dasharray="10 6"/>
-<rect x="1120" y="158" width="344" height="662" rx="10" fill="none" stroke="#F7630C" stroke-width="2" stroke-dasharray="10 6"/>
-<rect x="1488" y="158" width="344" height="662" rx="10" fill="none" stroke="#F7630C" stroke-width="2" stroke-dasharray="10 6"/>
-<text x="192" y="150" font-size="14" font-weight="600" fill="#5C2D91" text-anchor="middle">A · AGENT INVENTORY</text>
-<text x="560" y="150" font-size="14" font-weight="600" fill="#5C2D91" text-anchor="middle">B · OWNER &amp; CREATOR IDENTITY</text>
-<text x="928" y="150" font-size="13" font-weight="600" fill="#F7630C" text-anchor="middle">C · INTERACTION TELEMETRY</text>
-<text x="1296" y="150" font-size="13" font-weight="600" fill="#F7630C" text-anchor="middle">D · NAMED KNOWLEDGE SOURCES</text>
-<text x="1664" y="150" font-size="13" font-weight="600" fill="#F7630C" text-anchor="middle">E · SHAREPOINT AGENT INVENTORY</text>
-<text x="2032" y="150" font-size="14" font-weight="600" fill="#5C2D91" text-anchor="middle">F · SHADOW AI ON ENDPOINTS</text>
-<rect x="32" y="166" width="320" height="180" rx="10" fill="#E8DAEF" stroke="#5C2D91" stroke-width="2"/>
-<text x="192" y="200" font-size="18" font-weight="600" fill="#5C2D91" text-anchor="middle">Tenant estate</text>
-<text x="192" y="231" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">Copilot Studio agents</text>
-<text x="192" y="252" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">M365 Copilot Agent Builder</text>
-<text x="192" y="273" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">AI Foundry projects, not agents</text>
-<text x="192" y="294" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">Agent flows</text>
-<text x="192" y="315" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">Power Platform environments</text>
-<rect x="400" y="166" width="320" height="180" rx="10" fill="#E8DAEF" stroke="#5C2D91" stroke-width="2"/>
-<text x="560" y="200" font-size="18" font-weight="600" fill="#5C2D91" text-anchor="middle">Entra principals</text>
-<text x="560" y="231" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">Agent owners and creators</text>
-<text x="560" y="252" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle"></text>
-<text x="560" y="273" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">Users and service principals</text>
-<rect x="768" y="166" width="320" height="180" rx="10" fill="#E8DAEF" stroke="#5C2D91" stroke-width="2"/>
-<text x="928" y="200" font-size="18" font-weight="600" fill="#5C2D91" text-anchor="middle">Microsoft Purview</text>
-<text x="928" y="231" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">Unified audit log</text>
-<text x="928" y="252" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle"></text>
-<text x="928" y="273" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">Who used which agent, when</text>
-<text x="928" y="294" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">and how often — including</text>
-<text x="928" y="315" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">SharePoint agents</text>
-<rect x="1136" y="166" width="320" height="180" rx="10" fill="#E8DAEF" stroke="#5C2D91" stroke-width="2"/>
-<text x="1296" y="200" font-size="18" font-weight="600" fill="#5C2D91" text-anchor="middle">Every environment's Dataverse</text>
-<text x="1296" y="231" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">botcomponents (type 16)</text>
-<text x="1296" y="252" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle"></text>
-<text x="1296" y="273" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">Real site, index and connector names</text>
-<text x="1296" y="294" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">exist here — ARG has counts only</text>
-<rect x="1504" y="166" width="320" height="180" rx="10" fill="#E8DAEF" stroke="#5C2D91" stroke-width="2"/>
-<text x="1664" y="200" font-size="18" font-weight="600" fill="#5C2D91" text-anchor="middle">Microsoft Purview</text>
-<text x="1664" y="231" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">SharePoint file operations</text>
-<text x="1664" y="252" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle"></text>
-<text x="1664" y="273" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">.agent create, update, delete, recycle</text>
-<text x="1664" y="294" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">ListItemUniqueId is the stable key</text>
-<rect x="1872" y="166" width="320" height="180" rx="10" fill="#E8DAEF" stroke="#5C2D91" stroke-width="2"/>
-<text x="2032" y="200" font-size="18" font-weight="600" fill="#5C2D91" text-anchor="middle">Managed devices</text>
-<text x="2032" y="231" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">Defender-onboarded endpoints</text>
-<text x="2032" y="252" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle"></text>
-<text x="2032" y="273" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">AI tools outside the agent platforms:</text>
-<text x="2032" y="294" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">Claude Code, Copilot CLI,</text>
-<text x="2032" y="315" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">Ollama and Cursor</text>
-<rect x="32" y="406" width="320" height="190" rx="10" fill="#CFE4FA" stroke="#0078D4" stroke-width="2"/>
-<text x="192" y="440" font-size="18" font-weight="600" fill="#0078D4" text-anchor="middle">Azure Resource Graph</text>
-<text x="192" y="471" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">Certified connector</text>
-<text x="192" y="492" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle"></text>
-<text x="192" y="513" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">Power Platform Admin</text>
-<text x="192" y="534" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">+ Azure Reader at tenant root group</text>
-<rect x="400" y="406" width="320" height="190" rx="10" fill="#CFE4FA" stroke="#0078D4" stroke-width="2"/>
-<text x="560" y="440" font-size="18" font-weight="600" fill="#0078D4" text-anchor="middle">Dataverse Web API</text>
-<text x="560" y="471" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">OData.Feed → systemusers</text>
-<text x="560" y="492" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle"></text>
-<text x="560" y="513" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">Names resolved in DAX via</text>
-<text x="560" y="534" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">Agent[OwnerId] → User[UserKey]</text>
-<rect x="768" y="406" width="320" height="190" rx="10" fill="#FFF4CE" stroke="#F7630C" stroke-width="2"/>
-<text x="928" y="440" font-size="18" font-weight="600" fill="#F7630C" text-anchor="middle">App reg → Power Automate</text>
-<text x="928" y="471" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">AuditLogsQuery.Read.All</text>
-<text x="928" y="492" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">Admin consent required</text>
-<text x="928" y="513" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle"></text>
-<text x="928" y="534" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">Lands daily in Dataverse</text>
-<rect x="1136" y="406" width="320" height="190" rx="10" fill="#FFF4CE" stroke="#F7630C" stroke-width="2"/>
-<text x="1296" y="440" font-size="18" font-weight="600" fill="#F7630C" text-anchor="middle">App reg → Power Automate</text>
-<text x="1296" y="471" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">Application user per environment</text>
-<text x="1296" y="492" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">granted by the provisioning flow</text>
-<text x="1296" y="513" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle"></text>
-<text x="1296" y="534" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">Lands daily in Dataverse</text>
-<rect x="1504" y="406" width="320" height="190" rx="10" fill="#FFF4CE" stroke="#F7630C" stroke-width="2"/>
-<text x="1664" y="440" font-size="18" font-weight="600" fill="#F7630C" text-anchor="middle">SharePointAgentLogging</text>
-<text x="1664" y="471" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">AuditLogsQuery.Read.All</text>
-<text x="1664" y="492" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">No Sites.Read.All</text>
-<text x="1664" y="513" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle"></text>
-<text x="1664" y="534" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">Scheduled and manual flows</text>
-<rect x="1872" y="406" width="320" height="190" rx="10" fill="#CFE4FA" stroke="#0078D4" stroke-width="2"/>
-<text x="2032" y="440" font-size="18" font-weight="600" fill="#0078D4" text-anchor="middle">Defender advanced hunting</text>
-<text x="2032" y="471" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">Web.Contents → advancedqueries</text>
-<text x="2032" y="492" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle"></text>
-<text x="2032" y="513" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">Security Reader, or any</text>
-<text x="2032" y="534" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">advanced hunting role</text>
-<rect x="768" y="654" width="320" height="150" rx="10" fill="#CFE4FA" stroke="#0078D4" stroke-width="2"/>
-<text x="928" y="688" font-size="18" font-weight="600" fill="#0078D4" text-anchor="middle">Dataverse landing table</text>
-<text x="928" y="719" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">poc_copilotinteractions</text>
-<text x="928" y="761" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">Upserted daily by the flow</text>
-<text x="928" y="782" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">Power BI reads this table</text>
-<rect x="1136" y="654" width="320" height="150" rx="10" fill="#CFE4FA" stroke="#0078D4" stroke-width="2"/>
-<text x="1296" y="688" font-size="18" font-weight="600" fill="#0078D4" text-anchor="middle">Dataverse landing table</text>
-<text x="1296" y="719" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">poc_agentknowledgesources</text>
-<text x="1296" y="761" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">Upserted daily by the flow</text>
-<text x="1296" y="782" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">Power BI reads this table</text>
-<rect x="1504" y="654" width="320" height="150" rx="10" fill="#CFE4FA" stroke="#0078D4" stroke-width="2"/>
-<text x="1664" y="688" font-size="18" font-weight="600" fill="#0078D4" text-anchor="middle">Dataverse landing table</text>
-<text x="1664" y="719" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">poc_sharepointagents</text>
-<text x="1664" y="761" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">64 observed: 61 current, 3 deleted</text>
-<text x="1664" y="782" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">Exact item-level SPO_* usage join</text>
-<line x1="192" y1="350" x2="192" y2="400" stroke="#0078D4" stroke-width="2" marker-end="url(#h0078D4)"/>
-<line x1="192" y1="600" x2="192" y2="858" stroke="#107C10" stroke-width="2" marker-end="url(#h107C10)"/>
-<line x1="560" y1="350" x2="560" y2="400" stroke="#0078D4" stroke-width="2" marker-end="url(#h0078D4)"/>
-<line x1="560" y1="600" x2="560" y2="858" stroke="#107C10" stroke-width="2" marker-end="url(#h107C10)"/>
-<line x1="2032" y1="350" x2="2032" y2="400" stroke="#0078D4" stroke-width="2" marker-end="url(#h0078D4)"/>
-<line x1="2032" y1="600" x2="2032" y2="858" stroke="#107C10" stroke-width="2" marker-end="url(#h107C10)"/>
-<line x1="928" y1="350" x2="928" y2="400" stroke="#F7630C" stroke-width="2" marker-end="url(#hF7630C)"/>
-<line x1="928" y1="600" x2="928" y2="648" stroke="#107C10" stroke-width="2" marker-end="url(#h107C10)"/>
-<line x1="928" y1="808" x2="928" y2="856" stroke="#107C10" stroke-width="2" marker-end="url(#h107C10)"/>
-<line x1="1296" y1="350" x2="1296" y2="400" stroke="#F7630C" stroke-width="2" marker-end="url(#hF7630C)"/>
-<line x1="1296" y1="600" x2="1296" y2="648" stroke="#107C10" stroke-width="2" marker-end="url(#h107C10)"/>
-<line x1="1296" y1="808" x2="1296" y2="856" stroke="#107C10" stroke-width="2" marker-end="url(#h107C10)"/>
-<line x1="1664" y1="350" x2="1664" y2="400" stroke="#F7630C" stroke-width="2" marker-end="url(#hF7630C)"/>
-<line x1="1664" y1="600" x2="1664" y2="648" stroke="#107C10" stroke-width="2" marker-end="url(#h107C10)"/>
-<line x1="1664" y1="808" x2="1664" y2="856" stroke="#107C10" stroke-width="2" marker-end="url(#h107C10)"/>
+<text x="224" y="150" font-size="14" font-weight="600" fill="#5C2D91" text-anchor="middle">A · AGENT INVENTORY</text>
+<rect x="32" y="166" width="384" height="180" rx="10" fill="#E8DAEF" stroke="#5C2D91" stroke-width="2"/>
+<text x="224" y="200" font-size="18" font-weight="600" fill="#5C2D91" text-anchor="middle">Tenant estate</text>
+<text x="224" y="231" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">Copilot Studio agents</text>
+<text x="224" y="252" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">M365 Copilot Agent Builder</text>
+<text x="224" y="273" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">AI Foundry projects, not agents</text>
+<text x="224" y="294" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">Agent flows</text>
+<text x="224" y="315" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">Power Platform environments</text>
+<line x1="224" y1="350" x2="224" y2="400" stroke="#0078D4" stroke-width="2" marker-end="url(#h0078D4)"/>
+<rect x="32" y="406" width="384" height="190" rx="10" fill="#CFE4FA" stroke="#0078D4" stroke-width="2"/>
+<text x="224" y="440" font-size="18" font-weight="600" fill="#0078D4" text-anchor="middle">Azure Resource Graph</text>
+<text x="224" y="471" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">Certified connector</text>
+<text x="224" y="492" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle"></text>
+<text x="224" y="513" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">Power Platform Admin</text>
+<text x="224" y="534" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">+ Azure Reader at tenant root group</text>
+<line x1="224" y1="600" x2="224" y2="858" stroke="#107C10" stroke-width="2" marker-end="url(#h107C10)"/>
+<text x="668" y="150" font-size="14" font-weight="600" fill="#5C2D91" text-anchor="middle">B · OWNER &amp; CREATOR IDENTITY</text>
+<rect x="476" y="166" width="384" height="180" rx="10" fill="#E8DAEF" stroke="#5C2D91" stroke-width="2"/>
+<text x="668" y="200" font-size="18" font-weight="600" fill="#5C2D91" text-anchor="middle">Entra principals</text>
+<text x="668" y="231" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">Agent owners and creators</text>
+<text x="668" y="252" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle"></text>
+<text x="668" y="273" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">Users and service principals</text>
+<line x1="668" y1="350" x2="668" y2="400" stroke="#0078D4" stroke-width="2" marker-end="url(#h0078D4)"/>
+<rect x="476" y="406" width="384" height="190" rx="10" fill="#CFE4FA" stroke="#0078D4" stroke-width="2"/>
+<text x="668" y="440" font-size="18" font-weight="600" fill="#0078D4" text-anchor="middle">Dataverse Web API</text>
+<text x="668" y="471" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">OData.Feed → systemusers</text>
+<text x="668" y="492" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle"></text>
+<text x="668" y="513" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">Names resolved in DAX via</text>
+<text x="668" y="534" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">Agent[OwnerId] → User[UserKey]</text>
+<line x1="668" y1="600" x2="668" y2="858" stroke="#107C10" stroke-width="2" marker-end="url(#h107C10)"/>
+<rect x="904" y="158" width="416" height="662" rx="10" fill="none" stroke="#F7630C" stroke-width="2" stroke-dasharray="10 6"/>
+<text x="1112" y="150" font-size="13" font-weight="600" fill="#F7630C" text-anchor="middle">D · NAMED KNOWLEDGE SOURCES</text>
+<rect x="920" y="166" width="384" height="180" rx="10" fill="#E8DAEF" stroke="#5C2D91" stroke-width="2"/>
+<text x="1112" y="200" font-size="18" font-weight="600" fill="#5C2D91" text-anchor="middle">Every environment's Dataverse</text>
+<text x="1112" y="231" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">botcomponents (type 16)</text>
+<text x="1112" y="252" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle"></text>
+<text x="1112" y="273" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">Real site, index and connector names</text>
+<text x="1112" y="294" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">exist here — ARG has counts only</text>
+<line x1="1112" y1="350" x2="1112" y2="400" stroke="#F7630C" stroke-width="2" marker-end="url(#hF7630C)"/>
+<rect x="920" y="406" width="384" height="190" rx="10" fill="#FFF4CE" stroke="#F7630C" stroke-width="2"/>
+<text x="1112" y="440" font-size="18" font-weight="600" fill="#F7630C" text-anchor="middle">App reg → Power Automate</text>
+<text x="1112" y="471" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">Application user per environment</text>
+<text x="1112" y="492" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">granted by the provisioning flow</text>
+<text x="1112" y="513" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle"></text>
+<text x="1112" y="534" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">Lands daily in Dataverse</text>
+<line x1="1112" y1="600" x2="1112" y2="648" stroke="#107C10" stroke-width="2" marker-end="url(#h107C10)"/>
+<rect x="920" y="654" width="384" height="150" rx="10" fill="#CFE4FA" stroke="#0078D4" stroke-width="2"/>
+<text x="1112" y="688" font-size="18" font-weight="600" fill="#0078D4" text-anchor="middle">Dataverse landing table</text>
+<text x="1112" y="719" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">poc_agentknowledgesources</text>
+<text x="1112" y="740" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle"></text>
+<text x="1112" y="761" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">Upserted daily by the flow</text>
+<text x="1112" y="782" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">Power BI reads this table</text>
+<line x1="1112" y1="808" x2="1112" y2="856" stroke="#107C10" stroke-width="2" marker-end="url(#h107C10)"/>
+<rect x="1348" y="158" width="416" height="662" rx="10" fill="none" stroke="#F7630C" stroke-width="2" stroke-dasharray="10 6"/>
+<text x="1556" y="150" font-size="13" font-weight="600" fill="#F7630C" text-anchor="middle">E · SHAREPOINT AGENT INVENTORY</text>
+<rect x="1364" y="166" width="384" height="180" rx="10" fill="#E8DAEF" stroke="#5C2D91" stroke-width="2"/>
+<text x="1556" y="200" font-size="18" font-weight="600" fill="#5C2D91" text-anchor="middle">Microsoft Purview</text>
+<text x="1556" y="231" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">SharePoint file operations</text>
+<text x="1556" y="252" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle"></text>
+<text x="1556" y="273" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">.agent create, update, delete, recycle</text>
+<text x="1556" y="294" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">ListItemUniqueId is the stable key</text>
+<line x1="1556" y1="350" x2="1556" y2="400" stroke="#F7630C" stroke-width="2" marker-end="url(#hF7630C)"/>
+<rect x="1364" y="406" width="384" height="190" rx="10" fill="#FFF4CE" stroke="#F7630C" stroke-width="2"/>
+<text x="1556" y="440" font-size="18" font-weight="600" fill="#F7630C" text-anchor="middle">SharePointAgentLogging</text>
+<text x="1556" y="471" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">AuditLogsQuery.Read.All</text>
+<text x="1556" y="492" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">No Sites.Read.All</text>
+<text x="1556" y="513" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle"></text>
+<text x="1556" y="534" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">Scheduled and manual flows</text>
+<line x1="1556" y1="600" x2="1556" y2="648" stroke="#107C10" stroke-width="2" marker-end="url(#h107C10)"/>
+<rect x="1364" y="654" width="384" height="150" rx="10" fill="#CFE4FA" stroke="#0078D4" stroke-width="2"/>
+<text x="1556" y="688" font-size="18" font-weight="600" fill="#0078D4" text-anchor="middle">Dataverse landing table</text>
+<text x="1556" y="719" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">poc_sharepointagents</text>
+<text x="1556" y="740" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle"></text>
+<text x="1556" y="761" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">64 observed: 61 current, 3 deleted</text>
+<line x1="1556" y1="808" x2="1556" y2="856" stroke="#107C10" stroke-width="2" marker-end="url(#h107C10)"/>
+<text x="2000" y="150" font-size="14" font-weight="600" fill="#5C2D91" text-anchor="middle">F · SHADOW AI ON ENDPOINTS</text>
+<rect x="1808" y="166" width="384" height="180" rx="10" fill="#E8DAEF" stroke="#5C2D91" stroke-width="2"/>
+<text x="2000" y="200" font-size="18" font-weight="600" fill="#5C2D91" text-anchor="middle">Managed devices</text>
+<text x="2000" y="231" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">Defender-onboarded endpoints</text>
+<text x="2000" y="252" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle"></text>
+<text x="2000" y="273" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">AI tools outside the agent platforms:</text>
+<text x="2000" y="294" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">Claude Code, Copilot CLI,</text>
+<text x="2000" y="315" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">Ollama and Cursor</text>
+<line x1="2000" y1="350" x2="2000" y2="400" stroke="#0078D4" stroke-width="2" marker-end="url(#h0078D4)"/>
+<rect x="1808" y="406" width="384" height="190" rx="10" fill="#CFE4FA" stroke="#0078D4" stroke-width="2"/>
+<text x="2000" y="440" font-size="18" font-weight="600" fill="#0078D4" text-anchor="middle">Defender advanced hunting</text>
+<text x="2000" y="471" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">Web.Contents → advancedqueries</text>
+<text x="2000" y="492" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle"></text>
+<text x="2000" y="513" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">Security Reader, or any</text>
+<text x="2000" y="534" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">advanced hunting role</text>
+<line x1="2000" y1="600" x2="2000" y2="858" stroke="#107C10" stroke-width="2" marker-end="url(#h107C10)"/>
 <rect x="32" y="862" width="2160" height="128" rx="10" fill="#DFF6DD" stroke="#107C10" stroke-width="2"/>
 <text x="1112" y="896" font-size="18" font-weight="600" fill="#107C10" text-anchor="middle">POWER BI SEMANTIC MODEL</text>
-<text x="1112" y="927" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">21 tables · 166 measures · Import · risk score derived in M</text>
+<text x="1112" y="927" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">20 tables · 137 measures · Import · risk score derived in M</text>
 <text x="1112" y="948" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">Connects to Azure Resource Graph, Dataverse and Defender advanced hunting</text>
 <text x="1112" y="969" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">Scheduled refresh in PowerBI.com — no gateway, no local files</text>
 <line x1="1112" y1="994" x2="1112" y2="1046" stroke="#0c8599" stroke-width="2" marker-end="url(#h0c8599)"/>
 <rect x="32" y="1052" width="2160" height="128" rx="10" fill="#99e9f2" stroke="#0c8599" stroke-width="2"/>
-<text x="1112" y="1086" font-size="18" font-weight="600" fill="#0c8599" text-anchor="middle">REPORT · 16 pages · 287 visuals</text>
-<text x="1112" y="1117" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">Executive overview · All agents · Agent analytics · Agent inventory · Creators &amp; ownership</text>
-<text x="1112" y="1138" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">Usage &amp; popularity · Copilot interactions · SharePoint agents · Adoption &amp; activity · Governance &amp; risk</text>
-<text x="1112" y="1159" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">Tools &amp; integration · Knowledge &amp; grounding · Knowledge sources · Azure AI Foundry · Data sources &amp; gaps · Shadow AI (endpoints)</text>
-<rect x="32" y="1206" width="2160" height="272" rx="10" fill="#F3F2F1" stroke="#495057" stroke-width="2"/>
-<text x="1112" y="1240" font-size="18" font-weight="600" fill="#495057" text-anchor="middle">HOW EACH LANE REACHES THE MODEL — AND WHY C, D AND E COLLECT OUT OF BAND</text>
-<text x="1112" y="1271" font-size="13" font-weight="400" fill="#1b1b1b" text-anchor="middle">Lane C — CopilotInteraction telemetry comes from the asynchronous Purview audit API and lands in Dataverse.</text>
-<text x="1112" y="1297" font-size="13" font-weight="400" fill="#1b1b1b" text-anchor="middle">Lane D — named knowledge lives in each environment; application users collect it into one tenant-wide Dataverse table.</text>
-<text x="1112" y="1323" font-size="13" font-weight="400" fill="#1b1b1b" text-anchor="middle">Lane E — SharePointAgentLogging reconstructs observed .agent inventory from sharePointFileOperation audit records.</text>
-<text x="1112" y="1349" font-size="13" font-weight="400" fill="#1b1b1b" text-anchor="middle">Its stable ListItemUniqueId decodes from each SPO_* identity, joining SharePoint inventory to Copilot interactions at item level.</text>
-<text x="1112" y="1375" font-size="13" font-weight="400" fill="#1b1b1b" text-anchor="middle">Power BI reads those three landing-table lanes from Dataverse; it never calls their POST-only or tenant-fan-out collection paths.</text>
-<text x="1112" y="1401" font-size="13" font-weight="400" fill="#1b1b1b" text-anchor="middle">Lane F — Defender advanced hunting uses one fixed host, so Power BI queries it directly at refresh time and fails soft when unavailable.</text>
-<text x="1112" y="1427" font-size="13" font-weight="400" fill="#1b1b1b" text-anchor="middle">Both PBIP builds contain the same pages and tables: pbip-cloud reads live services; pbip reads equivalent CSV shapes, including DimSharePointAgent.</text>
+<text x="1112" y="1086" font-size="18" font-weight="600" fill="#0c8599" text-anchor="middle">REPORT · 11 pages · 174 visuals</text>
+<text x="1112" y="1117" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">Overview · Agents · Estate · Agents · Builders · Agents · Tools &amp; knowledge · Agents · SharePoint</text>
+<text x="1112" y="1138" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">Risk · Agents to review · Risk · Knowledge reach · Risk · Shadow AI · Setup &amp; coverage</text>
+<text x="1112" y="1159" font-size="15" font-weight="400" fill="#1b1b1b" text-anchor="middle">Drill-through: All agents · Knowledge &amp; grounding</text>
+<rect x="32" y="1206" width="2160" height="216" rx="10" fill="#F3F2F1" stroke="#495057" stroke-width="2"/>
+<text x="1112" y="1240" font-size="18" font-weight="600" fill="#495057" text-anchor="middle">HOW EACH LANE REACHES THE MODEL — AND WHY D AND E COLLECT OUT OF BAND</text>
+<text x="1112" y="1271" font-size="13" font-weight="400" fill="#1b1b1b" text-anchor="middle">Lane D — named knowledge lives in each environment; application users collect it into one tenant-wide Dataverse table.</text>
+<text x="1112" y="1297" font-size="13" font-weight="400" fill="#1b1b1b" text-anchor="middle">Lane E — SharePointAgentLogging reconstructs observed .agent inventory from sharePointFileOperation audit records.</text>
+<text x="1112" y="1323" font-size="13" font-weight="400" fill="#1b1b1b" text-anchor="middle">Power BI reads those two landing-table lanes from Dataverse; it never calls their POST-only or tenant-fan-out collection paths.</text>
+<text x="1112" y="1349" font-size="13" font-weight="400" fill="#1b1b1b" text-anchor="middle">Lane F — Defender advanced hunting uses one fixed host, so Power BI queries it directly at refresh time and fails soft when unavailable.</text>
+<text x="1112" y="1375" font-size="13" font-weight="400" fill="#1b1b1b" text-anchor="middle">Usage, value and cost (Copilot Chat, Cowork, per-agent conversations, credits) live in Analytics Hub, not here.</text>
+<text x="1112" y="1401" font-size="13" font-weight="400" fill="#1b1b1b" text-anchor="middle">Both PBIP builds contain the same pages and tables: pbip-cloud reads live services; pbip reads equivalent CSV shapes, including DimSharePointAgent.</text>
 </svg>

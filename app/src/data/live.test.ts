@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 vi.mock('@microsoft/managed-apps/app', () => ({ getContext: vi.fn() }))
 vi.mock('@microsoft/managed-apps/data', () => ({ getClient: vi.fn() }))
 
-import { classifyError, foundryDetail, LaneError, listFoundryResources, mapInteraction, skipTokenFrom } from './live'
+import { classifyError, foundryDetail, LaneError, listFoundryResources, mapSharePointAgent, skipTokenFrom } from './live'
 
 describe('live helpers', () => {
   it('reads the Dataverse skip token from a next link', () => {
@@ -21,15 +21,12 @@ describe('live helpers', () => {
     expect(classifyError('timeout').state).toBe('error')
   })
 
-  it('maps an interaction row from the landing table', () => {
-    expect(mapInteraction({
-      poc_creationtime: '2026-06-01T10:11:12Z', poc_appidentity: 'T_abc', poc_userid: 'Ada@Example.test', poc_apphost: 'cowork',
-      poc_threadid: 'th1', poc_resourcecount: '2',
-    })).toEqual({
-      date: '2026-06-01', time: '2026-06-01T10:11:12', surfaceKey: 'T_abc', agentKey: '', user: 'ada@example.test', appHost: 'cowork', threadId: 'th1', resourceCount: 2,
-    })
+  it('maps a SharePoint agent row from the landing table', () => {
+    expect(mapSharePointAgent({
+      poc_agentkey: ' ABC-1 ', poc_name: 'Policy helper', poc_filename: 'Policy helper.agent', poc_siteurl: 'https://example.test/sites/hr',
+      poc_lastseenat: '2026-06-01T10:11:12Z', poc_isdeleted: 'false', poc_eventcount: '3',
+    })).toMatchObject({ key: 'abc-1', name: 'Policy helper', siteUrl: 'https://example.test/sites/hr', lastSeenAt: '2026-06-01T10:11:12', isDeleted: false, eventCount: 3 })
   })
-
   it('flags Foundry subscriptions with more pages as truncated and skips failed ones', async () => {
     const pages: Record<string, () => Promise<{ value?: { id: string; subscriptionId?: string }[]; nextLink?: string }>> = {
       one: async () => ({ value: [{ id: 'a' }] }),

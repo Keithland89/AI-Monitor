@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  activityStatus, adoptionBand, agentKeyOf, dayBoundaries, elapsedDays, finaliseAgents, isActive30, joinAgents, platformOf, projectAgent,
+  activityStatus, agentKeyOf, dayBoundaries, elapsedDays, finaliseAgents, isActive30, joinAgents, platformOf, projectAgent,
   projectConnectors, projectKnowledge, projectUsage, riskBand, riskFactors, toBool, toInt, toTime, ZERO_GUID, type ArgItem,
 } from './transforms'
 import type { AgentBase } from './types'
@@ -83,14 +83,6 @@ describe('activity', () => {
     expect(isActive30('Idle (90d)')).toBe(false)
   })
 
-  it('bands environment adoption', () => {
-    expect(adoptionBand(0, 0)).toBe('No agents')
-    expect(adoptionBand(10, 0)).toBe('No adoption')
-    expect(adoptionBand(100, 4)).toBe('Under 5%')
-    expect(adoptionBand(100, 5)).toBe('5-10%')
-    expect(adoptionBand(100, 10)).toBe('10-25%')
-    expect(adoptionBand(4, 1)).toBe('25% and above')
-  })
 })
 
 describe('platform', () => {
@@ -176,7 +168,7 @@ describe('lane A projections', () => {
 })
 
 describe('finaliseAgents', () => {
-  const opt = { asOf: '2026-05-01T12:00:00', users: [{ key: 'u1', name: 'Ada', upn: 'ada@contoso.example', type: 'User' }], interactions: [], namesResolved: true }
+  const opt = { asOf: '2026-05-01T12:00:00', users: [{ key: 'u1', name: 'Ada', upn: 'ada@contoso.example', type: 'User' }], namesResolved: true }
 
   it('derives risk, reasons, recency and origin', () => {
     const { agents, riskDetail } = finaliseAgents(
@@ -195,14 +187,20 @@ describe('finaliseAgents', () => {
     expect(a.activityStatus).toBe('Active (7d)')
   })
 
-  it('takes the later of usage and audit activity', () => {
-    const { agents } = finaliseAgents([base()], {
-      ...opt,
-      interactions: [{ date: '2026-04-30', time: '2026-04-30T09:00:00', surfaceKey: 's', agentKey: 'env1|a1', user: 'u', appHost: 'Office', threadId: 't', resourceCount: 0 }],
-    })
-    expect(agents[0].lastActivityAt).toBe('2026-04-30T09:00:00')
-    expect(agents[0].activityStatus).toBe('Active (7d)')
-    expect(agents[0].daysSinceLastUse).toBeNull()
+  it('measures activity from the Power Platform last-used date only', () => {
+    const never = finaliseAgents([base({ lastUsed: '' })], opt).agents[0]
+    expect(never.activityStatus).toBe('No usage signal')
+    expect(never.daysSinceLastUse).toBeNull()
+    const idle = finaliseAgents([base({ lastUsed: '2026-03-01T00:00:00' })], opt).agents[0]
+    expect(idle.activityStatus).toBe('Idle (90d)')
+    expect(idle.daysSinceLastUse).toBe(61)
+    const dormant = finaliseAgents([base({ lastUsed: '2026-01-01T00:00:00' })], opt).agents[0]
+    expect(dormant.activityStatus).toBe('Dormant (90d+)')
+  })
+
+  it('flags tenant-wide agents with no last-used date', () => {
+    const { agents } = finaliseAgents([base({ sharedTenantWide: true, lastUsed: '' })], opt)
+    expect(agents[0].riskReasons).toContain('Shared tenant-wide and never used (+1)')
   })
 
   it('labels platform-provisioned agents and shows ids when names cannot be resolved', () => {

@@ -23,11 +23,11 @@
                       "Entity": "Metrics"
                     }
                   },
-                  "Property": "SharePoint Agents Used"
+                  "Property": "SharePoint Audit Events"
                 }
               },
-              "queryRef": "Metrics.SharePoint Agents Used",
-              "nativeQueryRef": "SharePoint Agents Used"
+              "queryRef": "Metrics.SharePoint Audit Events",
+              "nativeQueryRef": "SharePoint Audit Events"
             }
           ]
         }
@@ -124,7 +124,7 @@
             "text": {
               "expr": {
                 "Literal": {
-                  "Value": "'Used agents'"
+                  "Value": "'Audit events'"
                 }
               }
             },
@@ -279,7 +279,7 @@
             "text": {
               "expr": {
                 "Literal": {
-                  "Value": "'individually identified'"
+                  "Value": "'file operations observed'"
                 }
               }
             },

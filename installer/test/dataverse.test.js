@@ -3,10 +3,9 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { createDataverse } from '../src/dataverse.js';
 import { createClient, HttpError } from '../src/http.js';
-import { adminConsentUrl, BAP_API_VERSION, grantAuditConsent, registerAdminApp } from '../src/identity.js';
-import { LANE_D_TABLES, logicalName, provisionLaneD, provisionWorkPatterns, uniqueKeyFor, WORK_PATTERNS_TABLE } from '../src/lane-d-tables.js';
-import { COST_PROBE_LIMIT, costAccess } from '../src/prereqs.js';
-import { laneCost, laneF, laneOk, verifyLanes } from '../src/verify.js';
+import { addAccess, adminConsentUrl, AUDIT_PERMISSIONS, BAP_API_VERSION, grantAuditConsent, registerAdminApp } from '../src/identity.js';
+import { LANE_D_TABLES, logicalName, provisionLaneD, uniqueKeyFor } from '../src/lane-d-tables.js';
+import { laneF, laneOk, verifyLanes } from '../src/verify.js';
 import { fakeFetch, noSleep } from './helpers.js';
 
 const BASE = 'https://org.example.test/api/data/v9.2';
@@ -59,10 +58,10 @@ test('an import that runs past the time limit stops waiting', async () => {
 });
 
 test('importNeeded compares the installed version with the zip', async () => {
-  const f = fakeFetch([{ match: /\/solutions\?/, reply: (_b, url) => (url.includes('CopilotInteractionLogging') ? { value: [{ solutionid: 's', version: '1.0.0.7', ismanaged: true }] } : { value: [] }) }]);
+  const f = fakeFetch([{ match: /\/solutions\?/, reply: (_b, url) => (url.includes('SharePointAgentLogging') ? { value: [{ solutionid: 's', version: '1.0.0.7', ismanaged: true }] } : { value: [] }) }]);
   const dv = createDataverse(client(f));
-  assert.deepEqual(await dv.importNeeded('CopilotInteractionLogging', '1.0.0.8'), { needed: true, upgrade: true, installed: '1.0.0.7' });
-  assert.deepEqual(await dv.importNeeded('CopilotInteractionLogging', '1.0.0.7'), { needed: false, upgrade: false, installed: '1.0.0.7' });
+  assert.deepEqual(await dv.importNeeded('SharePointAgentLogging', '1.0.0.8'), { needed: true, upgrade: true, installed: '1.0.0.7' });
+  assert.deepEqual(await dv.importNeeded('SharePointAgentLogging', '1.0.0.7'), { needed: false, upgrade: false, installed: '1.0.0.7' });
   assert.deepEqual(await dv.importNeeded('Other', '1.0.0.0'), { needed: true, upgrade: false });
 });
 
@@ -112,19 +111,6 @@ test('lane D provisioning in dry-run mode only says what it would create', async
   assert.ok(f.calls.every((c) => c.method === 'GET'), 'a dry run writes nothing');
   for (const t of LANE_D_TABLES) assert.ok(changed.includes(`would create ${logicalName(t)}`), logicalName(t));
   assert.equal(changed.at(-1), 'would add the alternate keys and the poc_uniquekey upsert key');
-});
-
-test('the work patterns table is made once, with the columns the flow writes', async () => {
-  const log = { ok: () => {}, warn: () => {}, info: () => {} };
-  const missing = fakeFetch([{ match: /EntityDefinitions/, reply: () => ({ status: 404, body: { error: { message: 'Not found' } } }) }]);
-  assert.deepEqual(await provisionWorkPatterns(client(missing), { log, sleep: noSleep, dryRun: true }), ['would create poc_m365usagereport']);
-  assert.ok(missing.calls.every((c) => c.method === 'GET'), 'a dry run writes nothing');
-  assert.equal(logicalName(WORK_PATTERNS_TABLE), 'poc_m365usagereport');
-  assert.deepEqual(WORK_PATTERNS_TABLE.attributes.map((a) => a.SchemaName), ['poc_Period', 'poc_Payload', 'poc_Status', 'poc_CollectedAt']);
-
-  const there = fakeFetch([{ method: 'GET', match: /EntityDefinitions/, reply: () => ({ LogicalName: 'poc_m365usagereport' }) }]);
-  assert.deepEqual(await provisionWorkPatterns(client(there), { log, sleep: noSleep }), []);
-  assert.ok(there.calls.every((c) => c.method === 'GET'));
 });
 
 test('lane D provisioning leaves tables that are already there', async () => {
@@ -201,28 +187,35 @@ test('the upsert key joins the environment and the source', () => {
 test('the run tables say ok, pending, failed or missing, and pending is not a failure', async () => {
   /** @type {Record<string, any>} */
   const rows = {
-    poc_copilotinteractionflowrunses: { poc_recordsretrieved: 12, createdon: '2024-05-01T02:00:00Z' },
     poc_sharepointagentloggingruns: null,
     poc_knowledgesweepruns: { poc_status: 'Failed', poc_environmentsswept: 3, poc_environmentsfailed: 3, poc_rowsfound: 0, createdon: '2024-05-01T03:00:00Z' },
   };
-  const reports = [
-    { poc_name: 'getTeamsUserActivityCounts', poc_status: '200', poc_collectedat: '2024-05-01T04:00:00Z' },
-    { poc_name: 'getMicrosoft365CopilotUserCountSummary', poc_status: '403', poc_collectedat: '2024-05-01T04:00:00Z' },
-  ];
-  const dv = /** @type {any} */ ({ latestRow: async (/** @type {string} */ set) => rows[set], allRows: async () => reports });
+  /** @type {string[]} */
+  const read = [];
+  const dv = /** @type {any} */ ({ latestRow: async (/** @type {string} */ set) => { read.push(set); return rows[set]; } });
   const out = await verifyLanes(dv);
-  assert.deepEqual(out.map((r) => [r.lane, r.state]), [['C', 'ok'], ['E', 'pending'], ['D', 'failed'], ['G', 'warn']]);
-  assert.match(out[3].detail, /1 of 2 reports .*getMicrosoft365CopilotUserCountSummary \(403\).*Reports\.Read\.All/);
-  assert.equal((await verifyLanes(/** @type {any} */ ({ latestRow: async () => null, allRows: async () => [] })))[3].state, 'pending');
-  assert.match(out[0].detail, /read 12 audit records/);
-  assert.match(out[1].detail, /First run pending/);
+  assert.deepEqual(out.map((r) => [r.lane, r.state]), [['E', 'pending'], ['D', 'failed']]);
+  assert.match(out[0].detail, /First run pending/);
+  assert.deepEqual(read, ['poc_sharepointagentloggingruns', 'poc_knowledgesweepruns'], 'no lane C or G run tables are read');
   assert.equal(laneOk('pending'), true);
   assert.equal(laneOk('failed'), false);
 
-  const missing = await verifyLanes(/** @type {any} */ ({ latestRow: async () => undefined, allRows: async () => undefined }));
+  assert.deepEqual((await verifyLanes(dv, { sharePoint: false })).map((r) => r.lane), ['D'], 'lane E left out');
+
+  const missing = await verifyLanes(/** @type {any} */ ({ latestRow: async () => undefined }));
   assert.ok(missing.every((r) => r.state === 'missing'));
-  const broken = await verifyLanes(/** @type {any} */ ({ latestRow: async () => { throw new Error('boom'); }, allRows: async () => { throw new Error('boom'); } }));
+  const broken = await verifyLanes(/** @type {any} */ ({ latestRow: async () => { throw new Error('boom'); } }));
   assert.ok(broken.every((r) => r.state === 'warn'));
+});
+
+test('the audit collector asks only for AuditLogsQuery.Read.All, and keeps what it already has', () => {
+  assert.deepEqual(AUDIT_PERMISSIONS, ['AuditLogsQuery.Read.All']);
+  const graph = '00000003-0000-0000-c000-000000000000';
+  const want = [{ resourceAppId: graph, resourceAccess: [{ id: 'audit-role', type: 'Role' }] }];
+  const old = [{ resourceAppId: graph, resourceAccess: [{ id: 'old-role', type: 'Role' }] }];
+  assert.deepEqual(addAccess(old, want), [{ resourceAppId: graph, resourceAccess: [{ id: 'old-role', type: 'Role' }, { id: 'audit-role', type: 'Role' }] }]);
+  assert.equal(addAccess([{ resourceAppId: graph, resourceAccess: [{ id: 'old-role', type: 'Role' }, { id: 'audit-role', type: 'Role' }] }], want), null);
+  assert.deepEqual(addAccess(undefined, want), want);
 });
 
 test('lane F is a check only', () => {
@@ -232,46 +225,6 @@ test('lane F is a check only', () => {
   assert.equal(laneF(/** @type {any} */ ([p('defender', 'missing'), p('security-reader', 'met')])).state, 'missing');
   assert.equal(laneF(/** @type {any} */ ([p('defender', 'met'), p('security-reader', 'missing')])).state, 'warn');
   assert.equal(laneF(/** @type {any} */ ([p('defender', 'unknown'), p('security-reader', 'met')])).state, 'pending');
-});
-
-test('the cost lanes are a check only', () => {
-  /** @param {string} id @param {any} status @param {string} [detail] */
-  const p = (id, status, detail = '') => ({ id, label: id, status, detail });
-  assert.equal(laneCost(/** @type {any} */ ([p('pp-admin', 'met'), p('cost-reader', 'met')])).state, 'ok');
-  const noCost = laneCost(/** @type {any} */ ([p('pp-admin', 'met'), p('cost-reader', 'missing')]));
-  assert.equal(noCost.state, 'warn');
-  assert.match(noCost.detail, /Cost Management Reader/);
-  assert.doesNotMatch(noCost.detail, /Power Platform Administrator/);
-  const noAdmin = laneCost(/** @type {any} */ ([p('pp-admin', 'eligible'), p('cost-reader', 'met')]));
-  assert.equal(noAdmin.state, 'warn');
-  assert.match(noAdmin.detail, /Power Platform Administrator/);
-  const unsure = laneCost(/** @type {any} */ ([p('pp-admin', 'met'), p('cost-reader', 'unknown', 'Timed out.')]));
-  assert.equal(unsure.state, 'pending');
-  assert.match(unsure.detail, /Timed out/);
-});
-
-test('Cost Management access is probed on a few enabled subscriptions', async () => {
-  /** @param {{ subscriptionId: string, state?: string }[]} subs @param {(id: string) => Promise<unknown>} costQuery */
-  const api = (subs, costQuery) => /** @type {any} */ ({ subscriptions: async () => subs, costQuery });
-  const deny = () => Promise.reject(Object.assign(new Error('Forbidden'), { status: 403 }));
-  const subs = Array.from({ length: 5 }, (_, i) => ({ subscriptionId: `s${i}`, state: 'Enabled' }));
-
-  assert.equal((await costAccess(api([], deny))).status, 'missing');
-  assert.equal((await costAccess(api([{ subscriptionId: 'x', state: 'Disabled' }], deny))).status, 'missing');
-
-  /** @type {string[]} */
-  const asked = [];
-  const one = await costAccess(api(subs, (id) => { asked.push(id); return id === 's1' ? Promise.resolve({}) : deny(); }));
-  assert.equal(one.status, 'met');
-  assert.equal(asked.length, COST_PROBE_LIMIT);
-
-  const refused = await costAccess(api(subs, deny));
-  assert.equal(refused.status, 'missing');
-  assert.match(refused.detail, /refused/);
-
-  const flaky = await costAccess(api(subs, () => Promise.reject(Object.assign(new Error('Service unavailable'), { status: 503 }))));
-  assert.equal(flaky.status, 'unknown');
-  assert.match(flaky.detail, /503 Service unavailable/);
 });
 
 test('the knowledge sweep is registered as an admin management application, or handed off', async () => {

@@ -160,7 +160,7 @@ export function AskPanel({ open, onClose, route }: { open: boolean; onClose: () 
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={onKey}
-            placeholder="Ask about agents, risk, use or cost"
+            placeholder="Ask about agents, owners, risk or knowledge"
             maxLength={600}
           />
           <div className="ask-actions">

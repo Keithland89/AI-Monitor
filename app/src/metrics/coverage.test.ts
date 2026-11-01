@@ -35,7 +35,7 @@ describe('lane coverage', () => {
   })
 
   it('lists problems for the lanes asked, in order', () => {
-    const lanes = [lane('ok', 3), { ...lane('denied'), id: 'aicost' as const, label: 'Azure AI spend' }]
-    expect(laneProblems(lanes, ['aicost', 'shadow', 'foundry']).map((p) => p.lane.id)).toEqual(['aicost'])
+    const lanes = [lane('ok', 3), { ...lane('denied'), id: 'foundry' as const, label: 'Azure AI Foundry' }]
+    expect(laneProblems(lanes, ['foundry', 'shadow', 'knowledge']).map((p) => p.lane.id)).toEqual(['foundry'])
   })
 })

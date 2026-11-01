@@ -242,7 +242,7 @@
             "text": {
               "expr": {
                 "Literal": {
-                  "Value": "'Agent 365 capability coverage'"
+                  "Value": "'What Agent 365 adds (optional)'"
                 }
               }
             },

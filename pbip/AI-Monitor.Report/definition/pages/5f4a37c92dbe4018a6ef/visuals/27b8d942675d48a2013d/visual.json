@@ -112,20 +112,6 @@
               },
               "queryRef": "SharePointAgent.IsDeleted",
               "nativeQueryRef": "IsDeleted"
-            },
-            {
-              "field": {
-                "Measure": {
-                  "Expression": {
-                    "SourceRef": {
-                      "Entity": "Metrics"
-                    }
-                  },
-                  "Property": "SharePoint Agent Interactions"
-                }
-              },
-              "queryRef": "Metrics.SharePoint Agent Interactions",
-              "nativeQueryRef": "SharePoint Agent Interactions"
             }
           ]
         }

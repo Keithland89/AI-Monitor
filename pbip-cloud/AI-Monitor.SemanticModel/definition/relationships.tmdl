@@ -35,19 +35,3 @@ relationship Agent_LastUsedDate_Date_Date
 	isActive: false
 	fromColumn: Agent.LastUsedDate
 	toColumn: Date.Date
-
-relationship Interaction_SurfaceKey_CopilotSurface_SurfaceKey
-	fromColumn: Interaction.SurfaceKey
-	toColumn: CopilotSurface.SurfaceKey
-
-relationship CopilotSurface_SharePointAgentKey_SharePointAgent_AgentKey
-	fromColumn: CopilotSurface.SharePointAgentKey
-	toColumn: SharePointAgent.AgentKey
-
-relationship Interaction_AgentKey_Agent_AgentKey
-	fromColumn: Interaction.AgentKey
-	toColumn: Agent.AgentKey
-
-relationship Interaction_Date_Date_Date
-	fromColumn: Interaction.Date
-	toColumn: Date.Date

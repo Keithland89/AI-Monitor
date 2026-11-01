@@ -1,7 +1,7 @@
 {
   "name": "ai-monitor-installer",
   "version": "0.1.0",
-  "description": "AI-Monitor installer. Switches on every lane in one Dataverse environment: the audit collector and knowledge sweep app registrations, the four managed solutions and the lane D tables, the flows, and the app. Shows a plan and changes nothing until it's approved.",
+  "description": "AI-Monitor installer. Switches on the agent inventory lanes in one Dataverse environment: the knowledge sweep app registration, the audit collector for lane E, the three managed solutions and the lane D tables, the flows, and the app. Shows a plan and changes nothing until it's approved.",
   "license": "MIT",
   "private": true,
   "type": "module",

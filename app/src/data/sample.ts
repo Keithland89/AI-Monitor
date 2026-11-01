@@ -1,24 +1,18 @@
 import Papa from 'papaparse'
 import { buildDataset } from './build'
-import { usageDate } from './cost'
-import { parseM365, type M365ReportRow } from './m365'
 import { toBool, toInt, toTime } from './transforms'
 import type {
-  AgentBase, AgentConnector, AgentCredit, AgentFlow, AgentKnowledge, AiCostDaily, AiCostMeter, AzureAIResource, CopilotSurface, CreditPool, Dataset,
-  Environment, Interaction, KnowledgeSource, LaneStatus, RawData, SharePointAgent, ShadowDevice, ShadowSignal, UserRecord,
+  AgentBase, AgentConnector, AgentFlow, AgentKnowledge, AzureAIResource, Dataset, Environment, KnowledgeSource, LaneStatus, RawData, SharePointAgent, ShadowDevice, ShadowSignal, UserRecord,
 } from './types'
 
 export const SAMPLE_FILES = [
   'agents', 'environments', 'flows', 'ai-resources', 'sharepoint-agents', 'users', 'shadow-signals', 'shadow-devices',
-  'connectors', 'knowledge', 'knowledge-sources', 'surfaces', 'interaction-users', 'interactions',
-  'credits', 'credit-pool', 'ai-cost-daily', 'ai-cost-meters',
+  'connectors', 'knowledge', 'knowledge-sources',
 ] as const
 
 export type SampleFile = (typeof SAMPLE_FILES)[number]
-/** The Microsoft 365 usage reports ship as JSON, in the same shape the daily flow stores in Dataverse. */
-export const SAMPLE_M365 = 'm365-usage.json'
 
-export type SampleTexts = Record<SampleFile, string> & { manifest: string; m365?: string }
+export type SampleTexts = Record<SampleFile, string> & { manifest: string }
 
 type Row = Record<string, string>
 
@@ -118,45 +112,9 @@ export function sampleRaw(t: SampleTexts): RawData {
     sourceName: r.SourceName, sourceKind: r.SourceKind, knowledgeType: r.KnowledgeType, isExternal: toBool(r.IsExternal),
     locator: r.Locator, locatorHost: r.LocatorHost, collectedAt: toTime(r.CollectedAt),
   }))
-  const surfaceRows = parse(t.surfaces)
-  const surfaces: CopilotSurface[] = surfaceRows.map((r) => ({
-    key: r.SurfaceKey, name: r.SurfaceName, type: r.SurfaceType, platform: r.Platform, isAgent: toBool(r.IsAgent), agentKey: r.AgentKey,
-    matchOn: r.MatchOn, isMatched: toBool(r.IsMatched), spAgentKey: '',
-  }))
-  const upns = parse(t['interaction-users']).map((r) => r.UserPrincipalName)
-  const interactions: Interaction[] = parse(t.interactions).map((r) => {
-    const time = toTime(r.CreationTime)
-    const s = surfaces[toInt(r.Surface)]
-    return {
-      date: time.slice(0, 10),
-      time,
-      surfaceKey: s?.key ?? '',
-      agentKey: s?.agentKey ?? '',
-      user: upns[toInt(r.User)] ?? '',
-      appHost: r.AppHost,
-      threadId: `t${r.Thread}`,
-      resourceCount: toInt(r.ResourceCount),
-    }
-  })
-  const num = (v: string) => (Number.isFinite(Number(v)) ? Number(v) : 0)
-  const credits: AgentCredit[] = parse(t.credits).map((r) => ({
-    agentKey: r.AgentKey, envId: r.EnvironmentId, resourceId: r.ResourceId, feature: r.Feature, product: r.ProductName,
-    billed: num(r.BilledCredits), nonBilled: num(r.NonBilledCredits), lastRefreshed: toTime(r.LastRefreshed),
-  }))
-  const creditPool: CreditPool[] = parse(t['credit-pool']).map((r) => ({
-    currency: r.CurrencyType, purchased: num(r.Purchased), allocated: num(r.Allocated), consumed: num(r.Consumed), lastUpdated: toTime(r.LastUpdated),
-  }))
-  const aiCostDaily: AiCostDaily[] = parse(t['ai-cost-daily']).map((r) => ({
-    date: usageDate(r.UsageDate), resourceId: r.ResourceId.toLowerCase(), cost: num(r.Cost), currency: r.Currency,
-  }))
-  const aiCostMeters: AiCostMeter[] = parse(t['ai-cost-meters']).map((r) => ({
-    resourceId: r.ResourceId.toLowerCase(), meter: r.Meter, cost: num(r.Cost), currency: r.Currency,
-  }))
   return {
     agents: parse(t.agents).map(sampleAgent),
-    environments, flows, connectors, knowledge, sources, spAgents, aiResources, interactions, surfaces, users, shadowSignals, shadowDevices,
-    credits, creditPool, aiCostDaily, aiCostMeters,
-    m365: t.m365 ? parseM365(JSON.parse(t.m365) as M365ReportRow[]) : undefined,
+    environments, flows, connectors, knowledge, sources, spAgents, aiResources, users, shadowSignals, shadowDevices,
   }
 }
 
@@ -166,26 +124,17 @@ const SAMPLE_LANES: Omit<LaneStatus, 'state' | 'rows'>[] = [
   { id: 'flows', label: 'Agent flows', connector: 'powerplatformadminv2' },
   { id: 'foundry', label: 'Azure AI Foundry', connector: 'arm' },
   { id: 'users', label: 'Directory users (names)', connector: 'commondataserviceforapps' },
-  { id: 'interactions', label: 'Copilot interactions (audit log)', connector: 'commondataserviceforapps' },
   { id: 'knowledge', label: 'Named knowledge sources', connector: 'commondataserviceforapps' },
   { id: 'sharepoint', label: 'SharePoint agents', connector: 'commondataserviceforapps' },
   { id: 'shadow', label: 'Shadow AI (Defender)', connector: 'wdatp' },
-  { id: 'credits', label: 'Copilot Credits per agent', connector: 'powerplatformadminv2' },
-  { id: 'creditpool', label: 'Tenant capacity (credit pool)', connector: 'powerplatformadminv2' },
-  { id: 'aicost', label: 'Azure AI spend (Cost Management)', connector: 'arm' },
-  { id: 'm365usage', label: 'Microsoft 365 usage reports', connector: 'commondataserviceforapps' },
 ]
-
-const SYNTHETIC_COST = 'Synthetic: the anonymised source has no cost data, so these rows are generated from the sample agents and resources.'
 
 export function sampleDataset(t: SampleTexts): Dataset {
   const raw = sampleRaw(t)
   const manifest = JSON.parse(t.manifest) as { asOf: string }
   const rows: Record<string, number> = {
     agents: raw.agents.length, environments: raw.environments.length, flows: raw.flows.length, foundry: raw.aiResources.length,
-    users: raw.users.length, interactions: raw.interactions.length, knowledge: raw.sources.length, sharepoint: raw.spAgents.length,
-    shadow: raw.shadowSignals.length, credits: raw.credits.length, creditpool: raw.creditPool.length, aicost: raw.aiCostDaily.length,
-    m365usage: raw.m365 ? 1 : 0,
+    users: raw.users.length, knowledge: raw.sources.length, sharepoint: raw.spAgents.length, shadow: raw.shadowSignals.length,
   }
   const lanes: LaneStatus[] = SAMPLE_LANES.map((l) => ({
     ...l,
@@ -194,18 +143,13 @@ export function sampleDataset(t: SampleTexts): Dataset {
     detail:
       l.id === 'shadow' && rows.shadow === 0
         ? 'The sample ships no Defender rows: the source tenant returned 403 for advanced hunting.'
-        : l.id === 'credits' || l.id === 'creditpool' || l.id === 'aicost'
-          ? SYNTHETIC_COST
-          : l.id === 'm365usage'
-            ? 'Synthetic: tenant-wide counts generated to match the sample\'s size.'
-            : undefined,
+        : undefined,
   }))
   return buildDataset(raw, {
     mode: 'sample',
     asOf: toTime(manifest.asOf),
     lanes,
     runs: [
-      { lane: 'interactions', table: 'Copilot interaction flow runs', state: 'sample', lastRun: toTime(manifest.asOf), status: 'Sample' },
       { lane: 'sharepoint', table: 'SharePoint agent logging runs', state: 'sample', lastRun: toTime(manifest.asOf), status: 'Sample' },
       { lane: 'knowledge', table: 'Knowledge sweep runs', state: 'sample', lastRun: toTime(manifest.asOf), status: 'Sample' },
     ],
@@ -220,7 +164,7 @@ export async function loadSample(base = import.meta.env.BASE_URL): Promise<Datas
     return res.text()
   }
   const entries = await Promise.all(SAMPLE_FILES.map(async (f) => [f, await get(`${f}.csv`)] as const))
-  const texts = { ...Object.fromEntries(entries), manifest: await get('manifest.json'), m365: await get(SAMPLE_M365) } as SampleTexts
+  const texts = { ...Object.fromEntries(entries), manifest: await get('manifest.json') } as SampleTexts
   return sampleDataset(texts)
 }
 

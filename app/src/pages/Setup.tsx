@@ -19,7 +19,7 @@ export function DataSourcesGaps() {
     <>
       <PageIntro>What the platform APIs expose, what they do not, and the gaps that still need a workaround.</PageIntro>
       <KpiRow>
-        <Kpi label="Agent 365 gaps" value={int(AGENT_GAPS.length)} tone="unlicensed" />
+        <Kpi label="Agent 365 extras" value={int(AGENT_GAPS.filter((g) => g.status === 'Open').length)} help="Capabilities Agent 365 adds that AI-Monitor does not cover. Agent 365 is optional." />
         <Kpi label="APIs tested" value={int(API_COVERAGE.length)} />
         <Kpi label="Working" value={int(API_COVERAGE.filter((r) => r.verdict === 'Working').length)} tone="licensed" />
         <Kpi label="Blocked" value={int(API_COVERAGE.filter((r) => r.verdict === 'Blocked').length)} />
@@ -38,8 +38,8 @@ export function DataSourcesGaps() {
             columns={[
               { key: 'order', label: 'Platform', value: (r: TelemetryCoverageRow) => r.sortOrder, render: (r) => r.platform, width: '20%' },
               text('inventory', 'Inventory', (r: TelemetryCoverageRow) => r.inventory),
-              text('usage', 'Usage signal', (r: TelemetryCoverageRow) => r.usageSignal),
-              text('volume', 'Message volume', (r: TelemetryCoverageRow) => r.messageVolume),
+              text('usage', 'Last-used signal', (r: TelemetryCoverageRow) => r.usageSignal),
+              text('why', 'Why', (r: TelemetryCoverageRow) => r.whyNot, '40%'),
             ]}
           />
         </Panel>
@@ -58,16 +58,16 @@ export function DataSourcesGaps() {
             ]}
           />
         </Panel>
-        <Panel title="Agent 365 capability coverage" span={3}>
+        <Panel title="What Agent 365 adds (optional)" span={3} note="AI-Monitor does not need Agent 365. This compares the two so you can judge whether the extras matter.">
           <DataTable
-            label="Agent 365 capability coverage"
+            label="What Agent 365 adds (optional)"
             rows={rowsOf(AGENT_GAPS, (r) => String(r.sortOrder))}
             initialSort={{ key: 'order' }}
             columns={[
               { key: 'order', label: 'Capability', value: (r: AgentGap) => r.sortOrder, render: (r) => r.capability, width: '22%' },
               text('status', 'Status', (r: AgentGap) => r.status),
-              text('why', 'Why it is missing', (r: AgentGap) => r.whyMissing, '32%'),
-              text('how', 'How to close it', (r: AgentGap) => r.howToClose, '32%'),
+              text('why', 'What Agent 365 does', (r: AgentGap) => r.whyMissing, '32%'),
+              text('how', 'How AI-Monitor covers it', (r: AgentGap) => r.howToClose, '32%'),
             ]}
           />
         </Panel>

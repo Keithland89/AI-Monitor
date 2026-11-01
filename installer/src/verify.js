@@ -1,6 +1,6 @@
 // @ts-check
 /**
- * After the flows are on: the newest row in each lane's run table, lane G's report rows, and lane F's check. No row yet
+ * After the flows are on: the newest row in each lane's run table, and lane F's check. No row yet
  * means the first run is still pending, which isn't a failure; a missing table means the lane isn't
  * set up.
  */
@@ -12,17 +12,6 @@
 
 /** The run tables, by lane: entity set and the columns read. */
 export const RUN_TABLES = [
-  {
-    lane: 'C',
-    name: 'Copilot interactions',
-    set: 'poc_copilotinteractionflowrunses',
-    columns: ['poc_recordsretrieved', 'poc_recordscreated'],
-    /** @param {any} row @returns {[LaneState, string]} */
-    judge: (row) => {
-      const n = Number(row.poc_recordsretrieved ?? 0);
-      return n > 0 ? ['ok', `Last run read ${n} audit records.`] : ['warn', 'Last run read no audit records. Check the audit log is on and the audit collector has consent; a new tenant can take a day to have any.'];
-    },
-  },
   {
     lane: 'E',
     name: 'SharePoint agents',
@@ -53,31 +42,16 @@ export const RUN_TABLES = [
   },
 ];
 
-/** Lane G keeps one row a report, updated in place, so every row is read rather than the newest. */
-export const WORK_PATTERNS = { lane: 'G', name: 'Work patterns', set: 'poc_m365usagereports', columns: ['poc_name', 'poc_status', 'poc_collectedat'] };
-
-/**
- * @param {any[]} rows
- * @returns {[LaneState, string]}
- */
-export function judgeWorkPatterns(rows) {
-  const bad = rows.filter((r) => !/^2\d\d$/.test(String(r.poc_status ?? '').trim()));
-  const when = rows.map((r) => String(r.poc_collectedat ?? '')).sort().pop()?.slice(0, 16).replace('T', ' ');
-  const stamp = when ? ` (${when})` : '';
-  if (!bad.length) return ['ok', `Last run read all ${rows.length} reports.${stamp}`];
-  const names = bad.map((r) => `${r.poc_name} (${String(r.poc_status ?? '').trim() || 'no status'})`).join(', ');
-  const hint = bad.some((r) => /^40[13]$/.test(String(r.poc_status ?? '').trim())) ? ' The audit collector needs Reports.Read.All with admin consent.' : '';
-  return [bad.length === rows.length ? 'failed' : 'warn', `${bad.length} of ${rows.length} reports couldn't be read: ${names}.${hint}${stamp}`];
-}
-
 /**
  * @param {import('./dataverse.js').Dataverse} dv
+ * @param {{ sharePoint?: boolean }} [o]  Leave lane E out when it isn't included.
  * @returns {Promise<LaneResult[]>}
  */
-export async function verifyLanes(dv) {
+export async function verifyLanes(dv, { sharePoint = true } = {}) {
   /** @type {LaneResult[]} */
   const out = [];
   for (const t of RUN_TABLES) {
+    if (t.lane === 'E' && !sharePoint) continue;
     try {
       const row = await dv.latestRow(t.set, t.columns);
       if (row === undefined) out.push({ lane: t.lane, name: t.name, state: 'missing', detail: 'Not set up: its run table isn\'t in the environment.' });
@@ -89,18 +63,6 @@ export async function verifyLanes(dv) {
     } catch (err) {
       out.push({ lane: t.lane, name: t.name, state: 'warn', detail: `Couldn't read ${t.set}: ${/** @type {Error} */ (err).message.split('\n')[0]}` });
     }
-  }
-  const g = WORK_PATTERNS;
-  try {
-    const rows = await dv.allRows(g.set, g.columns);
-    if (rows === undefined) out.push({ lane: g.lane, name: g.name, state: 'missing', detail: 'Not set up: its table isn\'t in the environment.' });
-    else if (!rows.length) out.push({ lane: g.lane, name: g.name, state: 'pending', detail: 'First run pending: no report has been written yet.' });
-    else {
-      const [state, detail] = judgeWorkPatterns(rows);
-      out.push({ lane: g.lane, name: g.name, state, detail });
-    }
-  } catch (err) {
-    out.push({ lane: g.lane, name: g.name, state: 'warn', detail: `Couldn't read ${g.set}: ${/** @type {Error} */ (err).message.split('\n')[0]}` });
   }
   return out;
 }
@@ -121,22 +83,3 @@ export function laneF(prereqs) {
 
 /** @param {LaneState} s */
 export const laneOk = (s) => s === 'ok' || s === 'pending';
-
-/**
- * The cost lanes have nothing to install either: the app reads the Power Platform licensing API and
- * Azure Cost Management with each viewer's own connections when it's opened.
- * @param {import('./prereqs.js').Prereq[]} prereqs
- * @returns {LaneResult}
- */
-export function laneCost(prereqs) {
-  const name = 'Cost & consumption';
-  const cost = prereqs.find((p) => p.id === 'cost-reader');
-  const admin = prereqs.find((p) => p.id === 'pp-admin');
-  const gaps = [
-    admin && admin.status !== 'met' && admin.status !== 'unknown' ? 'you have no Power Platform Administrator active, so Copilot Credits may be empty for you' : '',
-    cost && cost.status === 'missing' ? 'Cost Management refused you, so Azure AI spend will be empty for you until you have Cost Management Reader' : '',
-  ].filter(Boolean);
-  if (gaps.length) return { lane: 'Cost', name, state: 'warn', detail: `Nothing to install, but ${gaps.join('; and ')}. Each viewer needs the same.` };
-  if (cost?.status === 'unknown' || admin?.status === 'unknown') return { lane: 'Cost', name, state: 'pending', detail: `Nothing to install. Couldn't confirm all your access from here.${cost?.status === 'unknown' ? ` ${cost.detail}` : ''}` };
-  return { lane: 'Cost', name, state: 'ok', detail: 'Nothing to install. You can read Copilot Credits and Azure Cost Management.' };
-}

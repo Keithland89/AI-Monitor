@@ -1,10 +1,12 @@
 # Deployment guide
 
-Step-by-step setup for all six collection lanes. The [README](../README.md) explains *why* the architecture looks like this; this file is the *how*.
+Step-by-step setup for all five collection lanes (A, B, D, E and F). The [README](../README.md) explains *why* the architecture looks like this; this file is the *how*.
 
 > **Prefer a guided setup?** The [installer](../installer/README.md) automates every step on this page and deploys [the app](../app/README.md). It shows a plan, and changes nothing until you approve it. Deploy the app to the same environment as the landing tables: its Dataverse connector reads only the environment the app runs in.
 
-Lanes A, B and F need nothing installed. Lanes C, D and E use scheduled collectors; lanes C and E can reuse the same audit app registration. **Skip a collector and every other page still works** — you lose only that lane's data.
+Lanes A, B and F need nothing installed. Lanes D and E use scheduled collectors. **Skip a collector and every other page still works** — you lose only that lane's data.
+
+AI-Monitor covers agent inventory and risk. Per-conversation usage, people, Copilot Chat and Cowork, Microsoft 365 work patterns and cost are in [Analytics Hub](https://github.com/microsoft/AnalyticsHub-Dashboard). Neither needs an Agent 365 licence or export. Upgrading an install that ran the retired lanes C and G? See [Upgrading from an earlier version](#upgrading-from-an-earlier-version).
 
 ---
 
@@ -15,12 +17,11 @@ Lanes A, B and F need nothing installed. Lanes C, D and E use scheduled collecto
 | Identity | **Power Platform Administrator** (or Global Reader, or AI Administrator) | Lane A — agent inventory |
 | Identity | **Reader** on every Azure subscription in scope | Lane A — Azure AI Foundry |
 | Identity | A Dataverse security role that can read `systemuser` | Lane B — owner and creator names |
-| Identity | **Global Administrator** — to consent to the audit app registration | Lanes C and E |
+| Identity | **Global Administrator** — to consent to the audit app registration | Lane E |
 | Identity | **Power Platform Administrator** — to run the lane D grant | Lane D |
 | Identity | **Security Reader** (or any role granting advanced hunting), and Defender for Endpoint with devices onboarded | Lane F — shadow AI |
-| Identity | **Cost Management Reader** (or Reader) on subscriptions with Azure AI resources | The app's Cost & consumption tab only (not in the report) |
 | Licence | **Power BI Pro** (or PPU / Fabric capacity) and a workspace you can publish to | Publishing |
-| Tenant | **Unified audit logging switched on** in Purview | Lanes C and E |
+| Tenant | **Unified audit logging switched on** in Purview | Lane E |
 | Tooling | Power BI Desktop (free), Node.js 18+, Azure CLI, .NET 8 SDK (only to rebuild the PBIP) | Building locally |
 
 **Not required:** an Agent 365 licence, Copilot Studio licences, Fabric capacity, Power BI Premium, or an on-premises data gateway.
@@ -33,7 +34,7 @@ There are **two app registrations in total**, not one per solution:
 
 | App registration | Used by | Permission and tenant setup |
 |---|---|---|
-| **Audit collector app** | `CopilotInteractionLogging` (lane C), `SharePointAgentLogging` (lane E) and `M365UsageReports` (lane G) | Microsoft Graph application permission `AuditLogsQuery.Read.All`, plus `Reports.Read.All` for lane G, granted by a Global Administrator; unified audit logging enabled in Purview |
+| **Audit collector app** | `SharePointAgentLogging` (lane E) only | Microsoft Graph application permission `AuditLogsQuery.Read.All`, granted by a Global Administrator; unified audit logging enabled in Purview. Used only to build the SharePoint agent inventory |
 | **Knowledge sweep app** | `AgentAppUserProvisioning` and `AgentKnowledgeSourceSweep` (lane D) | No Graph API permission or admin consent; register it as a Power Platform admin management application. `Agents` scope also needs Reader at the tenant root management group |
 
 Defender does **not** add a third app registration. Lane F uses the signed-in Power BI Organizational-account credential for `https://api.security.microsoft.com`.
@@ -42,12 +43,10 @@ Install the solutions in this order:
 
 | Order | Solution or action | App registration | Environment variables | Dataverse connection reference | Finish |
 |---|---|---|---|---|---|
-| 1 | `CopilotInteractionLogging_managed.zip` | Audit collector | `poc_Audit_*` plus `poc_KeyVaultSecret` | `poc_sharedcommondataserviceforapps_2dd46` | Turn on both flows; confirm a non-zero run row |
-| 2 | `SharePointAgentLogging_managed.zip` | Audit collector — reuse the same tenant, app id and secret | `poc_SP_*` | `poc_sharedcommondataserviceforapps_spagent` | Turn on both flows; run the manual flow once |
-| 3 | `M365UsageReports_managed.zip` (lane G, used by the app's Work patterns view) | Audit collector, with `Reports.Read.All` | `poc_WP_*` | `poc_sharedcommondataserviceforapps_m365use` | Create the `poc_M365UsageReport` table first (the installer does this; it holds `poc_Name`, `poc_Period`, `poc_Payload`, `poc_Status` and `poc_CollectedAt`), then turn on the daily flow |
-| 4 | Provision the four shared lane D tables in [lane D step 2](#2-provision-the-tables) | Knowledge sweep | None yet | None | Confirm the four tables exist |
-| 5 | `AgentAppUserProvisioning_managed.zip` | Knowledge sweep | `poc_AU_*` | `poc_sharedcommondataserviceforapps_appusr` | Run first with `poc_AU_WhatIf=true`, then grant and populate the environment manifest |
-| 6 | `AgentKnowledgeSourceSweep_managed.zip` | Knowledge sweep | `poc_KS_*` | `poc_sharedcommondataserviceforapps_ksweep` | Turn on the daily flow after the manifest contains environments |
+| 1 | `SharePointAgentLogging_managed.zip` | Audit collector | `poc_SP_*` | `poc_sharedcommondataserviceforapps_spagent` | Turn on both flows; run the manual flow once |
+| 2 | Provision the four shared lane D tables in [lane D step 2](#2-provision-the-tables) | Knowledge sweep | None yet | None | Confirm the four tables exist |
+| 3 | `AgentAppUserProvisioning_managed.zip` | Knowledge sweep | `poc_AU_*` | `poc_sharedcommondataserviceforapps_appusr` | Run first with `poc_AU_WhatIf=true`, then grant and populate the environment manifest |
+| 4 | `AgentKnowledgeSourceSweep_managed.zip` | Knowledge sweep | `poc_KS_*` | `poc_sharedcommondataserviceforapps_ksweep` | Turn on the daily flow after the manifest contains environments |
 
 Use the unmanaged ZIP with the same base name only when you intend to edit the flows. For a clean deployment, use the managed ZIPs shown above.
 
@@ -69,67 +68,10 @@ Nothing to install. Open `pbip-cloud\AI-Monitor.pbip`, set the two parameters, p
 
 | Parameter | Value |
 |---|---|
-| `InteractionMode` | `Dataverse` for the cloud build, `Csv` to read local extracts |
 | `DataverseUrl` | The environment holding the landing tables, e.g. `https://contoso.crm.dynamics.com` |
+| `DateStart` | The first day of the `Date` table |
 
 After publishing, set **all three** data source credentials — Azure Resource Graph, Dataverse and the Defender advanced hunting host — to **Organizational account** with privacy level **Organizational**. If any is left *Private*, the Data Privacy Firewall blocks the model from combining them and the refresh fails with a message that does not mention privacy levels.
-
----
-
-## Lane C — Copilot interaction telemetry
-
-### 1. Register the app
-
-1. Register an application in Entra ID. No redirect URI is needed.
-2. **API permissions** → *Microsoft Graph* → **Application permissions** → `AuditLogsQuery.Read.All`.
-3. **Grant admin consent.** Without it every call returns `401` and the flow reports success while writing nothing.
-4. Create a **client secret** and record it. Note the expiry.
-
-> `AuditLog.Read.All` is *not* sufficient. `/security/auditLog/queries` is governed by its own `AuditLogsQuery` permission family.
-
-### 2. Import the solution
-
-`solution\CopilotInteractionLogging.zip` (unmanaged) or `solution\CopilotInteractionLogging_managed.zip` (managed — use this for a clean install). It contains:
-
-| Component | Purpose |
-|---|---|
-| `poc_CopilotInteraction` | One row per Copilot turn — the table the model reads |
-| `poc_CopilotInteractionFlowRuns` | One row per sync run, with record counts |
-| `poc_CopilotInteractionFlowRunErrors` | Per-record failures |
-| *Sync Audit Logs to Dataverse* | Daily cloud flow |
-| *Manual — Sync Audit Logs to Dataverse* | Same logic, on demand, for verification and recovery |
-| Environment variables | Everything in the table below |
-
-> Raw flow exports are **deliberately not committed** — the flow API resolves secret-typed environment variables in plaintext and would embed the live client secret. **A solution export does not mask them either**: if the variable holds a current value, that value leaves the tenant inside the zip. The zips here were exported with the value cleared to the placeholder `insertsecrethere`. Clear the value before you export, and check the export before you share it.
-
-### 3. Set the environment variables
-
-| Variable | Value |
-|---|---|
-| `poc_Audit_Tenant` | Your tenant GUID |
-| `poc_Audit_AppRegID` | The app registration's client ID |
-| `poc_Audit_Secret` | The client secret — **or** leave blank and use Key Vault |
-| `poc_Audit_UsingAKVtruefalse` | `true` to read the secret from Key Vault instead |
-| `poc_KeyVaultSecret` | Key Vault secret reference, when the above is `true` |
-| `poc_Audit_Authority` | `https://login.windows.net` |
-| `poc_Audit_Audience` | `https://graph.microsoft.com` |
-| `poc_Audit_ReviewerEmail` | Who receives failure notifications |
-| `poc_AuditMinutestoLookBack` | Window size, e.g. `1440` for one day |
-| `poc_AuditEndTimeMinutesAgo` | Lag allowance, so the window ends short of *now* |
-
-The exported values are the source tenant's — **replace them**.
-
-### 4. Turn it on
-
-1. Map `poc_sharedcommondataserviceforapps_2dd46` to a Dataverse connection in the landing environment.
-2. Turn the **daily** flow on.
-3. For history, run the **Manual** flow once with a much larger `poc_AuditMinutestoLookBack`, then let the daily flow keep it current.
-
-### 5. Verify
-
-Check `poc_CopilotInteractionFlowRuns` for a row with a non-zero `poc_recordsretrieved`. If runs succeed but retrieve nothing, the usual causes are missing admin consent, unified audit logging switched off, or a look-back window that ends before the events were indexed.
-
-**Two things to expect.** The audit log lags by up to ~24h, so the sync is structurally a few days behind — that is the service, not a bug. And a skipped day is not self-healing: the flow syncs a fixed window, so run the manual flow to fill any gap.
 
 ---
 
@@ -275,9 +217,9 @@ Without the `KS_*` variables the sweep falls back to your signed-in Azure CLI id
 
 ### 6. Verify
 
-Open the **Knowledge sources** page and check the **Sources collected** card. It reads `2026-09-03 (today)`, `(3d ago)`, `(33d ago - STALE)` past a week, or `Never collected`.
+Open the **Risk · Knowledge reach** page and check that named sources appear. The `Knowledge Source Freshness` measure reads `2026-09-03 (today)`, `(3d ago)`, `(33d ago - STALE)` past a week, or `Never collected`.
 
-> **Two ways to keep it fresh.** The shipped flow runs daily once you turn it on in step 4; the Node collector below is the manual alternative for a bootstrap or a backfill. If you only ever run the manual path, the published rows are a point-in-time snapshot — the freshness card is what makes that visible.
+> **Two ways to keep it fresh.** The shipped flow runs daily once you turn it on in step 4; the Node collector below is the manual alternative for a bootstrap or a backfill. If you only ever run the manual path, the published rows are a point-in-time snapshot — the freshness measure is what makes that visible.
 
 Agent Builder agents are not covered by this lane at all — they are never stored in Dataverse, so their grounding is visible at *type* level only, from Resource Graph.
 
@@ -285,17 +227,23 @@ Agent Builder agents are not covered by this lane at all — they are never stor
 
 ## Lane E — SharePoint agent inventory
 
-### 1. Reuse or register the audit app
+### 1. Register the audit app
 
-The SharePoint inventory collector uses the same Microsoft Graph application permission as lane C:
+The SharePoint inventory collector reads the Purview unified audit log through Microsoft Graph. This app registration is used only for the SharePoint agent inventory.
+
+1. Register an application in Entra ID. No redirect URI is needed.
+2. **API permissions** → *Microsoft Graph* → **Application permissions** → `AuditLogsQuery.Read.All`.
+3. **Grant admin consent.** Without it every call returns `401` and the flow reports success while writing nothing.
+4. Create a **client secret** and record it. Note the expiry.
 
 | Requirement | Value |
 |---|---|
 | API permission | `AuditLogsQuery.Read.All` (Application) |
 | Consent | Global Administrator consent |
+| Tenant setting | Unified audit logging switched on in Purview |
 | Extra SharePoint permissions | None — do not add `Sites.Read.All` or `Files.Read.All` |
 
-You can reuse lane C's tenant id, app id and secret. The separate `poc_SP_*` variables and solution keep the flow independently deployable and schedulable.
+> `AuditLog.Read.All` is *not* sufficient. `/security/auditLog/queries` is governed by its own `AuditLogsQuery` permission family.
 
 ### 2. Import the solution
 
@@ -309,12 +257,14 @@ Import `solution\SharePointAgentLogging.zip` or `solution\SharePointAgentLogging
 | *Daily SharePoint Agent Inventory to Dataverse* | Scheduled full-retention snapshot |
 | *Manual — SharePoint Agent Inventory to Dataverse* | Same logic, on demand |
 
+> Raw flow exports are **deliberately not committed** — the flow API resolves secret-typed environment variables in plaintext and would embed the live client secret. **A solution export does not mask them either**: if the variable holds a current value, that value leaves the tenant inside the zip. The zips here were exported with the value cleared to the placeholder `insertsecrethere`. Clear the value before you export, and check the export before you share it.
+
 ### 3. Set the environment variables
 
 | Variable | Value |
 |---|---|
-| `poc_SP_Tenant` | Tenant GUID; normally the same as `poc_Audit_Tenant` |
-| `poc_SP_AppRegID` | Audit app client id; normally the same as `poc_Audit_AppRegID` |
+| `poc_SP_Tenant` | Your tenant GUID |
+| `poc_SP_AppRegID` | The audit app registration's client id |
 | `poc_SP_Secret` | Client secret when Key Vault mode is off |
 | `poc_SP_UsingAKVtruefalse` | `true` to use `poc_SP_KeyVaultSecret`; otherwise `false` |
 | `poc_SP_KeyVaultSecret` | Key Vault-backed secret value when enabled |
@@ -383,10 +333,10 @@ A tool that appears in *Network* but not in *Installed* is the normal shape for 
 
 | Secret | Used by | Watch for |
 |---|---|---|
-| Lanes C and E audit app registration | The Copilot interaction and SharePoint inventory flows | Both collectors stop advancing; each records its own failed run |
+| Lane E audit app registration | The SharePoint agent inventory flows | The collector stops advancing and records a failed run in `poc_SharePointAgentLoggingRun` |
 | Lane D app registration | `Collect-KnowledgeSources.js`, the *Provision Sweep App Users* flow | Fails **silently** — `poc_collectedat` simply stops advancing |
 
-**An expiring secret is the most likely way this report goes stale.** Set a calendar reminder against the audit and knowledge-sweep app expiry dates. Lane D is the dangerous one, which is exactly why the freshness card exists.
+**An expiring secret is the most likely way this report goes stale.** Set a calendar reminder against the audit and knowledge-sweep app expiry dates. Lane D is the dangerous one, which is exactly why the freshness measure exists.
 
 ---
 
@@ -397,7 +347,23 @@ A tool that appears in *Network* but not in *Installed* is the normal shape for 
 | Agent counts far lower than expected | The signed-in identity lacks a tenant-wide role. ARG returns only what you can see, silently. |
 | Foundry projects missing | Missing **Reader** on those subscriptions. Absent subscriptions do not error. |
 | Refresh fails mentioning data combination | A credential is set to *Private*. All three must be **Organizational**. |
-| Interaction pages empty, refresh green | Lane C not installed, or the flow ran but retrieved nothing. Check `poc_CopilotInteractionFlowRuns`. |
-| Knowledge sources page empty, refresh green | Lane D has never run. `FnDataverseOptional` degrades a missing table to an empty one by design. |
+| No named knowledge sources, refresh green | Lane D has never run. `FnDataverseOptional` degrades a missing table to an empty one by design. |
 | SharePoint agents page empty, refresh green | Lane E has never completed or no `.agent` operation exists inside the lookback window. Check `poc_SharePointAgentLoggingRun` and `poc_SharePointAgentLoggingError`. |
 | Sweep returns 403 for many environments | Running interactively rather than as the application user, or those environments have no grant yet. Run the *Provision Sweep App Users* flow first. |
+
+---
+
+## Upgrading from an earlier version
+
+Earlier versions also collected Copilot interaction telemetry (lane C) and Microsoft 365 work patterns (lane G), and the app had Chat & Cowork, Work patterns and Cost & consumption views. Those now belong to [Analytics Hub](https://github.com/microsoft/AnalyticsHub-Dashboard), and the current model and app no longer read them. Lanes A, B, D, E and F are unchanged, so nothing else needs reinstalling.
+
+To remove the retired pieces from an existing environment:
+
+1. **Republish the report and the app** from this version first, so nothing still reads the retired tables when you remove them.
+2. **Turn off the retired flows.** In **Power Automate**, turn off *Sync Audit Logs to Dataverse* and *Manual — Sync Audit Logs to Dataverse* (lane C), and the daily flow in the `M365UsageReports` solution (lane G).
+3. **Delete their solutions.** In **Power Apps → Solutions**, delete `CopilotInteractionLogging` and `M365UsageReports`.
+   - If you imported the **managed** zips (`CopilotInteractionLogging_managed.zip`, `M365UsageReports_managed.zip`), deleting the solution also removes its flows, environment variables, connection references and tables — including their data.
+   - If you imported the **unmanaged** zips, deleting the solution leaves its components behind. Delete the two lane C flows and the lane G flow, the `poc_Audit_*`, `poc_KeyVaultSecret` and `poc_WP_*` environment variables, and the `poc_sharedcommondataserviceforapps_2dd46` and `poc_sharedcommondataserviceforapps_m365use` connection references yourself.
+4. **Optionally drop the tables.** Under **Power Apps → Tables**, delete `poc_CopilotInteraction` (entity set `poc_copilotinteractions`), `poc_CopilotInteractionFlowRuns` and `poc_CopilotInteractionFlowRunErrors` if they survived step 3, and `poc_M365UsageReport` (entity set `poc_m365usagereports`). `poc_M365UsageReport` was created outside the solution, so deleting the solution never removes it. Export the data first if you want to keep it.
+5. **Trim the app registration.** On the audit collector app, remove the `Reports.Read.All` application permission. Keep `AuditLogsQuery.Read.All` if you run lane E; if you don't, the app registration can go.
+6. **Remove the Cost Management Reader assignment** if it was granted only for the app's former Cost & consumption tab. Nothing in AI-Monitor needs it now.

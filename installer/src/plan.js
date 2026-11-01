@@ -45,6 +45,7 @@ import { DATA_SOURCES } from './managed-app/steps.js';
  * @property {Record<string, string | undefined>} [installed]  By solution key: what the environment has. Omitted offline.
  * @property {string} [appHash]  The app's build hash, when the build is there.
  * @property {boolean} [signedIn]
+ * @property {boolean} [sharePoint]  Lane E, SharePoint agents. It's the only lane that needs the audit collector. Default true.
  */
 
 /** @param {PlanInput} p @param {string} key */
@@ -65,6 +66,7 @@ export function buildPlan(p) {
   const envName = env ? `${env.name ?? env.id}` : 'the landing environment (picked at the start)';
   const secretWhere = p.secretMode === 'keyvault' ? `Key Vault "${p.keyVault ?? record.options.keyVault?.name ?? '?'}"` : 'the flows\' environment variables';
   const agents = p.scopeMode === 'Agents';
+  const sharePoint = p.sharePoint !== false;
 
   /** @type {PlanStep[]} */
   const steps = [];
@@ -77,7 +79,7 @@ export function buildPlan(p) {
   steps.push({
     id: 'prereqs',
     title: 'Check prerequisites',
-    changes: ['Changes nothing. Reports your roles, the audit log, the Managed Apps settings, licences and Node.js.'],
+    changes: [`Changes nothing. Reports your roles, ${sharePoint ? 'the audit log, ' : ''}the Managed Apps settings, licences and Node.js.`],
     ...(p.signedIn ? { state: 'done' } : {}),
   });
   steps.push({
@@ -88,17 +90,19 @@ export function buildPlan(p) {
   });
 
   const audit = record.auditApp;
-  steps.push({
-    id: 'audit-app',
-    title: `App registration: ${APPS.audit.displayName}`,
-    changes: [
-      audit ? `Reuses the app registration made earlier (${audit.displayName}).` : `Creates the app registration "${APPS.audit.displayName}", single-tenant, with its service principal.`,
-      'Adds the Microsoft Graph application permissions AuditLogsQuery.Read.All and Reports.Read.All and grants admin consent for them.',
-      `Adds a client secret when a solution needs one, into ${secretWhere}. Only its key ID and expiry are saved.`,
-    ],
-    role: 'Can register apps; admin consent needs Global Administrator or Privileged Role Administrator (otherwise you get a link to send them)',
-    ...(audit?.consented && Object.keys(record.solutions).length ? { state: 'done' } : {}),
-  });
+  if (sharePoint) {
+    steps.push({
+      id: 'audit-app',
+      title: `App registration: ${APPS.audit.displayName}`,
+      changes: [
+        audit ? `Reuses the app registration made earlier (${audit.displayName}).` : `Creates the app registration "${APPS.audit.displayName}", single-tenant, with its service principal.`,
+        'Adds the Microsoft Graph application permission AuditLogsQuery.Read.All for lane E and grants admin consent for it.',
+        `Adds a client secret when a solution needs one, into ${secretWhere}. Only its key ID and expiry are saved.`,
+      ],
+      role: 'Can register apps; admin consent needs Global Administrator or Privileged Role Administrator (otherwise you get a link to send them)',
+      ...(audit?.consented && Object.keys(record.solutions).length ? { state: 'done' } : {}),
+    });
+  }
 
   const sweep = record.sweepApp;
   steps.push({
@@ -159,16 +163,11 @@ export function buildPlan(p) {
     });
   };
 
-  solutionStep('interactions', ['Brings the Copilot interaction tables and the daily and manual sync flows.']);
-  solutionStep('sharepoint', ['Brings the SharePoint agent tables and the daily and manual flows.']);
-  steps.push({
-    id: 'workpatterns-table',
-    title: 'Lane G: create the work patterns table',
-    changes: ['Creates the poc_M365UsageReport table: one row for each Microsoft 365 usage report, holding its latest 30 days. A table already there is left alone.'],
-    role: 'System Administrator in the landing environment',
-    ...(record.workPatternsTable ? { state: 'done' } : {}),
-  });
-  solutionStep('workpatterns', ['Brings the daily flow that copies five Microsoft 365 usage reports from Microsoft Graph into that table.']);
+  if (sharePoint) solutionStep('sharepoint', ['Brings the SharePoint agent tables and the daily and manual flows.']);
+  else {
+    const def = solution('sharepoint');
+    steps.push({ id: 'solution-sharepoint', title: `Lane ${def.lane}: import ${def.uniqueName}`, changes: ['Left out: lane E (SharePoint agents) isn\'t included. No audit collector app registration is made for it.'], state: 'skip' });
+  }
   steps.push({
     id: 'lane-d-tables',
     title: 'Lane D: create the knowledge source tables',
@@ -192,7 +191,7 @@ export function buildPlan(p) {
   });
   solutionStep('sweep', ['Brings the daily knowledge source sweep flow.']);
 
-  const flowCount = SOLUTIONS.reduce((n, s) => n + s.flows.length, 0);
+  const flowCount = SOLUTIONS.filter((s) => sharePoint || s.key !== 'sharepoint').reduce((n, s) => n + s.flows.length, 0);
   steps.push({
     id: 'flows',
     title: 'Turn the flows on',
@@ -229,11 +228,6 @@ export function buildPlan(p) {
     title: 'Lane F: Defender (check only)',
     changes: ['Changes nothing: lane F has nothing to install. Reports whether Defender for Endpoint and Security Reader are there.'],
   });
-  steps.push({
-    id: 'lane-cost',
-    title: 'Cost & consumption (check only)',
-    changes: ['Changes nothing: the cost lanes have nothing to install. Reports whether you can read Copilot Credits (Power Platform Administrator) and Azure Cost Management (Cost Management Reader).'],
-  });
 
   return {
     title: 'The plan',
@@ -241,6 +235,7 @@ export function buildPlan(p) {
       { label: 'Landing environment', value: env ? `${env.name ?? env.id} (${env.url})` : 'picked after sign-in' },
       { label: 'Secrets', value: secretWhere },
       { label: 'Knowledge sweep scope mode', value: p.scopeMode },
+      { label: 'Lane E (SharePoint agents)', value: sharePoint ? 'included' : 'left out' },
       { label: 'Viewer group', value: p.viewerGroup ?? 'none' },
     ],
     steps,

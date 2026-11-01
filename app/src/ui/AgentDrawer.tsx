@@ -1,13 +1,9 @@
 import { useMemo } from 'react'
 import { useData } from '../data/store'
-import { weeklyCount } from '../metrics/chat'
-import { agentTrends, LIFECYCLE_HELP, lifecycleOf, verdictOf } from '../metrics/lifecycle'
-import { I } from '../metrics/measures'
-import { lastDataDay } from '../metrics/periods'
-import { LineChart } from './charts'
-import { connectorLabel, dateLabel, dec1, int, DASH, regionLabel } from './format'
+import { LIFECYCLE_HELP, lifecycleOf, verdictOf } from '../metrics/lifecycle'
+import { connectorLabel, dateLabel, int, DASH, regionLabel } from './format'
 import { Sheet } from './Sheet'
-import { COLOR, LIFECYCLE_TEXT, RISK_TEXT, VERDICT_TEXT } from './theme'
+import { LIFECYCLE_TEXT, RISK_TEXT, VERDICT_TEXT } from './theme'
 
 const day = (iso: string) => (iso ? dateLabel(iso.slice(0, 10)) : DASH)
 
@@ -17,23 +13,16 @@ export function AgentDrawer({ agentKey, onClose }: { agentKey: string | null; on
   const agent = agentKey ? agentByKey.get(agentKey) : undefined
   const d = useMemo(() => {
     if (!agent) return null
-    const rows = ds.interactions.filter((i) => i.agentKey === agent.key)
-    const trend = agentTrends(rows, lastDataDay(ds.interactions)).get(agent.key)
-    const stage = lifecycleOf(agent, trend)
+    const stage = lifecycleOf(agent)
     return {
-      rows,
       stage,
       review: verdictOf(agent, stage),
-      weekly: weeklyCount(rows),
       reasons: ds.riskDetail.filter((r) => r.agentKey === agent.key),
       knowledge: ds.knowledge.filter((k) => k.agentKey === agent.key),
       sources: ds.sources.filter((s) => s.agentKey === agent.key),
       connectors: ds.connectors.filter((c) => c.agentKey === agent.key),
-      credits: ds.credits.filter((c) => c.agentKey === agent.key),
     }
   }, [agent, ds])
-  const billed = d ? d.credits.reduce((s, c) => s + c.billed, 0) : 0
-  const nonBilled = d ? d.credits.reduce((s, c) => s + c.nonBilled, 0) : 0
 
   return (
     <Sheet open={!!agent} onClose={onClose} title={agent?.name || 'Agent'} side>
@@ -67,34 +56,14 @@ export function AgentDrawer({ agentKey, onClose }: { agentKey: string | null; on
               </dd>
             </div>
             <div>
-              <dt>Users</dt>
-              <dd>{int(I.users(d.rows))}</dd>
+              <dt>Days since use</dt>
+              <dd>{agent.daysSinceLastUse !== null ? int(agent.daysSinceLastUse) : d.stage === 'No usage signal' ? 'No usage signal' : 'Never used'}</dd>
             </div>
             <div>
-              <dt>Sessions</dt>
-              <dd>{int(I.sessions(d.rows))}</dd>
+              <dt>Origin</dt>
+              <dd>{agent.agentOrigin}</dd>
             </div>
-            <div>
-              <dt>Interactions</dt>
-              <dd>{int(d.rows.length)}</dd>
-            </div>
-            <div>
-              <dt>Run-time hours</dt>
-              <dd>{dec1(I.runTimeHours(d.rows))}</dd>
-            </div>
-            {d.credits.length > 0 && (
-              <div>
-                <dt>Credits billed (30d)</dt>
-                <dd title={`${int(nonBilled)} non-billed`}>{int(billed)}</dd>
-              </div>
-            )}
           </dl>
-          {d.weekly.length > 1 && (
-            <>
-              <h3>Weekly interactions</h3>
-              <LineChart label={`Weekly interactions with ${agent.name}`} data={d.weekly} series={[{ name: 'Interactions', color: COLOR.agent, fmt: int }]} xFmt={dateLabel} height={140} area />
-            </>
-          )}
           <h3>Details</h3>
           <dl className="kv">
             <dt>Environment</dt>

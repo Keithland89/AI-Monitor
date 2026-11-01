@@ -16,13 +16,14 @@ describe('ask context', () => {
 
   it('summarises every area the sample covers, inside the size cap', () => {
     expect(all.length).toBeLessThanOrEqual(CONTEXT_LIMIT + 30)
-    for (const h of ['## Agents', '## Risk', '## Lifecycle verdicts', '## Copilot activity', '## Integrations']) expect(all).toContain(h)
+    for (const h of ['## Agents', '## Ownership', '## Risk', '## Lifecycle review', '## Integrations']) expect(all).toContain(h)
     expect(all).toContain(`No filters: all ${ds.agents.length.toLocaleString('en-GB')} agents.`)
     expect(all).toContain('anonymised sample')
     expect(all).not.toMatch(/NaN|undefined/)
+    expect(all).not.toMatch(/Copilot Credits|interactions|audit activity/i)
   })
 
-  it('names the busiest agents and the agents to act on', () => {
+  it('names the riskiest agents and the agents to act on', () => {
     const named = ds.agents.filter((a) => all.includes(a.name))
     expect(named.length).toBeGreaterThan(5)
   })

@@ -18,7 +18,7 @@ import {
   grantAuditConsent, graphAuditRole, registerAdminApp, removeRoleAssignment, removeSecret, storeInKeyVault, unregisterAdminApp,
   VAULT_SECRET_NAMES,
 } from './identity.js';
-import { LANE_D_TABLES, logicalName, provisionLaneD, provisionWorkPatterns, WORK_PATTERNS_TABLE } from './lane-d-tables.js';
+import { LANE_D_TABLES, logicalName, provisionLaneD } from './lane-d-tables.js';
 import { commandLine } from './launch.js';
 import { createCli } from './managed-app/cli.js';
 import { ADMIN_STEPS } from './managed-app/errors.js';
@@ -27,7 +27,7 @@ import { buildPlan, handOffSteps, planMarkdown } from './plan.js';
 import { connectionInstructions, deleteConnection, ensureDataverseConnection, FLOW_BASE, listEnvironments, POWERAPPS_BASE, runFlowNow } from './power-platform.js';
 import { checkPrereqs, prereqApi } from './prereqs.js';
 import { componentParameters, envVarValues, GRANT_FLOW_ID, loadSolutionZip, PLACEHOLDER_SECRET, solution, SOLUTIONS } from './solutions.js';
-import { laneCost, laneF, verifyLanes } from './verify.js';
+import { laneF, verifyLanes } from './verify.js';
 
 /** The repo, or the unpacked release: installer\, solution\ and app\ side by side. */
 export const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -48,13 +48,13 @@ export const WHAT_IF_WAIT_MS = 10 * 60_000;
  * @property {string} [keyVault]  Key Vault mode: the vault's name.
  * @property {'Agents' | 'Dataverse'} [scopeMode]
  * @property {string} [viewerGroup]
- * @property {string} [reviewerEmail]
  * @property {string} [connectionId]
  * @property {string} [config]  The install record's path.
  * @property {string} [savePlan]
  * @property {string} [solutions]  The folder with the solution zips.
  * @property {string} [appDist]
  * @property {boolean} [skipApp]
+ * @property {boolean} [sharePoint]  Lane E: true includes it, false leaves it out. Unset keeps the saved choice, else includes it.
  * @property {boolean} [approveGrants]
  * @property {boolean} [approveRootReader]
  * @property {boolean} [deleteData]
@@ -128,7 +128,7 @@ export function resolveSettings(o, record) {
     secretMode: keyVault && (o.keyVault || saved.secretMode === 'keyvault') ? /** @type {const} */ ('keyvault') : /** @type {const} */ ('envvar'),
     keyVault,
     viewerGroup: o.viewerGroup ?? saved.viewerGroup,
-    reviewerEmail: o.reviewerEmail ?? saved.reviewerEmail,
+    sharePoint: o.sharePoint ?? saved.sharePoint ?? true,
     maxGrants: o.maxGrants ?? saved.maxGrants ?? 25,
     secretMonths: o.secretMonths ?? saved.secretMonths ?? 12,
   };
@@ -164,7 +164,7 @@ function paths(o, d) {
 }
 
 /**
- * Reads the four solution zips and checks they're the ones expected.
+ * Reads the solution zips and checks they're the ones expected.
  * @param {string} dir
  * @param {Deps} d
  */
@@ -247,6 +247,12 @@ export async function pickEnvironment(apis, o, record, ui) {
 }
 
 /**
+ * The solutions this install covers: all of them, less lane E's when it's left out.
+ * @param {{ sharePoint?: boolean }} settings
+ */
+export const selected = (settings) => SOLUTIONS.filter((def) => def.key !== 'sharepoint' || settings.sharePoint !== false);
+
+/**
  * Which solution versions the environment has, by key.
  * @param {import('./dataverse.js').Dataverse} dv
  */
@@ -277,7 +283,7 @@ export async function install(o, d) {
   const { apis, user, tenantId } = await connect(o, d, record);
 
   ui.heading('Prerequisites');
-  const prereqs = await checkPrereqs({ api: prereqApi(apis), user, scopeMode: settings.scopeMode, withApp: !o.skipApp, ...(d.nodeVersion ? { nodeVersion: d.nodeVersion } : {}) });
+  const prereqs = await checkPrereqs({ api: prereqApi(apis), user, scopeMode: settings.scopeMode, withApp: !o.skipApp, sharePoint: settings.sharePoint, ...(d.nodeVersion ? { nodeVersion: d.nodeVersion } : {}) });
   ui.prereqs(prereqs);
 
   ui.heading('Landing environment');
@@ -309,6 +315,7 @@ export async function install(o, d) {
     installed,
     ...(appHash ? { appHash } : {}),
     signedIn: true,
+    sharePoint: settings.sharePoint,
   });
   ui.plan(plan);
   if (o.savePlan) {
@@ -329,10 +336,11 @@ export async function install(o, d) {
     secretMode: settings.secretMode,
     ...(vault ? { keyVault: vault } : {}),
     ...(settings.viewerGroup ? { viewerGroup: settings.viewerGroup } : {}),
-    ...(settings.reviewerEmail ? { reviewerEmail: settings.reviewerEmail } : {}),
     maxGrants: settings.maxGrants,
     secretMonths: settings.secretMonths,
+    sharePoint: settings.sharePoint,
   };
+  if (!settings.sharePoint) clearHandOff(record, 'audit-consent');
   save();
   ui.note(`Install record: ${recordPath}`);
 
@@ -396,7 +404,6 @@ export function createRun(c) {
     secretMode: settings.secretMode,
     secrets,
     keyVaultRefs: refs,
-    ...(settings.reviewerEmail ? { reviewerEmail: settings.reviewerEmail } : {}),
     scopeMode: settings.scopeMode,
     whatIf: !record.appUserGrant?.approvedAt,
     maxGrants: settings.maxGrants,
@@ -625,7 +632,7 @@ export function createRun(c) {
           ui.ok(`Admin consent is granted for ${AUDIT_PERMISSIONS.join(' and ')}`);
         } else {
           addHandOff(record, consent.handOff);
-          ui.warn('You can\'t grant admin consent. The link for a Global Administrator is in the next steps; the audit flows fail until it\'s granted.');
+          ui.warn('You can\'t grant admin consent. The link for a Global Administrator is in the next steps; the SharePoint agent flows fail until it\'s granted.');
         }
         save();
       },
@@ -700,17 +707,7 @@ export function createRun(c) {
         throw new Error('No working Dataverse connection: the solutions still import, but their flows stay off until you run the installer again with one.');
       },
     },
-    'solution-interactions': { needs: ['audit-app'], run: () => solutionStep('interactions') },
     'solution-sharepoint': { needs: ['audit-app'], run: () => solutionStep('sharepoint') },
-    'workpatterns-table': {
-      run: async () => {
-        const made = await provisionWorkPatterns(dv.client, { log: { ok: ui.ok, warn: ui.warn, info: ui.note }, sleep: c.sleep });
-        record.workPatternsTable = true;
-        save();
-        ui.ok(made.length ? 'Made the work patterns table' : 'The work patterns table is already there');
-      },
-    },
-    'solution-workpatterns': { needs: ['audit-app', 'workpatterns-table'], run: () => solutionStep('workpatterns') },
     'lane-d-tables': {
       run: async () => {
         const made = await provisionLaneD(dv.client, { log: { ok: ui.ok, warn: ui.warn, info: ui.note }, sleep: c.sleep });
@@ -726,7 +723,7 @@ export function createRun(c) {
       needs: ['connection'],
       run: async () => {
         let bad = 0;
-        for (const def of SOLUTIONS) {
+        for (const def of selected(settings)) {
           if (!(await dv.solutionVersion(def.uniqueName))) continue;
           for (const f of def.flows) {
             try {
@@ -756,7 +753,7 @@ export function createRun(c) {
     },
     verify: {
       run: async () => {
-        for (const r of await verifyLanes(dv)) {
+        for (const r of await verifyLanes(dv, { sharePoint: settings.sharePoint })) {
           const text = `Lane ${r.lane}, ${r.name}: ${r.detail}`;
           if (r.state === 'ok') ui.ok(text);
           else if (r.state === 'failed') ui.fail(text);
@@ -793,15 +790,6 @@ export function createRun(c) {
       run: async () => {
         const r = laneF(c.prereqs);
         const text = `Lane F, ${r.name}: ${r.detail}`;
-        if (r.state === 'ok') ui.ok(text);
-        else if (r.state === 'pending') ui.info(text);
-        else ui.warn(text);
-      },
-    },
-    'lane-cost': {
-      run: async () => {
-        const r = laneCost(c.prereqs);
-        const text = `${r.name}: ${r.detail}`;
         if (r.state === 'ok') ui.ok(text);
         else if (r.state === 'pending') ui.info(text);
         else ui.warn(text);
@@ -930,6 +918,7 @@ export async function preview(o, d) {
     ...(o.connectionId ? { connectionId: o.connectionId } : {}),
     zipVersions,
     ...(appHash ? { appHash } : {}),
+    sharePoint: settings.sharePoint,
   });
   d.ui.plan(plan);
   d.ui.note('Offline: what\'s already in the environment is read from the install record. install reads the environment itself, and asks before it changes anything.');
@@ -950,7 +939,8 @@ export async function prereqsCommand(o, d) {
   d.ui.heading('Sign in');
   const { apis, user } = await connect(o, d, record);
   d.ui.heading('Prerequisites');
-  const items = await checkPrereqs({ api: prereqApi(apis), user, scopeMode: resolveSettings(o, record).scopeMode, withApp: !o.skipApp, ...(d.nodeVersion ? { nodeVersion: d.nodeVersion } : {}) });
+  const settings = resolveSettings(o, record);
+  const items = await checkPrereqs({ api: prereqApi(apis), user, scopeMode: settings.scopeMode, withApp: !o.skipApp, sharePoint: settings.sharePoint, ...(d.nodeVersion ? { nodeVersion: d.nodeVersion } : {}) });
   d.ui.prereqs(items);
   return items.some((p) => p.status === 'missing' && !p.optional) ? 1 : 0;
 }
@@ -972,18 +962,20 @@ export async function status(o, d) {
   if (record.uninstalledAt) ui.warn(`Uninstalled ${record.uninstalledAt.slice(0, 10)}; what's below was left behind on purpose.`);
   if (record.environment) ui.info(`Landing environment: ${record.environment.name ?? record.environment.id} (${record.environment.url})`);
   ui.info(`Scope mode ${record.options.scopeMode ?? 'Agents'}; secrets in ${record.options.secretMode === 'keyvault' ? `Key Vault ${record.options.keyVault?.name}` : 'environment variables'}`);
+  const sharePoint = record.options.sharePoint ?? true;
+  if (!sharePoint) ui.info('Lane E (SharePoint agents): left out');
   for (const key of /** @type {const} */ (['audit', 'sweep'])) {
     const app = key === 'audit' ? record.auditApp : record.sweepApp;
+    if (!app && key === 'audit' && !sharePoint) continue;
     if (!app) ui.warn(`${APPS[key].displayName}: not made yet`);
     else ui.ok(`${app.displayName}: ${app.appId}${app.secretExpires ? `, secret valid until ${app.secretExpires.slice(0, 10)}` : ''}${key === 'audit' && !app.consented ? ', no admin consent yet' : ''}${key === 'sweep' && !app.adminApp ? ', not an admin management app yet' : ''}`);
   }
-  for (const def of SOLUTIONS) {
+  for (const def of selected({ sharePoint })) {
     const s = record.solutions[def.key];
     if (s) ui.ok(`Lane ${def.lane}: ${def.uniqueName} ${s.version}, imported ${s.importedAt.slice(0, 10)}`);
     else ui.warn(`Lane ${def.lane}: ${def.uniqueName} not imported by the installer`);
   }
   if (record.tablesProvisioned) ui.ok('Lane D tables made');
-  if (record.workPatternsTable) ui.ok('Work patterns table made');
   const grant = record.appUserGrant;
   if (grant?.approvedAt) ui.ok(`App user grants approved ${grant.approvedAt.slice(0, 10)}`);
   else if (grant?.whatIfAt) ui.info(`App user grants: what-if only${grant.missing !== undefined ? ` (${grant.missing} of ${grant.inScope} environments missing)` : ''}`);
@@ -1011,9 +1003,10 @@ export async function check(o, d) {
   ui.heading('Sign in');
   const { apis, user } = await connect(o, d, record);
   const dv = apis.dataverse(record.environment.url);
+  const sharePoint = record.options.sharePoint ?? true;
   let bad = 0;
   ui.heading(`Solutions in ${record.environment.name ?? record.environment.id}`);
-  for (const def of SOLUTIONS) {
+  for (const def of selected({ sharePoint })) {
     const v = await dv.solutionVersion(def.uniqueName);
     if (v) ui.ok(`${def.uniqueName} ${v.version}`);
     else {
@@ -1031,7 +1024,7 @@ export async function check(o, d) {
     }
   }
   ui.heading('Run tables');
-  for (const r of await verifyLanes(dv)) {
+  for (const r of await verifyLanes(dv, { sharePoint })) {
     const text = `Lane ${r.lane}, ${r.name}: ${r.detail}`;
     if (r.state === 'ok') ui.ok(text);
     else if (r.state === 'pending') ui.info(text);
@@ -1040,11 +1033,9 @@ export async function check(o, d) {
       bad++;
     }
   }
-  const prereqs = await checkPrereqs({ api: prereqApi(apis), user, scopeMode: record.options.scopeMode ?? 'Agents', withApp: false, ...(d.nodeVersion ? { nodeVersion: d.nodeVersion } : {}) });
+  const prereqs = await checkPrereqs({ api: prereqApi(apis), user, scopeMode: record.options.scopeMode ?? 'Agents', withApp: false, sharePoint, ...(d.nodeVersion ? { nodeVersion: d.nodeVersion } : {}) });
   const f = laneF(prereqs);
   (f.state === 'ok' ? ui.ok : ui.warn)(`Lane F, ${f.name}: ${f.detail}`);
-  const cost = laneCost(prereqs);
-  (cost.state === 'ok' ? ui.ok : cost.state === 'pending' ? ui.info : ui.warn)(`${cost.name}: ${cost.detail}`);
   if (record.managedApp?.url) ui.ok(`The app: ${record.managedApp.url}`);
   return bad ? 1 : 0;
 }
@@ -1189,7 +1180,7 @@ export async function uninstall(o, d) {
   if (record.managedApp?.appId) lines.push('Deletes the app.');
   if (Object.keys(record.flows).length) lines.push(`Turns off ${Object.keys(record.flows).length} flows.`);
   if (plainDefs.length) lines.push(`Deletes the solutions ${plainDefs.map((s) => s.uniqueName).join(', ')}.`);
-  const tables = [...(record.tablesProvisioned ? ['the lane D tables'] : []), ...(record.workPatternsTable ? ['the work patterns table'] : [])];
+  const tables = record.tablesProvisioned ? ['the lane D tables'] : [];
   if (dataDefs.length || tables.length) {
     lines.push(o.deleteData
       ? `Deletes ${[...dataDefs.map((s) => s.uniqueName), ...tables].join(', ')}, and every row in their tables (--delete-data).`
@@ -1258,13 +1249,6 @@ export async function uninstall(o, d) {
         save();
       });
     }
-    if (o.deleteData && record.workPatternsTable) {
-      await attempt('Deleting the work patterns table', async () => {
-        if (await dv.deleteTable(logicalName(WORK_PATTERNS_TABLE))) ui.ok(`Deleted ${logicalName(WORK_PATTERNS_TABLE)}`);
-        delete record.workPatternsTable;
-        save();
-      });
-    }
     if (record.connection?.created) {
       const conn = record.connection;
       await attempt('Deleting the Dataverse connection', async () => {
@@ -1304,7 +1288,7 @@ export async function uninstall(o, d) {
     });
   }
 
-  const leftData = SOLUTIONS.some((s) => record.solutions[s.key]) || record.tablesProvisioned || record.workPatternsTable;
+  const leftData = SOLUTIONS.some((s) => record.solutions[s.key]) || record.tablesProvisioned;
   if (failed) {
     ui.warn(`${failed} things weren't removed. Fix what's above and run ${commandLine('uninstall')} again.`);
     return 1;

@@ -87,31 +87,18 @@
             },
             {
               "field": {
-                "Measure": {
+                "Column": {
                   "Expression": {
                     "SourceRef": {
-                      "Entity": "Metrics"
+                      "Entity": "Agent"
                     }
                   },
-                  "Property": "Active Users"
+                  "Property": "LastActivityAt"
                 }
               },
-              "queryRef": "Metrics.Active Users",
-              "nativeQueryRef": "Active Users"
-            },
-            {
-              "field": {
-                "Measure": {
-                  "Expression": {
-                    "SourceRef": {
-                      "Entity": "Metrics"
-                    }
-                  },
-                  "Property": "Interaction Sessions"
-                }
-              },
-              "queryRef": "Metrics.Interaction Sessions",
-              "nativeQueryRef": "Interaction Sessions"
+              "queryRef": "Agent.LastActivityAt",
+              "nativeQueryRef": "LastActivityAt",
+              "displayName": "Last used"
             },
             {
               "field": {
@@ -148,13 +135,13 @@
         "sort": [
           {
             "field": {
-              "Measure": {
+              "Column": {
                 "Expression": {
                   "SourceRef": {
-                    "Entity": "Metrics"
+                    "Entity": "Agent"
                   }
                 },
-                "Property": "Active Users"
+                "Property": "LastActivityAt"
               }
             },
             "direction": "Descending"

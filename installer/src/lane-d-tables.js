@@ -269,38 +269,6 @@ async function ensureTable(client, t, { log, sleep, dryRun, changed }) {
 }
 
 /**
- * The work patterns table: one row per Microsoft 365 usage report, rewritten by its daily flow
- * (solution\work-patterns\build.mjs) and read by the app's Work patterns view.
- * @type {TableDef}
- */
-export const WORK_PATTERNS_TABLE = {
-  schema: 'M365UsageReport',
-  set: 'poc_m365usagereports',
-  display: 'Microsoft 365 usage report',
-  plural: 'Microsoft 365 usage reports',
-  description: 'One row per Microsoft Graph usage report, holding its latest JSON response. The daily work patterns flow rewrites each row in place.',
-  primary: primaryName('Name', 'Report', 200),
-  attributes: [
-    S('Period', 'Period', 20, 'The report period, such as D30.'),
-    M('Payload', 'Payload', 1048576, 'The JSON Microsoft Graph returned, or its error.'),
-    S('Status', 'Status', 100, 'The HTTP status the flow saw.'),
-    D('CollectedAt', 'Collected at', 'When the flow last read the report.'),
-  ],
-};
-
-/**
- * Makes the work patterns table. Returns what it changed.
- * @param {import('./http.js').HttpClient} client  The Dataverse Web API client.
- * @param {{ log: ProvisionLog, sleep?: (ms: number) => Promise<void>, dryRun?: boolean }} o
- */
-export async function provisionWorkPatterns(client, { log, sleep = defaultSleep, dryRun = false }) {
-  /** @type {string[]} */
-  const changed = [];
-  await ensureTable(client, WORK_PATTERNS_TABLE, { log, sleep, dryRun, changed });
-  return changed;
-}
-
-/**
  * Makes the lane D tables, keys and the upsert column. Returns what it changed.
  * @param {import('./http.js').HttpClient} client  The Dataverse Web API client.
  * @param {{ log: ProvisionLog, sleep?: (ms: number) => Promise<void>, dryRun?: boolean }} o
