@@ -1,7 +1,7 @@
 {
   "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/page/1.0.0/schema.json",
   "name": "8c2a5e93ea36e1e0f51c",
-  "displayName": "Agent inventory",
+  "displayName": "Agents · Estate",
   "displayOption": "FitToWidth",
   "width": 1280,
   "height": 900,

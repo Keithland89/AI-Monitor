@@ -916,6 +916,75 @@ table Metrics
 		displayFolder: 11 Shadow AI
 		lineageTag: d504484e-58a6-4395-b471-cf63f39fc8df
 
+	/// One-sentence briefing for the Overview page: estate size, 30-day use, high risk and unused tenant-wide sharing.
+	measure 'Briefing Headline' = ```
+			VAR _agents = [Agent Count]
+			VAR _active = [Adoption Rate %]
+			VAR _high = [High Risk Agents] + 0
+			VAR _shared = [Tenant-wide Shared Agents] + 0
+			VAR _unused = [Orphan Risk Agents] + 0
+			RETURN
+			    IF (
+			        ISBLANK ( _agents ),
+			        "No agents found yet. Setup & coverage shows which sources did not load.",
+			        FORMAT ( _agents, "#,0" ) & " agents, " & FORMAT ( _active, "0%" ) & " of them used in the last 30 days. "
+			            & FORMAT ( _high, "#,0" ) & IF ( _high = 1, " is", " are" ) & " high risk, and "
+			            & FORMAT ( _unused, "#,0" ) & " of the " & FORMAT ( _shared, "#,0" ) & " shared tenant-wide "
+			            & IF ( _unused = 1, "has", "have" ) & " never been used."
+			    )
+			```
+		displayFolder: 00 Headline
+
+	/// Agents with no use in more than 90 days that are not shared tenant-wide: safe candidates to retire.
+	measure 'Agents to Retire' = CALCULATE ( [Agent Count], KEEPFILTERS ( 'Agent'[ActivityStatus] = "Dormant (90d+)" ), KEEPFILTERS ( 'Agent'[SharedTenantWide] = FALSE () ) ) + 0
+		formatString: #,0
+		displayFolder: 00 Headline
+
+	/// High-risk agents with no owner on record, or whose owner no longer resolves in Entra ID.
+	measure 'Unowned High Risk Agents' = ```
+			CALCULATE (
+			    [High Risk Agents],
+			    KEEPFILTERS (
+			        FILTER (
+			            ALL ( 'Agent'[HasOwner], 'Agent'[OwnerPrincipalType] ),
+			            'Agent'[HasOwner] = FALSE () || 'Agent'[OwnerPrincipalType] = "Not resolved in Entra"
+			        )
+			    )
+			) + 0
+			```
+		formatString: #,0
+		displayFolder: 00 Headline
+
+	/// Agents with no authentication that ground on web content or on a named source outside the tenant.
+	measure 'External Unauthenticated Agents' = ```
+			VAR _named =
+			    CALCULATETABLE ( VALUES ( 'KnowledgeSource'[AgentKey] ), 'KnowledgeSource'[IsExternal] = TRUE () )
+			VAR _web =
+			    CALCULATETABLE (
+			        VALUES ( 'AgentKnowledge'[AgentKey] ),
+			        'AgentKnowledge'[KnowledgeType] IN { "Public websites", "Web search", "Bing custom search" }
+			    )
+			RETURN
+			    CALCULATE ( [Unauthenticated Agents], KEEPFILTERS ( TREATAS ( DISTINCT ( UNION ( _named, _web ) ), 'Agent'[AgentKey] ) ) ) + 0
+			```
+		formatString: #,0
+		displayFolder: 00 Headline
+
+	/// The count behind each row of the Attention list on the Overview page.
+	measure 'Attention Count' = ```
+			SWITCH (
+			    SELECTEDVALUE ( 'Attention'[SortOrder] ),
+			    1, [Agents to Retire],
+			    2, [Unowned High Risk Agents],
+			    3, [Orphan Risk Agents] + 0,
+			    4, [External Unauthenticated Agents],
+			    5, [Owners Not Resolved],
+			    6, [Unsanctioned AI Apps] + 0
+			)
+			```
+		formatString: #,0
+		displayFolder: 00 Headline
+
 	column Placeholder
 		dataType: int64
 		isHidden

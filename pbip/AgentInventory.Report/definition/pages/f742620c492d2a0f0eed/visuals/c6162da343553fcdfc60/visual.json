@@ -2,11 +2,11 @@
   "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.7.0/schema.json",
   "name": "c6162da343553fcdfc60",
   "position": {
-    "x": 640,
-    "y": 76,
+    "x": 267.2,
+    "y": 146,
     "z": 12,
     "height": 104,
-    "width": 149,
+    "width": 243.2,
     "tabOrder": 1200
   },
   "visual": {
@@ -125,7 +125,7 @@
             "text": {
               "expr": {
                 "Literal": {
-                  "Value": "'Active (30 days)'"
+                  "Value": "'Used in 30 days'"
                 }
               }
             },
@@ -280,7 +280,7 @@
             "text": {
               "expr": {
                 "Literal": {
-                  "Value": "'with a usage signal'"
+                  "Value": "'the adoption truth'"
                 }
               }
             },

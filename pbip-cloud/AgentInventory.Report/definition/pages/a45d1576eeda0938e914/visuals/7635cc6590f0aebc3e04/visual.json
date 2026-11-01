@@ -20,7 +20,7 @@
                 "horizontalTextAlignment": "left",
                 "textRuns": [
                   {
-                    "value": "Adoption & activity",
+                    "value": "Adoption · Agents in use",
                     "textStyle": {
                       "fontFamily": "Segoe UI Semibold",
                       "fontSize": "17pt",

@@ -1,7 +1,7 @@
 {
   "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/page/1.0.0/schema.json",
   "name": "5f4a37c92dbe4018a6ef",
-  "displayName": "SharePoint agents",
+  "displayName": "Agents · SharePoint",
   "displayOption": "FitToWidth",
   "width": 1280,
   "height": 900,

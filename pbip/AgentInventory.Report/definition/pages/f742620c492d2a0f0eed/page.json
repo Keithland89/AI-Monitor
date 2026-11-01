@@ -1,10 +1,10 @@
 {
   "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/page/1.0.0/schema.json",
   "name": "f742620c492d2a0f0eed",
-  "displayName": "Executive overview",
+  "displayName": "Overview",
   "displayOption": "FitToWidth",
   "width": 1280,
-  "height": 900,
+  "height": 720,
   "objects": {
     "background": [
       {

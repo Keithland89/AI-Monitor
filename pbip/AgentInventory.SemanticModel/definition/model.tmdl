@@ -23,6 +23,7 @@ ref table ApiCoverage
 ref table AgentGap
 ref table TelemetryCoverage
 ref table RiskFactor
+ref table Attention
 ref table Metrics
 ref table ShadowAiSignal
 ref table ShadowAiDevice

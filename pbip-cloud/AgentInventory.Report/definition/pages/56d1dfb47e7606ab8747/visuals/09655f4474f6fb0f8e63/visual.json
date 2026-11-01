@@ -20,7 +20,7 @@
                 "horizontalTextAlignment": "left",
                 "textRuns": [
                   {
-                    "value": "Data sources & gaps",
+                    "value": "Setup & coverage",
                     "textStyle": {
                       "fontFamily": "Segoe UI Semibold",
                       "fontSize": "17pt",

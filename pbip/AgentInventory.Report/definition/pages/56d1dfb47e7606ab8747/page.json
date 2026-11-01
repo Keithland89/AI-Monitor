@@ -1,7 +1,7 @@
 {
   "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/page/1.0.0/schema.json",
   "name": "56d1dfb47e7606ab8747",
-  "displayName": "Data sources & gaps",
+  "displayName": "Setup & coverage",
   "displayOption": "FitToWidth",
   "width": 1280,
   "height": 900,

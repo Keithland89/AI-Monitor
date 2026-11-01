@@ -2,11 +2,11 @@
   "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.7.0/schema.json",
   "name": "c7986820b8dbcf20d9d3",
   "position": {
-    "x": 484,
-    "y": 76,
+    "x": 1020.8,
+    "y": 146,
     "z": 11,
     "height": 104,
-    "width": 149,
+    "width": 243.2,
     "tabOrder": 1100
   },
   "visual": {
@@ -23,11 +23,11 @@
                       "Entity": "Metrics"
                     }
                   },
-                  "Property": "Foundry Agent Projects"
+                  "Property": "Azure AI Resources"
                 }
               },
-              "queryRef": "Metrics.Foundry Agent Projects",
-              "nativeQueryRef": "Foundry Agent Projects",
+              "queryRef": "Metrics.Azure AI Resources",
+              "nativeQueryRef": "Azure AI Resources",
               "format": "#,0"
             }
           ]
@@ -125,7 +125,7 @@
             "text": {
               "expr": {
                 "Literal": {
-                  "Value": "'Foundry projects'"
+                  "Value": "'Azure AI resources'"
                 }
               }
             },
@@ -280,7 +280,7 @@
             "text": {
               "expr": {
                 "Literal": {
-                  "Value": "'agent-hosting containers'"
+                  "Value": "'see Cost · Azure AI'"
                 }
               }
             },

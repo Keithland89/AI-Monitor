@@ -20,7 +20,7 @@
                 "horizontalTextAlignment": "left",
                 "textRuns": [
                   {
-                    "value": "SharePoint agents",
+                    "value": "Agents · SharePoint",
                     "textStyle": {
                       "fontFamily": "Segoe UI Semibold",
                       "fontSize": "17pt",

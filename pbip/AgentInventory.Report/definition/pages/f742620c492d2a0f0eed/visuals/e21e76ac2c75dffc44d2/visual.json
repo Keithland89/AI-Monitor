@@ -3,10 +3,10 @@
   "name": "e21e76ac2c75dffc44d2",
   "position": {
     "x": 16,
-    "y": 76,
+    "y": 146,
     "z": 8,
     "height": 104,
-    "width": 149,
+    "width": 243.2,
     "tabOrder": 800
   },
   "visual": {
@@ -125,7 +125,7 @@
             "text": {
               "expr": {
                 "Literal": {
-                  "Value": "'Total agents'"
+                  "Value": "'Agents'"
                 }
               }
             },
@@ -280,7 +280,7 @@
             "text": {
               "expr": {
                 "Literal": {
-                  "Value": "'plus agent flows'"
+                  "Value": "'every platform in the tenant'"
                 }
               }
             },

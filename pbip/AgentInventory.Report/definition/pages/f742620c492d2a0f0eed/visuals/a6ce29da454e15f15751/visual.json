@@ -20,7 +20,7 @@
                 "horizontalTextAlignment": "left",
                 "textRuns": [
                   {
-                    "value": "Executive overview",
+                    "value": "Overview",
                     "textStyle": {
                       "fontFamily": "Segoe UI Semibold",
                       "fontSize": "17pt",

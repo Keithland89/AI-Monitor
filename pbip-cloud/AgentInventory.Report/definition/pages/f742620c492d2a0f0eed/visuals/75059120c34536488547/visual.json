@@ -2,11 +2,11 @@
   "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.7.0/schema.json",
   "name": "75059120c34536488547",
   "position": {
-    "x": 952,
-    "y": 76,
+    "x": 518.4,
+    "y": 146,
     "z": 10,
     "height": 104,
-    "width": 149,
+    "width": 243.2,
     "tabOrder": 1712
   },
   "visual": {
@@ -23,11 +23,11 @@
                       "Entity": "Metrics"
                     }
                   },
-                  "Property": "Active Users"
+                  "Property": "Interaction Users"
                 }
               },
-              "queryRef": "Metrics.Active Users",
-              "nativeQueryRef": "Active Users",
+              "queryRef": "Metrics.Interaction Users",
+              "nativeQueryRef": "Interaction Users",
               "format": "#,0"
             }
           ]
@@ -125,7 +125,7 @@
             "text": {
               "expr": {
                 "Literal": {
-                  "Value": "'Active users'"
+                  "Value": "'People using Copilot'"
                 }
               }
             },
@@ -280,7 +280,7 @@
             "text": {
               "expr": {
                 "Literal": {
-                  "Value": "'distinct people'"
+                  "Value": "'any Copilot surface, agents included'"
                 }
               }
             },

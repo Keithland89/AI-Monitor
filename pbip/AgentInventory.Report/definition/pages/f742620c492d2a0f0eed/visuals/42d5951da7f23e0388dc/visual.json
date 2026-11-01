@@ -3,10 +3,10 @@
   "name": "42d5951da7f23e0388dc",
   "position": {
     "x": 16,
-    "y": 664,
+    "y": 258,
     "z": 19,
-    "height": 220,
-    "width": 620,
+    "height": 446,
+    "width": 829,
     "tabOrder": 1900
   },
   "visual": {
@@ -47,6 +47,20 @@
               },
               "queryRef": "Metrics.Agents Created",
               "nativeQueryRef": "Agents Created"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Metrics"
+                    }
+                  },
+                  "Property": "Agents with Interactions"
+                }
+              },
+              "queryRef": "Metrics.Agents with Interactions",
+              "nativeQueryRef": "Agents with Interactions"
             }
           ]
         }
@@ -77,7 +91,21 @@
             "show": {
               "expr": {
                 "Literal": {
-                  "Value": "false"
+                  "Value": "true"
+                }
+              }
+            },
+            "position": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Top'"
+                }
+              }
+            },
+            "fontSize": {
+              "expr": {
+                "Literal": {
+                  "Value": "9D"
                 }
               }
             }
@@ -92,12 +120,33 @@
                 "color": {
                   "expr": {
                     "Literal": {
+                      "Value": "'#a9cdee'"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "selector": {
+            "metadata": "Metrics.Agents Created"
+          }
+        },
+        {
+          "properties": {
+            "fill": {
+              "solid": {
+                "color": {
+                  "expr": {
+                    "Literal": {
                       "Value": "'#0f6cbd'"
                     }
                   }
                 }
               }
             }
+          },
+          "selector": {
+            "metadata": "Metrics.Agents with Interactions"
           }
         }
       ],
@@ -107,25 +156,7 @@
             "show": {
               "expr": {
                 "Literal": {
-                  "Value": "true"
-                }
-              }
-            },
-            "fontSize": {
-              "expr": {
-                "Literal": {
-                  "Value": "9D"
-                }
-              }
-            },
-            "color": {
-              "solid": {
-                "color": {
-                  "expr": {
-                    "Literal": {
-                      "Value": "'#252423'"
-                    }
-                  }
+                  "Value": "false"
                 }
               }
             }
@@ -147,7 +178,7 @@
             "text": {
               "expr": {
                 "Literal": {
-                  "Value": "'New agents per month'"
+                  "Value": "'Built vs used, by month'"
                 }
               }
             },
@@ -302,7 +333,7 @@
             "text": {
               "expr": {
                 "Literal": {
-                  "Value": "'creation rate'"
+                  "Value": "'Agents created each month against agents that served at least one Copilot turn'"
                 }
               }
             },

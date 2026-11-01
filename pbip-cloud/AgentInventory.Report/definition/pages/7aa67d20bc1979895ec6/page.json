@@ -1,7 +1,7 @@
 {
   "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/page/1.0.0/schema.json",
   "name": "7aa67d20bc1979895ec6",
-  "displayName": "Governance & risk",
+  "displayName": "Risk · Agents to review",
   "displayOption": "FitToWidth",
   "width": 1280,
   "height": 900,
