@@ -11,7 +11,7 @@ Power Platform, Microsoft 365 and security admins who need to know which agents 
 
 ## Purpose
 
-To bring the AI-Monitor Power BI report into an app that needs no Power BI workspace, gateway or refresh schedule. AI-Monitor is an agent inventory. Usage, value and cost belong to the sibling product, [Analytics Hub](https://github.com/microsoft/AnalyticsHub-Dashboard). Neither needs Agent 365.
+To bring the Agent-Monitor Power BI report into an app that needs no Power BI workspace, gateway or refresh schedule. Agent-Monitor is an agent inventory. Usage, value and cost belong to the sibling product, [Analytics Hub](https://github.com/microsoft/AnalyticsHub-Dashboard). Neither needs Agent 365.
 
 The app answers these questions with live data on open:
 
@@ -28,7 +28,7 @@ The app answers these questions with live data on open:
 ## Data
 
 - **Live:** Power Platform inventory and usage records (Azure Resource Graph), Azure Resource Manager for Foundry, Defender advanced hunting, and the Dataverse landing tables in the environment the app is deployed to.
-- **Sample:** the repo's anonymised sample (`sample-data/ai-monitor-sample-data.zip`), trimmed to about 1,500 agents.
+- **Sample:** the repo's anonymised sample (`sample-data/agent-monitor-sample-data.zip`), trimmed to about 1,500 agents.
 
 All computation happens in the browser. Every lane fails on its own and says why.
 

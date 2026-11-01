@@ -1,5 +1,5 @@
 {
-  "description": "Analytics Hub table contract that AI-Monitor reads. Column names, order and SQL types are copied from the Analytics Hub migrations listed in sources; aiMonitorTables are AI-Monitor-owned tables in the same style that Analytics Hub does not land yet.",
+  "description": "Analytics Hub table contract that Agent-Monitor reads. Column names, order and SQL types are copied from the Analytics Hub migrations listed in sources; agentMonitorTables are Agent-Monitor-owned tables in the same style that Analytics Hub does not land yet.",
   "repository": "microsoft/AnalyticsHub-Dashboard",
   "sources": {
     "azure/sql/migrations/V004__resource_graph.sql": [
@@ -120,7 +120,7 @@
       ["LoadedAt", "DATETIME2(6)"]
     ]
   },
-  "aiMonitorTables": {
+  "agentMonitorTables": {
     "arg_agent_detail": [
       ["SnapshotDate", "DATE"],
       ["AgentResourceId", "NVARCHAR(4000)"],

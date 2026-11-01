@@ -1,5 +1,5 @@
 // Static reference tables, adapted from the semantic model (tables/*.tmdl and expressions.tmdl) for the inventory-only app.
-// Agent 365 is an optional comparison: nothing here is needed to run AI-Monitor.
+// Agent 365 is an optional comparison: nothing here is needed to run Agent-Monitor.
 
 export interface AgentGap { sortOrder: number; status: 'Open' | 'Closed'; capability: string; whyMissing: string; howToClose: string }
 export interface ApiCoverageRow { sortOrder: number; source: string; endpoint: string; result: string; verdict: string; whatItGives: string }
@@ -106,7 +106,7 @@ export const API_COVERAGE: ApiCoverageRow[] = [
     "endpoint": "/copilot/admin/catalog/packages",
     "result": "Blocked (403)",
     "verdict": "Agent 365 only (optional)",
-    "whatItGives": "The Copilot agent registry. Officially requires a Microsoft Agent 365 licence. AI-Monitor does not need it: Resource Graph gives the same inventory."
+    "whatItGives": "The Copilot agent registry. Officially requires a Microsoft Agent 365 licence. Agent-Monitor does not need it: Resource Graph gives the same inventory."
   },
   {
     "sortOrder": 7,
@@ -114,7 +114,7 @@ export const API_COVERAGE: ApiCoverageRow[] = [
     "endpoint": "/beta/copilot/agents",
     "result": "Not available (404)",
     "verdict": "Agent 365 only (optional)",
-    "whatItGives": "Endpoint does not exist in this tenant. AI-Monitor does not need it."
+    "whatItGives": "Endpoint does not exist in this tenant. Agent-Monitor does not need it."
   },
   {
     "sortOrder": 8,
@@ -231,7 +231,7 @@ export const TELEMETRY_COVERAGE: TelemetryCoverageRow[] = [
     "configuration": "Full",
     "sharing": "Full",
     "usageSignal": "None (see Analytics Hub)",
-    "whyNot": "Declarative agents run inside the Microsoft 365 Copilot host, not the Power Platform runtime, so they emit no Power Platform usage records at all - 0 of 166 matched. AI-Monitor therefore shows them with no usage signal, so idle and dormant status does not apply to them. Their usage comes from the audit log, which Analytics Hub reads."
+    "whyNot": "Declarative agents run inside the Microsoft 365 Copilot host, not the Power Platform runtime, so they emit no Power Platform usage records at all - 0 of 166 matched. Agent-Monitor therefore shows them with no usage signal, so idle and dormant status does not apply to them. Their usage comes from the audit log, which Analytics Hub reads."
   },
   {
     "sortOrder": 3,

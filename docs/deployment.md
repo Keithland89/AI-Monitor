@@ -6,7 +6,7 @@ Step-by-step setup for all five collection lanes (A, B, D, E and F). The [README
 
 Lanes A, B and F need nothing installed. Lanes D and E use scheduled collectors. **Skip a collector and every other page still works** — you lose only that lane's data.
 
-AI-Monitor covers agent inventory and risk. Per-conversation usage, people, Copilot Chat and Cowork, Microsoft 365 work patterns and cost are in [Analytics Hub](https://github.com/microsoft/AnalyticsHub-Dashboard). Neither needs an Agent 365 licence or export. Upgrading an install that ran the retired lanes C and G? See [Upgrading from an earlier version](#upgrading-from-an-earlier-version).
+Agent-Monitor covers agent inventory and risk. Per-conversation usage, people, Copilot Chat and Cowork, Microsoft 365 work patterns and cost are in [Analytics Hub](https://github.com/microsoft/AnalyticsHub-Dashboard). Neither needs an Agent 365 licence or export. Upgrading an install that ran the retired lanes C and G? See [Upgrading from an earlier version](#upgrading-from-an-earlier-version).
 
 ---
 
@@ -64,7 +64,7 @@ For every imported solution:
 
 ## Lanes A and B — inventory and identity
 
-Nothing to install. Open `pbip-cloud\AI-Monitor.pbip`, set the parameters, publish, then set credentials in the workspace.
+Nothing to install. Open `pbip-cloud\Agent-Monitor.pbip`, set the parameters, publish, then set credentials in the workspace.
 
 | Parameter | Value |
 |---|---|
@@ -81,7 +81,7 @@ If you already run [Analytics Hub](https://github.com/microsoft/AnalyticsHub-Das
 
 What changes in this mode:
 
-- **Last used, creator and knowledge by type** come from `arg_agent_detail`, which is AI-Monitor's own table. Until Analytics Hub writes it, these are blank and no agent is judged on use (see [the risk rubric](risk-rubric.md)).
+- **Last used, creator and knowledge by type** come from `arg_agent_detail`, which is Agent-Monitor's own table. Until Analytics Hub writes it, these are blank and no agent is judged on use (see [the risk rubric](risk-rubric.md)).
 - **Per-device Shadow AI** is empty, because Analytics Hub stores daily totals per tool.
 - **Lanes D and E** (named knowledge sources and SharePoint agents) still read Dataverse, so keep `DataverseUrl` set.
 
@@ -367,6 +367,8 @@ A tool that appears in *Network* but not in *Installed* is the normal shape for 
 
 ## Upgrading from an earlier version
 
+**Renamed from AI-Monitor.** Installs made under the AI-Monitor, Agent Inventory or Copilot Inventory names carry over. The installer reads the old install record and app work folder, accepts the old `AI_MONITOR_*` environment variables, and adopts and renames the existing app registrations rather than creating new ones. Key Vault secret names are unchanged. Republish the report from the renamed `Agent-Monitor` PBIP or template; the old report keeps refreshing until you do.
+
 Earlier versions also collected Copilot interaction telemetry (lane C) and Microsoft 365 work patterns (lane G), and the app had Chat & Cowork, Work patterns and Cost & consumption views. Those now belong to [Analytics Hub](https://github.com/microsoft/AnalyticsHub-Dashboard), and the current model and app no longer read them. Lanes A, B, D, E and F are unchanged, so nothing else needs reinstalling.
 
 To remove the retired pieces from an existing environment:
@@ -378,4 +380,4 @@ To remove the retired pieces from an existing environment:
    - If you imported the **unmanaged** zips, deleting the solution leaves its components behind. Delete the two lane C flows and the lane G flow, the `poc_Audit_*`, `poc_KeyVaultSecret` and `poc_WP_*` environment variables, and the `poc_sharedcommondataserviceforapps_2dd46` and `poc_sharedcommondataserviceforapps_m365use` connection references yourself.
 4. **Optionally drop the tables.** Under **Power Apps → Tables**, delete `poc_CopilotInteraction` (entity set `poc_copilotinteractions`), `poc_CopilotInteractionFlowRuns` and `poc_CopilotInteractionFlowRunErrors` if they survived step 3, and `poc_M365UsageReport` (entity set `poc_m365usagereports`). `poc_M365UsageReport` was created outside the solution, so deleting the solution never removes it. Export the data first if you want to keep it.
 5. **Trim the app registration.** On the audit collector app, remove the `Reports.Read.All` application permission. Keep `AuditLogsQuery.Read.All` if you run lane E; if you don't, the app registration can go.
-6. **Remove the Cost Management Reader assignment** if it was granted only for the app's former Cost & consumption tab. Nothing in AI-Monitor needs it now.
+6. **Remove the Cost Management Reader assignment** if it was granted only for the app's former Cost & consumption tab. Nothing in Agent-Monitor needs it now.

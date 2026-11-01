@@ -1,6 +1,6 @@
 // @ts-check
 /**
- * The release: ai-monitor-installer.zip and the install.ps1 that downloads it. build-release.js
+ * The release: agent-monitor-installer.zip and the install.ps1 that downloads it. build-release.js
  * writes them; this module holds the parts that can be tested.
  * The zip unpacks to the repo's own layout, so the installer finds the rest at its usual paths:
  *   installer/            the installer, without node_modules (install.ps1 runs npm ci)
@@ -13,9 +13,9 @@ import { join, relative } from 'node:path';
 import { crc32, deflateRawSync } from 'node:zlib';
 import { SOLUTIONS } from '../src/solutions.js';
 
-export const ZIP_NAME = 'ai-monitor-installer.zip';
+export const ZIP_NAME = 'agent-monitor-installer.zip';
 export const SCRIPT_NAME = 'install.ps1';
-export const REPO = 'Keithland89/AI-Monitor';
+export const REPO = 'Keithland89/Agent-Monitor';
 
 /**
  * @param {string} repo

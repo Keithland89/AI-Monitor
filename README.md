@@ -2,7 +2,7 @@
 
 <br>
 
-# 📡 AI-Monitor
+# 📡 Agent-Monitor
 
 ### Every AI agent in your tenant, who owns it, what it can reach and what to fix first, as an app or a Power BI report.
 
@@ -11,6 +11,8 @@
 <br>
 
 Agent 365–style agent inventory and risk, without Agent 365.
+
+<sub>Formerly AI-Monitor. Existing installs carry over: see [Upgrading](docs/deployment.md#upgrading-from-an-earlier-version).</sub>
 
 <br>
 
@@ -28,8 +30,8 @@ Agent 365–style agent inventory and risk, without Agent 365.
 <th width="50%">The Power BI report</th>
 </tr>
 <tr>
-<td><img src="Images/AI-Monitor-App-Preview.gif" alt="The AI-Monitor app on its built-in sample data, animated preview of its tabs"></td>
-<td><img src="Images/AI-Monitor-Preview.gif" alt="The AI-Monitor Power BI report on the anonymised sample data, animated preview of its pages"></td>
+<td><img src="Images/Agent-Monitor-App-Preview.gif" alt="The Agent-Monitor app on its built-in sample data, animated preview of its tabs"></td>
+<td><img src="Images/Agent-Monitor-Preview.gif" alt="The Agent-Monitor Power BI report on the anonymised sample data, animated preview of its pages"></td>
 </tr>
 </table>
 
@@ -48,11 +50,11 @@ Two Power BI builds of one semantic model — **20 tables, 137 measures, 11 page
 
 | Deliverable | Path | What it is |
 |---|---|---|
-| **Power BI project (cloud)** | `pbip-cloud\AI-Monitor.pbip` | The maintained deliverable. Live connections to Azure Resource Graph, Dataverse and Defender advanced hunting, so it refreshes on a schedule in PowerBI.com with **no gateway**. |
-| **Power BI project (CSV)** | `pbip\AI-Monitor.pbip` | The same model and the same report, reading CSV files from a folder instead. For offline or air-gapped review. |
-| **Power BI template** | `template\AI-Monitor.pbit` | A single-file template of the report. Open it in Power BI Desktop, enter the parameters when prompted, and it loads against your own tenant. |
+| **Power BI project (cloud)** | `pbip-cloud\Agent-Monitor.pbip` | The maintained deliverable. Live connections to Azure Resource Graph, Dataverse and Defender advanced hunting, so it refreshes on a schedule in PowerBI.com with **no gateway**. |
+| **Power BI project (CSV)** | `pbip\Agent-Monitor.pbip` | The same model and the same report, reading CSV files from a folder instead. For offline or air-gapped review. |
+| **Power BI template** | `template\Agent-Monitor.pbit` | A single-file template of the report. Open it in Power BI Desktop, enter the parameters when prompted, and it loads against your own tenant. |
 | **Power Platform solutions** | `solution\*.zip` | Importable Dataverse solutions for named knowledge sources and SharePoint agent inventory, plus the flow that provisions the application users lane D depends on. |
-| **Anonymised sample data** | `sample-data\ai-monitor-sample-data.zip` | A full demo-tenant extract, every identifying value replaced, so the CSV build opens with real-shaped data and no tenant access. |
+| **Anonymised sample data** | `sample-data\agent-monitor-sample-data.zip` | A full demo-tenant extract, every identifying value replaced, so the CSV build opens with real-shaped data and no tenant access. |
 | **The app** | `app\` | A Copilot Managed App version of the report: the same inventory and risk views, plus a **Lifecycle review** (keep, watch, review or retire, from each agent's age, last-used date, risk and owner) and an **Ask** panel. It reads live data through four connectors, and falls back to an anonymised sample. See [`app\README.md`](app/README.md). |
 | **Installer** | `installer\` | A guided installer (browser or terminal) that switches every lane on and deploys the app, after you approve a plan. See [`installer\README.md`](installer/README.md). |
 
@@ -64,14 +66,14 @@ Verified end-to-end against a live Microsoft 365 test tenant.
 
 ### Usage, value and cost
 
-AI-Monitor answers *what exists, who owns it, what it can reach and what to fix first*. Its only
+Agent-Monitor answers *what exists, who owns it, what it can reach and what to fix first*. Its only
 per-agent usage signal is the `lastUsed` timestamp Azure Resource Graph returns, which is enough for
 *Active in last 30 days*, *Never used* and *Shared tenant-wide but never used*.
 
 Per-conversation usage, people and active users, Copilot Chat and Cowork, Microsoft 365 work
 patterns, and cost are in the sister product,
-**[Analytics Hub](https://github.com/microsoft/AnalyticsHub-Dashboard)**. Like AI-Monitor, it needs
-no Agent 365 licence and no Agent 365 export. AI-Monitor is designed to be Analytics Hub's free agent
+**[Analytics Hub](https://github.com/microsoft/AnalyticsHub-Dashboard)**. Like Agent-Monitor, it needs
+no Agent 365 licence and no Agent 365 export. Agent-Monitor is designed to be Analytics Hub's free agent
 registry.
 
 ---
@@ -79,7 +81,7 @@ registry.
 ## Quick start
 
 **To switch everything on with the installer**: run the installer from a clone (`cd installer`,
-`npm ci`, `node bin/ai-monitor-install.js --ui`), or with the one-line launcher in
+`npm ci`, `node bin/agent-monitor-install.js --ui`), or with the one-line launcher in
 [`installer\README.md`](installer/README.md). It signs you in and checks your roles. It then shows a
 plan covering the app registrations, the solution imports, the lane D grants, the flows and the app.
 It changes nothing until you approve the plan.
@@ -88,13 +90,13 @@ It changes nothing until you approve the plan.
 hand, see [`app\README.md`](app/README.md). Outside the Managed Apps player it opens on the
 anonymised sample (`cd app`, `npm ci`, `npm run dev`).
 
-**To report on your own tenant** — open `pbip-cloud\AI-Monitor.pbip` in Power BI Desktop, publish
+**To report on your own tenant** — open `pbip-cloud\Agent-Monitor.pbip` in Power BI Desktop, publish
 it to a workspace, set the three data-source credentials to *Organizational account*, and set a
 refresh schedule. Permissions are listed under [Required permissions](#required-permissions);
 the two collected lanes are turned on by importing the solutions in `solution\`.
 
-**To just look at the report** — unzip `sample-data\ai-monitor-sample-data.zip`, open
-`pbip\AI-Monitor.pbip`, and point its `DataFolder` parameter at the unzipped `data` folder. No
+**To just look at the report** — unzip `sample-data\agent-monitor-sample-data.zip`, open
+`pbip\Agent-Monitor.pbip`, and point its `DataFolder` parameter at the unzipped `data` folder. No
 credentials, no Azure permissions, no tenant access. See [`sample-data\README.md`](sample-data/README.md).
 
 ---
@@ -500,7 +502,7 @@ This is an **observed-retention inventory**, not a guaranteed current SharePoint
 
 ## Telemetry coverage is not uniform
 
-Inventory is complete for Copilot Studio and Agent Builder — see [Is the inventory complete?](#is-the-inventory-complete) for the evidence and for the Foundry caveat. **Usage is not.** AI-Monitor's only usage signal is the `lastUsed` timestamp that lane A reads from Azure Resource Graph, and not every platform has one:
+Inventory is complete for Copilot Studio and Agent Builder — see [Is the inventory complete?](#is-the-inventory-complete) for the evidence and for the Foundry caveat. **Usage is not.** Agent-Monitor's only usage signal is the `lastUsed` timestamp that lane A reads from Azure Resource Graph, and not every platform has one:
 
 | Platform | Inventory | Config & sharing | `lastUsed` (lane A) | Per-conversation usage |
 |---|---|---|---|---|
@@ -915,20 +917,20 @@ sample-data\                   Anonymised extract so colleagues can run the repo
 data\                          Local CSV folder the local build reads
 ```
 
-There are two copies of the same report. **`pbip-cloud\AI-Monitor.pbip`** connects live to
+There are two copies of the same report. **`pbip-cloud\Agent-Monitor.pbip`** connects live to
 Azure Resource Graph, Dataverse and Defender advanced hunting — publish it, set the three
-credentials, and it refreshes on a schedule. **`pbip\AI-Monitor.pbip`** reads CSV files instead,
-and `sample-data\ai-monitor-sample-data.zip` is an anonymised demo-tenant extract that already
+credentials, and it refreshes on a schedule. **`pbip\Agent-Monitor.pbip`** reads CSV files instead,
+and `sample-data\agent-monitor-sample-data.zip` is an anonymised demo-tenant extract that already
 contains the data. Same 11 pages, same measures, same visuals in both.
 
 | Path | Use it for |
 |---|---|
-| `pbip-cloud\AI-Monitor.pbip` | Open in Power BI Desktop, publish, set the three credentials, schedule the refresh |
-| `pbip\AI-Monitor.pbip` | The same report reading CSV files — open it against the anonymised demo-tenant extract |
+| `pbip-cloud\Agent-Monitor.pbip` | Open in Power BI Desktop, publish, set the three credentials, schedule the refresh |
+| `pbip\Agent-Monitor.pbip` | The same report reading CSV files — open it against the anonymised demo-tenant extract |
 | `solution\AgentKnowledgeSourceSweep.zip` | Import into Power Platform to turn on lane D (named knowledge sources) |
 | `solution\SharePointAgentLogging.zip` | Import into Power Platform to turn on lane E (SharePoint agent inventory) |
 | `solution\AgentAppUserProvisioning.zip` | Import into Power Platform to grant the lane D app registration an application user in every agent-bearing environment |
-| `sample-data\ai-monitor-sample-data.zip` | Run the CSV build against anonymised data, with no tenant access |
+| `sample-data\agent-monitor-sample-data.zip` | Run the CSV build against anonymised data, with no tenant access |
 | `docs\deployment.md` | End-to-end setup: app registrations, environment variables, credentials |
 
 ---

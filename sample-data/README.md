@@ -1,6 +1,6 @@
 # `sample-data\` — anonymised extract, so anyone can run the report
 
-`ai-monitor-sample-data.zip` is a full, working copy of a real tenant extract with every
+`agent-monitor-sample-data.zip` is a full, working copy of a real tenant extract with every
 identifying value replaced. It exists so a colleague with no access to the tenant — and no
 Azure or Power Platform permissions at all — can open the report and see exactly what it
 looks like against real-shaped data.
@@ -29,14 +29,14 @@ the same name, so the CSV build runs the same model code as the live and Analyti
 | File | What it holds | Read by |
 |---|---|---|
 | `arg_agent_config.csv` | Analytics Hub `arg_agent_config`: one row per Copilot Studio and Agent Builder agent (`CreatedIn` = `Copilot Studio Lite` is Agent Builder) | model |
-| `arg_agent_detail.csv` | AI-Monitor's own `arg_agent_detail`, keyed on `SnapshotDate` + `AgentResourceId`: last used, creator, component and knowledge-by-type counts | model |
+| `arg_agent_detail.csv` | Agent-Monitor's own `arg_agent_detail`, keyed on `SnapshotDate` + `AgentResourceId`: last used, creator, component and knowledge-by-type counts | model |
 | `arg_environments.csv` | Analytics Hub `arg_environments` | model |
 | `arg_agent_flows.csv` | Analytics Hub `arg_agent_flows` (agent flows only) | model |
 | `arg_foundry_resources.csv` | Analytics Hub `arg_foundry_resources`: Foundry accounts, projects and Machine Learning workspaces | model |
 | `arg_status.csv` | Analytics Hub `arg_status`: one row per probe | contract only |
 | `defender_ai_watchlist.csv` | Analytics Hub `defender_ai_watchlist`: the 22 tools hunted for | model |
 | `defender_shadow_ai_daily.csv`, `defender_ai_installed.csv` | Analytics Hub's Shadow AI aggregates (headers only) | model |
-| `defender_shadow_ai_device.csv` | AI-Monitor's own per-device Shadow AI rows (headers only) | model |
+| `defender_shadow_ai_device.csv` | Agent-Monitor's own per-device Shadow AI rows (headers only) | model |
 | `DimUser.csv`, `FactAgentKnowledgeSource.csv`, `DimSharePointAgent.csv` | the Dataverse lanes, unchanged | model |
 | `DimDate.csv` | date dimension | model |
 | `DimAgent.csv`, `DimEnvironment.csv`, `DimAzureAIResource.csv`, `FactAgentConnector.csv`, `FactAgentFlow.csv`, `FactAgentKnowledge.csv`, `FactShadowAiSignal.csv`, `FactShadowAiDevice.csv` | the earlier flat layout, kept for the web app's sample generator (`app\scripts\prepare-sample.mjs`) | app only |
@@ -48,7 +48,7 @@ judged for platforms that record use, so 7 Agent Builder agents lost that point.
 
 ## Using it
 
-Unzip `ai-monitor-sample-data.zip` anywhere, then open `pbip\AI-Monitor.pbip` in Power BI Desktop.
+Unzip `agent-monitor-sample-data.zip` anywhere, then open `pbip\Agent-Monitor.pbip` in Power BI Desktop.
 
 In Power BI Desktop: **Home → Transform data → Manage parameters**, set
 
@@ -64,7 +64,7 @@ then **Close & Apply**. No credentials are requested: CSV mode reads nothing but
 > its rows, which is what the `SourceMode` parameter selects. Named knowledge sources work here
 > too, and the SharePoint inventory page reads `DimSharePointAgent.csv`.
 >
-> Per-conversation usage is not part of AI-Monitor, so the sample carries no interaction data.
+> Per-conversation usage is not part of Agent-Monitor, so the sample carries no interaction data.
 > Usage, value and cost are in [Analytics Hub](https://github.com/microsoft/AnalyticsHub-Dashboard).
 
 ### Shadow AI is empty on purpose

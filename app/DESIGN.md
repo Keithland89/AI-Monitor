@@ -1,5 +1,5 @@
 ---
-name: AI-Monitor app
+name: Agent-Monitor app
 description: Calm admin workspace for the agent inventory, ownership and AI risk, computed in the browser from live connectors or the anonymised sample.
 colors:
   canvas: "#f5f6f8"

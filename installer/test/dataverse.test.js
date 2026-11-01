@@ -244,7 +244,7 @@ test('admin consent without the rights becomes a consent link for an admin', asy
     { method: 'GET', match: /appRoleAssignments/, reply: () => ({ value: [] }) },
     { method: 'POST', match: /appRoleAssignedTo/, reply: () => ({ status: 403, body: { error: { code: 'Authorization_RequestDenied', message: 'Insufficient privileges' } } }) },
   ]);
-  const app = { appId: 'app-1', objectId: 'obj-1', spId: 'sp-1', displayName: 'AI-Monitor - audit collector' };
+  const app = { appId: 'app-1', objectId: 'obj-1', spId: 'sp-1', displayName: 'Agent-Monitor - audit collector' };
   const r = await grantAuditConsent(client(f, 'https://graph.microsoft.com/v1.0'), { tenantId: 'tenant-1', app, graphSpId: 'graph-sp', roleIds: ['role-1', 'role-2'] });
   assert.equal(r.consented, false);
   if (!r.consented) {
@@ -262,7 +262,7 @@ test('admin consent grants only the permissions an earlier install lacks', async
     { method: 'GET', match: /appRoleAssignments/, reply: () => ({ value: [{ appRoleId: 'role-1', resourceId: 'graph-sp' }] }) },
     { method: 'POST', match: /appRoleAssignedTo/, reply: () => ({ id: 'assignment-2' }) },
   ]);
-  const app = { appId: 'app-1', objectId: 'obj-1', spId: 'sp-1', displayName: 'AI-Monitor - audit collector' };
+  const app = { appId: 'app-1', objectId: 'obj-1', spId: 'sp-1', displayName: 'Agent-Monitor - audit collector' };
   const r = await grantAuditConsent(client(f, 'https://graph.microsoft.com/v1.0'), { tenantId: 't', app, graphSpId: 'graph-sp', roleIds: ['role-1', 'role-2'] });
   assert.deepEqual(r, { consented: true });
   const posts = f.calls.filter((call) => call.method === 'POST');

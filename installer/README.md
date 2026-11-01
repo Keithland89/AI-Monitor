@@ -1,6 +1,6 @@
-# AI-Monitor installer
+# Agent-Monitor installer
 
-The installer switches AI-Monitor on in a tenant. AI-Monitor is an agent inventory. The installer covers the inventory lanes: the knowledge sweep with its app user grants (lane D), the SharePoint agent collector (lane E), the run checks and the app. Everything goes into one Dataverse environment, the **landing environment**. Lanes A and F need nothing installed. Usage, value and cost belong to Analytics Hub, a separate product. Neither needs Agent 365.
+The installer switches Agent-Monitor on in a tenant. Agent-Monitor is an agent inventory. The installer covers the inventory lanes: the knowledge sweep with its app user grants (lane D), the SharePoint agent collector (lane E), the run checks and the app. Everything goes into one Dataverse environment, the **landing environment**. Lanes A and F need nothing installed. Usage, value and cost belong to Analytics Hub, a separate product. Neither needs Agent 365.
 
 Earlier releases also set up lane C (Copilot interactions from the audit log) and lane G (Microsoft 365 usage reports). This release doesn't offer, import, turn on, run or check them any more. If an earlier install set them up, it leaves their flows, solutions and data as they are. Remove them yourself if you no longer want them.
 
@@ -13,14 +13,14 @@ It automates the manual setup in [docs/deployment.md](../docs/deployment.md). Re
 **One line in PowerShell** (Windows PowerShell 5.1 or PowerShell 7, with Node.js 22.13 or later on the PATH):
 
 ```powershell
-irm https://github.com/Keithland89/AI-Monitor/releases/download/installer-v<version>/install.ps1 | iex
+irm https://github.com/Keithland89/Agent-Monitor/releases/download/installer-v<version>/install.ps1 | iex
 ```
 
-Replace `<version>` with the version on the [releases page](https://github.com/Keithland89/AI-Monitor/releases?q=installer-v). The repo's "Latest" release may not be an installer release, so the command names the version.
+Replace `<version>` with the version on the [releases page](https://github.com/Keithland89/Agent-Monitor/releases?q=installer-v). The repo's "Latest" release may not be an installer release, so the command names the version.
 
 The launcher does the following:
-- downloads `ai-monitor-installer.zip` from that release and checks its SHA-256;
-- unpacks it under `%LOCALAPPDATA%\AI-Monitor\installer`;
+- downloads `agent-monitor-installer.zip` from that release and checks its SHA-256;
+- unpacks it under `%LOCALAPPDATA%\Agent-Monitor\installer`;
 - runs `npm ci` for the installer;
 - opens the installer in your browser.
 
@@ -30,11 +30,11 @@ Launcher options (in a saved `install.ps1`), or the environment variables to use
 
 | Option | Environment variable | What it does |
 | --- | --- | --- |
-| `-ZipPath <file>` | `AI_MONITOR_ZIP` | Uses a zip you downloaded yourself, for example when a proxy blocks GitHub's download host. It must be from the same release. |
-| `-Proxy <url>` | `AI_MONITOR_PROXY` | Downloads through a proxy, signed in as you. |
+| `-ZipPath <file>` | `AGENT_MONITOR_ZIP` | Uses a zip you downloaded yourself, for example when a proxy blocks GitHub's download host. It must be from the same release. |
+| `-Proxy <url>` | `AGENT_MONITOR_PROXY` | Downloads through a proxy, signed in as you. |
 | `-Uninstall` | | Removes the unpacked installer only. Your tenant and your install record are left alone. |
 
-Anything else is passed to the installer, for example `.\install.ps1 status` or `.\install.ps1 install --device-code`. The launcher also writes `%LOCALAPPDATA%\AI-Monitor\ai-monitor-install.cmd`, which runs the same version again later.
+Anything else is passed to the installer, for example `.\install.ps1 status` or `.\install.ps1 install --device-code`. The launcher also writes `%LOCALAPPDATA%\Agent-Monitor\agent-monitor-install.cmd`, which runs the same version again later.
 
 **From a clone** (any OS with Node.js 22.13 or later; deploying the app needs 24.11 or later):
 
@@ -42,9 +42,9 @@ Anything else is passed to the installer, for example `.\install.ps1 status` or 
 cd installer
 npm ci
 npm ci --prefix managed-cli   # the pinned managed apps CLI; only needed to deploy the app
-node bin/ai-monitor-install.js --ui    # in the browser
-node bin/ai-monitor-install.js         # in the terminal (same as: npm start)
-node bin/ai-monitor-install.js preview --save-plan plan.md   # the plan, without signing in
+node bin/agent-monitor-install.js --ui    # in the browser
+node bin/agent-monitor-install.js         # in the terminal (same as: npm start)
+node bin/agent-monitor-install.js preview --save-plan plan.md   # the plan, without signing in
 ```
 
 From a clone, the installer reads the solutions from `../solution` and the app's build from `../app/dist`. If there's no build, it builds the app first with `npm ci` and `npm run build` in `app/`.
@@ -64,7 +64,7 @@ From a clone, the installer reads the solutions from `../solution` and the app's
 | `prereqs` | Only the prerequisite checks. | yes | no |
 | `preview` | Prints the plan from the install record, offline. | no | no |
 
-Run `node bin/ai-monitor-install.js --help` for every option. These are the options you're most likely to need:
+Run `node bin/agent-monitor-install.js --help` for every option. These are the options you're most likely to need:
 
 - `--environment <id|url>`: the landing environment.
 - `--scope-mode Agents|Dataverse`: the knowledge sweep's scope mode.
@@ -86,8 +86,8 @@ The installer shows this plan after the prerequisite checks. Steps that are alre
 | 1 | Sign in | Nothing. One browser sign-in gets tokens for Microsoft Graph, Azure, Power Platform and Dataverse. | Any user |
 | 2 | Check prerequisites | Nothing. See [Prerequisites](#prerequisites). | Any user |
 | 3 | Confirm the landing environment | Nothing. The tables, the flows and the app all go into this one environment, because the app reads the tables through the current-environment Dataverse connector. | System Administrator there |
-| 4 | App registration: AI-Monitor - audit collector *(lane E only)* | A single-tenant app registration with its service principal. It gets one Microsoft Graph application permission, `AuditLogsQuery.Read.All`, admin consent, and a client secret. Lane E reads SharePoint agent events from the audit log with it. With `--skip-sharepoint` this step isn't in the plan. An earlier install's registration keeps any permissions it already had. | Can register apps. The consent needs Global Administrator or Privileged Role Administrator. |
-| 5 | App registration: AI-Monitor - knowledge sweep | A single-tenant app registration with no API permissions and a client secret. It's registered as a Power Platform admin management application. | Can register apps. The admin registration needs Power Platform Administrator. |
+| 4 | App registration: Agent-Monitor - audit collector *(lane E only)* | A single-tenant app registration with its service principal. It gets one Microsoft Graph application permission, `AuditLogsQuery.Read.All`, admin consent, and a client secret. Lane E reads SharePoint agent events from the audit log with it. With `--skip-sharepoint` this step isn't in the plan. An earlier install's registration keeps any permissions it already had. | Can register apps. The consent needs Global Administrator or Privileged Role Administrator. |
+| 5 | App registration: Agent-Monitor - knowledge sweep | A single-tenant app registration with no API permissions and a client secret. It's registered as a Power Platform admin management application. | Can register apps. The admin registration needs Power Platform Administrator. |
 | 6 | Reader at the tenant root management group *(asks again)* | Azure Reader for the knowledge sweep app at the tenant root, so Agents scope mode can find the environments with agents. Only used in Agents mode. | Owner or User Access Administrator at the root |
 | 7 | Dataverse connection for the flows | Reuses your working Dataverse connection in the landing environment, or creates one in your name. The flows' connection references are bound to it. | Environment Maker |
 | 8 | Lane E: import SharePointAgentLogging | The managed solution, and its environment variables: tenant, app ID and secret. Skipped with `--skip-sharepoint`. | System Administrator |
@@ -128,14 +128,14 @@ A missing role doesn't stop the install. The step that needs it becomes a hand-o
 
 ## Secrets and the install record
 
-The install record is `Documents\AI-Monitor\ai-monitor-install.json`, or the file you pass with `--config`. It holds what the installer made: the tenant, the landing environment, the app registrations' IDs and secret expiry dates, the solution versions, the flows, the app, and the open hand-offs. It never holds a secret or a token. The installer refuses to save one.
+The install record is `Documents\Agent-Monitor\agent-monitor-install.json`, or the file you pass with `--config`. It holds what the installer made: the tenant, the landing environment, the app registrations' IDs and secret expiry dates, the solution versions, the flows, the app, and the open hand-offs. It never holds a secret or a token. The installer refuses to save one.
 
 The client secrets go into the flows' environment variables (the default). With `--key-vault <name>`, they go into that Key Vault instead, and the variables hold Key Vault references (`UsingAKV`). Only a secret made in the current run is ever written. A re-run doesn't need it again, and `rotate-secret` makes a new one.
 
 ## Uninstall
 
 ```powershell
-node bin/ai-monitor-install.js uninstall
+node bin/agent-monitor-install.js uninstall
 ```
 
 It lists what it will do, from the install record, and asks first. It will:
@@ -158,7 +158,7 @@ It never removes what it didn't make. Some things stay unless you add `--delete-
 - **The Dataverse connection couldn't be made**: create a Microsoft Dataverse connection in the landing environment yourself (Power Apps > Connections). Then run `install` again, or pass `--connection-id <its name>`.
 - **An import failed**: the error is the solution import's own message. Fix the cause, then run `install` again. Imports that already finished are skipped.
 - **A lane says "first run pending"**: the flow is on but hasn't finished a run yet. Run `check` later.
-- **A proxy blocks the download**: download `ai-monitor-installer.zip` from the release page and pass `-ZipPath`. Or pass `-Proxy`. If `npm ci` is blocked, set npm's proxy or registry.
+- **A proxy blocks the download**: download `agent-monitor-installer.zip` from the release page and pass `-ZipPath`. Or pass `-Proxy`. If `npm ci` is blocked, set npm's proxy or registry.
 - **Execution policy blocks `install.ps1`**: don't bypass it. Run the installer from a clone, or ask your IT team.
 - **More detail on an error**: add `--verbose`.
 
@@ -171,7 +171,7 @@ npm run typecheck   # tsc over the JSDoc types
 ```
 
 `packaging/build-release.js` builds a release into `release/`:
-- `ai-monitor-installer.zip`, which holds `installer/`, the three managed solutions in `solution/`, and `app/dist/`;
+- `agent-monitor-installer.zip`, which holds `installer/`, the three managed solutions in `solution/`, and `app/dist/`;
 - `install.ps1`, with the version and the zip's SHA-256 filled in;
 - `SHA256SUMS`.
 

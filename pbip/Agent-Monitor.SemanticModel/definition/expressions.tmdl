@@ -1,5 +1,5 @@
 /// Folder holding the CSV extracts this build reads.
-expression DataFolder = "C:\AI-Monitor\data" meta [IsParameterQuery = true, Type = "Text", IsParameterQueryRequired = true]
+expression DataFolder = "C:\Agent-Monitor\data" meta [IsParameterQuery = true, Type = "Text", IsParameterQueryRequired = true]
 	lineageTag: 23509e07-0caa-46f1-8737-77bb26b70154
 
 	annotation PBI_ResultType = Text
@@ -552,7 +552,7 @@ expression arg_agent_config =
 
 	annotation PBI_ResultType = Table
 
-/// AI-Monitor's own table, keyed on SnapshotDate + AgentResourceId: the agent fields arg_agent_config lacks
+/// Agent-Monitor's own table, keyed on SnapshotDate + AgentResourceId: the agent fields arg_agent_config lacks
 /// (last used, creator, component and knowledge-by-type counts). Analytics Hub does not land it yet, so in
 /// AnalyticsHub mode a missing table yields an empty one and those fields are blank.
 expression arg_agent_detail =
@@ -802,7 +802,7 @@ expression defender_ai_installed =
 
 	annotation PBI_ResultType = Table
 
-/// AI-Monitor's own per-device Shadow AI drill-down. Live only: Analytics Hub stores aggregates, so
+/// Agent-Monitor's own per-device Shadow AI drill-down. Live only: Analytics Hub stores aggregates, so
 /// AnalyticsHub mode returns an empty table with this schema.
 expression defender_shadow_ai_device =
 		let
@@ -862,7 +862,7 @@ expression defender_shadow_ai_device =
 
 	annotation PBI_ResultType = Table
 
-/// One row per Copilot Studio and Agent Builder agent: arg_agent_config joined to AI-Monitor's arg_agent_detail on
+/// One row per Copilot Studio and Agent Builder agent: arg_agent_config joined to Agent-Monitor's arg_agent_detail on
 /// AgentResourceId. Without a detail row, AgentId falls back to BotId and the detail columns are null.
 expression AgentContract =
 		let

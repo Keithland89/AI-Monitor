@@ -957,7 +957,7 @@ export async function status(o, d) {
     ui.info(`No install record at ${path}. Run ${commandLine('install')}, or pass --config.`);
     return 1;
   }
-  ui.heading('AI-Monitor install');
+  ui.heading('Agent-Monitor install');
   ui.info(`Record: ${path}${record.updatedAt ? ` (updated ${record.updatedAt.slice(0, 16).replace('T', ' ')})` : ''}`);
   if (record.uninstalledAt) ui.warn(`Uninstalled ${record.uninstalledAt.slice(0, 10)}; what's below was left behind on purpose.`);
   if (record.environment) ui.info(`Landing environment: ${record.environment.name ?? record.environment.id} (${record.environment.url})`);

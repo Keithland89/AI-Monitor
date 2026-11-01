@@ -1,8 +1,8 @@
-# AI-Monitor: the app
+# Agent-Monitor: the app
 
-A Copilot Managed App version of the AI-Monitor Power BI report. It runs entirely in the browser inside the Managed Apps player, reads the same sources as the report through four connectors, and computes every column and measure in TypeScript. Nothing is sent anywhere else.
+A Copilot Managed App version of the Agent-Monitor Power BI report. It runs entirely in the browser inside the Managed Apps player, reads the same sources as the report through four connectors, and computes every column and measure in TypeScript. Nothing is sent anywhere else.
 
-AI-Monitor is an agent inventory: what agents exist, who owns them, what they can reach and which to fix first. It does not cover usage, value or cost. For those, see the sibling product, [Analytics Hub](https://github.com/microsoft/AnalyticsHub-Dashboard). Neither product needs Agent 365.
+Agent-Monitor is an agent inventory: what agents exist, who owns them, what they can reach and which to fix first. It does not cover usage, value or cost. For those, see the sibling product, [Analytics Hub](https://github.com/microsoft/AnalyticsHub-Dashboard). Neither product needs Agent 365.
 
 The app covers the report's inventory, governance, integration, Foundry, Shadow AI and setup pages in seven tabs with sub-views. It adds a **Lifecycle review** under Governance, computed from the Power Platform last-used dates the app already loads.
 
@@ -79,7 +79,7 @@ To deploy by hand with the `ms` CLI (`@microsoft/managed-apps-cli` 0.29.0, Node 
 cd app
 npm ci
 npm run build
-ms app init --repo none --display-name "AI-Monitor" --build-type none --build-path ./dist --environment-id <landing environment id>
+ms app init --repo none --display-name "Agent-Monitor" --build-type none --build-path ./dist --environment-id <landing environment id>
 foreach ($c in 'powerplatformadminv2', 'arm', 'wdatp', 'commondataserviceforapps') {
   ms app add data-source --connector $c --as action --use-sso --skip-codegen --non-interactive --json
 }
@@ -103,7 +103,7 @@ npm run build    # tsc -b, then vite build into dist/
 To rebuild the sample from the repo's anonymised sample zip (or from a folder of `Dim*`/`Fact*` CSVs):
 
 ```powershell
-npm run sample                      # defaults to ../sample-data/ai-monitor-sample-data.zip
+npm run sample                      # defaults to ../sample-data/agent-monitor-sample-data.zip
 npm run sample -- <folder-or-zip>
 ```
 

@@ -1,4 +1,4 @@
-// Contract test: AI-Monitor's semantic models read Analytics Hub's tables through one shared M
+// Contract test: Agent-Monitor's semantic models read Analytics Hub's tables through one shared M
 // expression per table. This checks both PBIP builds, and the sample data, against the Analytics Hub
 // column lists in fixtures/analytics-hub-contract.json. Run with `npm test` or `node --test tests/`.
 import { test } from 'node:test'
@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const fixture = JSON.parse(readFileSync(join(ROOT, 'tests', 'fixtures', 'analytics-hub-contract.json'), 'utf8'))
-const CONTRACT = { ...fixture.tables, ...fixture.aiMonitorTables }
+const CONTRACT = { ...fixture.tables, ...fixture.agentMonitorTables }
 const KIND_TO_SQL = { date: 'DATE', datetime: 'DATETIME2(6)', bool: 'BIT', int: 'BIGINT', text: 'NVARCHAR(4000)' }
 const BUILDS = { 'pbip-cloud': ['Live', 'AnalyticsHub'], pbip: ['Csv', 'Live', 'AnalyticsHub'] }
 // Model tables rebuilt on the contract layer: their M must be the same text in both builds.
@@ -19,7 +19,7 @@ const DERIVED = ['Agent', 'AgentConnector', 'AgentKnowledge', 'AgentFlow', 'Envi
 // Helpers that may call FnArg / FnHunt on behalf of the contract expressions.
 const SOURCE_HELPERS = ['FnArg', 'FnHunt', 'FnAgentConnectors']
 
-const definition = (build) => join(ROOT, build, 'AI-Monitor.SemanticModel', 'definition')
+const definition = (build) => join(ROOT, build, 'Agent-Monitor.SemanticModel', 'definition')
 const lines = (file) => readFileSync(file, 'utf8').split(/\r?\n/)
 
 /** expression name -> its header line plus body lines, from expressions.tmdl. */
@@ -157,7 +157,7 @@ test('derived model tables have identical M in both builds', () => {
 })
 
 test('sample zip carries every contract table with the contract header', () => {
-  const headers = zipHeaders(join(ROOT, 'sample-data', 'ai-monitor-sample-data.zip'))
+  const headers = zipHeaders(join(ROOT, 'sample-data', 'agent-monitor-sample-data.zip'))
   for (const [table, columns] of Object.entries(CONTRACT)) {
     const entry = `data/${table}.csv`
     assert.ok(entry in headers, `${entry} is in the zip`)
