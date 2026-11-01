@@ -2,6 +2,7 @@ import type {
   ActivityStatus, Agent, AgentBase, AgentConnector, AgentFlow, AgentKnowledge, AzureAIResource, Environment,
   RiskBand, RiskDetail, UserRecord,
 } from './types'
+import { NO_USAGE_SIGNAL_PLATFORMS } from '../metrics/lifecycle'
 
 /* ---------- value coercion (FnToDateTime / FnToLogical / FnToInt) ---------- */
 
@@ -336,13 +337,16 @@ export function joinAgents(agents: AgentBase[], usage: Map<string, string>, envs
   })
 }
 
-/* ---------- risk scoring (Agent partition + RiskDetail partition) ---------- */
+/* ---------- risk scoring (Agent partition + RiskDetail partition; see docs/risk-rubric.md) ---------- */
+
+/** "Never used" is only judged where the platform records a last-used date. */
+const neverUsedWithSignal = (a: AgentBase) => !a.lastUsed && !NO_USAGE_SIGNAL_PLATFORMS.includes(platformOf(a))
 
 export const RISK_RULES: { factor: string; points: number; fires: (a: AgentBase) => boolean }[] = [
   { factor: 'No authentication configured', points: 3, fires: (a) => a.authentication === 'None' || a.authentication === 'No authentication' || a.authentication === '' },
   { factor: 'Agent is quarantined', points: 3, fires: (a) => a.isQuarantined },
   { factor: 'Shared with the entire tenant', points: 2, fires: (a) => a.sharedTenantWide },
-  { factor: 'Shared tenant-wide and never used', points: 1, fires: (a) => a.sharedTenantWide && !a.lastUsed },
+  { factor: 'Shared tenant-wide and never used', points: 1, fires: (a) => a.sharedTenantWide && neverUsedWithSignal(a) },
   { factor: 'Web search enabled on knowledge', points: 1, fires: (a) => a.webSearch },
   { factor: 'Uses one or more connectors', points: 1, fires: (a) => a.connectorCount > 0 },
   { factor: 'Connected to other agents', points: 1, fires: (a) => a.connectedAgentCount > 0 },

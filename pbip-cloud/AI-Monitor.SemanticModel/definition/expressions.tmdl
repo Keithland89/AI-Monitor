@@ -1,3 +1,29 @@
+/// Live = query Azure Resource Graph and Defender directly (default). AnalyticsHub = read Analytics Hub's tables from
+/// SqlServer / SqlDatabase instead. Dataverse lanes (users, knowledge sources, SharePoint agents) read Dataverse in both.
+expression SourceMode = "Live" meta [IsParameterQuery = true, List = {"Live", "AnalyticsHub"}, DefaultValue = "Live", Type = "Text", IsParameterQueryRequired = true]
+	lineageTag: 4af75fec-0c75-4132-b0b6-32fd46839cc4
+
+	annotation PBI_ResultType = Text
+
+	annotation PBI_NavigationStepName = Navigation
+
+/// Analytics Hub SQL server (Azure SQL or a Fabric SQL endpoint), read when SourceMode = AnalyticsHub.
+/// Passed straight into Sql.Database with no string building, so scheduled refresh keeps working in the service.
+expression SqlServer = "your-server.database.windows.net" meta [IsParameterQuery = true, Type = "Text", IsParameterQueryRequired = true]
+	lineageTag: 8d69c693-ca7a-4e91-bc60-6bb0a9a7eb12
+
+	annotation PBI_ResultType = Text
+
+	annotation PBI_NavigationStepName = Navigation
+
+/// Analytics Hub database on SqlServer, read when SourceMode = AnalyticsHub.
+expression SqlDatabase = "AnalyticsHub" meta [IsParameterQuery = true, Type = "Text", IsParameterQueryRequired = true]
+	lineageTag: 0845c64f-06f8-4341-be35-b6812c87ac6a
+
+	annotation PBI_ResultType = Text
+
+	annotation PBI_NavigationStepName = Navigation
+
 /// Dataverse environment URL holding the knowledge-source and SharePoint agent tables, e.g. https://contoso.crm.dynamics.com
 expression DataverseUrl = "https://contoso.crm.dynamics.com" meta [IsParameterQuery = true, Type = "Text", IsParameterQueryRequired = true]
 	lineageTag: 873e4f19-edfd-4479-86d4-8cf2b1a4b148
@@ -322,152 +348,6 @@ expression FnHunt =
 
 	annotation PBI_ResultType = Function
 
-/// Layer 1 - AI tools INSTALLED on managed devices, from Defender Vulnerability Management's software
-/// inventory. Catches packaged desktop apps. Misses portable binaries and anything run from a CLI.
-/// Matched on a name PREFIX, not a contains: package registries inventory things like
-/// "node-cli-cursor" and a contains-match reports them as the Cursor editor.
-expression SrcShadowInstalled =
-		let
-		    Kql = "DeviceTvmSoftwareInventory"
-		        & " | where (" & FnWatchPrefix("SoftwareMatch", "SoftwareName") & ")"
-		        & " or SoftwareVendor has_any (" & FnWatchTerms("VendorMatch") & ")"
-		        & " | summarize DeviceCount = dcount(DeviceId) by SoftwareName, SoftwareVendor"
-		        & " | top 200 by DeviceCount desc",
-		    Rows = FnHunt(Kql, {"SoftwareName", "SoftwareVendor", "DeviceCount"}),
-		    Kept = List.Select(Table.ToRecords(Rows), each FnInstalledMatch([SoftwareName], [SoftwareVendor]) <> null),
-		    Recs = List.Transform(Kept, (r) =>
-		               let
-		                   W = FnInstalledMatch(r[SoftwareName], r[SoftwareVendor])
-		               in
-		                   [ Layer = "Installed",
-		                     Category = W[Category],
-		                     Vendor = W[Vendor],
-		                     AppName = W[AppName],
-		                     Posture = W[Posture],
-		                     Detected = r[SoftwareName],
-		                     DeviceCount = r[DeviceCount],
-		                     UserCount = null,
-		                     LastSeen = null ]),
-		    Out = FnRecordsToTable(Recs, {"Layer", "Category", "Vendor", "AppName", "Posture", "Detected", "DeviceCount", "UserCount", "LastSeen"})
-		in
-		    Out
-	lineageTag: bab61974-1a85-45bb-a217-75f223efe302
-
-	annotation PBI_ResultType = Table
-
-/// Layer 2 - AI tools actually EXECUTED in the last 30 days, from process telemetry. This is the layer
-/// that catches CLI tooling such as Claude Code and GitHub Copilot CLI, which never appears in software
-/// inventory because it is installed per user without an installer.
-/// Matched with in~ rather than has_any: FileName holds exactly the file name, so an exact
-/// case-insensitive list match is both precise and indexed.
-expression SrcShadowExecuted =
-		let
-		    Kql = "DeviceProcessEvents"
-		        & " | where Timestamp > ago(30d)"
-		        & " | where FileName in~ (" & FnWatchTerms("ProcessName") & ")"
-		        & " | summarize DeviceCount = dcount(DeviceId), UserCount = dcount(AccountUpn), LastSeen = max(Timestamp) by FileName, ProcessVersionInfoCompanyName"
-		        & " | top 200 by DeviceCount desc",
-		    Rows = FnHunt(Kql, {"FileName", "ProcessVersionInfoCompanyName", "DeviceCount", "UserCount", "LastSeen"}),
-		    Recs = List.Transform(Table.ToRecords(Rows), (r) =>
-		               let
-		                   W = FnWatchMatch(r[FileName], "ProcessName")
-		               in
-		                   [ Layer = "Executed",
-		                     Category = if W = null then "Unclassified" else W[Category],
-		                     Vendor = if W = null then r[ProcessVersionInfoCompanyName] else W[Vendor],
-		                     AppName = if W = null then r[FileName] else W[AppName],
-		                     Posture = if W = null then "Unsanctioned" else W[Posture],
-		                     Detected = r[FileName],
-		                     DeviceCount = r[DeviceCount],
-		                     UserCount = r[UserCount],
-		                     LastSeen = FnToDateTime(r[LastSeen]) ]),
-		    Out = FnRecordsToTable(Recs, {"Layer", "Category", "Vendor", "AppName", "Posture", "Detected", "DeviceCount", "UserCount", "LastSeen"})
-		in
-		    Out
-	lineageTag: dc6cb6da-79e3-4042-8d3e-5629854df583
-
-	annotation PBI_ResultType = Table
-
-/// Layer 3 - devices TALKING to AI service endpoints in the last 30 days. Catches browser and script
-/// use where nothing is installed and no recognisable process runs, which is the majority of shadow AI.
-expression SrcShadowNetwork =
-		let
-		    Kql = "DeviceNetworkEvents"
-		        & " | where Timestamp > ago(30d)"
-		        & " | where isnotempty(RemoteUrl)"
-		        & " | where RemoteUrl has_any (" & FnWatchTerms("Domain") & ")"
-		        & " | summarize DeviceCount = dcount(DeviceId), UserCount = dcount(InitiatingProcessAccountUpn), LastSeen = max(Timestamp) by RemoteUrl"
-		        & " | top 200 by DeviceCount desc",
-		    Rows = FnHunt(Kql, {"RemoteUrl", "DeviceCount", "UserCount", "LastSeen"}),
-		    Recs = List.Transform(Table.ToRecords(Rows), (r) =>
-		               let
-		                   W = FnWatchMatch(r[RemoteUrl], "Domain")
-		               in
-		                   [ Layer = "Network",
-		                     Category = if W = null then "Unclassified" else W[Category],
-		                     Vendor = if W = null then "" else W[Vendor],
-		                     AppName = if W = null then r[RemoteUrl] else W[AppName],
-		                     Posture = if W = null then "Unsanctioned" else W[Posture],
-		                     Detected = r[RemoteUrl],
-		                     DeviceCount = r[DeviceCount],
-		                     UserCount = r[UserCount],
-		                     LastSeen = FnToDateTime(r[LastSeen]) ]),
-		    Out = FnRecordsToTable(Recs, {"Layer", "Category", "Vendor", "AppName", "Posture", "Detected", "DeviceCount", "UserCount", "LastSeen"})
-		in
-		    Out
-	lineageTag: 3da415ab-5ff3-4739-89d0-e80d98f662e2
-
-	annotation PBI_ResultType = Table
-
-/// Device-grain detail behind ShadowAiSignal: which machines, and for executed tools which user and when.
-/// Capped at 5,000 rows per layer - this is a drill-down, not an export.
-expression SrcShadowDevice =
-		let
-		    KqlInstalled = "DeviceTvmSoftwareInventory"
-		        & " | where (" & FnWatchPrefix("SoftwareMatch", "SoftwareName") & ")"
-		        & " or SoftwareVendor has_any (" & FnWatchTerms("VendorMatch") & ")"
-		        & " | project DeviceName, Detected = SoftwareName, Vendor = SoftwareVendor, Detail = SoftwareVersion"
-		        & " | take 5000",
-		    Installed = FnHunt(KqlInstalled, {"DeviceName", "Detected", "Vendor", "Detail"}),
-		    InstalledKept = List.Select(Table.ToRecords(Installed), each FnInstalledMatch([Detected], [Vendor]) <> null),
-		    InstalledRecs = List.Transform(InstalledKept, (r) =>
-		               let
-		                   W = FnInstalledMatch(r[Detected], r[Vendor])
-		               in
-		                   [ Layer = "Installed",
-		                     DeviceName = r[DeviceName],
-		                     AppName = W[AppName],
-		                     Posture = W[Posture],
-		                     Detected = r[Detected],
-		                     Detail = r[Detail],
-		                     UserUpn = null,
-		                     LastSeen = null ]),
-		    KqlRun = "DeviceProcessEvents"
-		        & " | where Timestamp > ago(30d)"
-		        & " | where FileName in~ (" & FnWatchTerms("ProcessName") & ")"
-		        & " | summarize LastSeen = max(Timestamp), Runs = count() by DeviceName, FileName, AccountUpn"
-		        & " | top 5000 by LastSeen desc",
-		    Run = FnHunt(KqlRun, {"DeviceName", "FileName", "AccountUpn", "LastSeen", "Runs"}),
-		    RunRecs = List.Transform(Table.ToRecords(Run), (r) =>
-		               let
-		                   W = FnWatchMatch(r[FileName], "ProcessName")
-		               in
-		                   [ Layer = "Executed",
-		                     DeviceName = r[DeviceName],
-		                     AppName = if W = null then r[FileName] else W[AppName],
-		                     Posture = if W = null then "Unsanctioned" else W[Posture],
-		                     Detected = r[FileName],
-		                     Detail = if r[Runs] = null then "" else Text.From(r[Runs]) & " runs",
-		                     UserUpn = r[AccountUpn],
-		                     LastSeen = FnToDateTime(r[LastSeen]) ]),
-		    Cols = {"Layer", "DeviceName", "AppName", "Posture", "Detected", "Detail", "UserUpn", "LastSeen"},
-		    Out = Table.Combine({FnRecordsToTable(InstalledRecs, Cols), FnRecordsToTable(RunRecs, Cols)})
-		in
-		    Out
-	lineageTag: 01c3a691-b139-48aa-9e13-afc0ca0fa939
-
-	annotation PBI_ResultType = Table
-
 /// A KQL prefix test per watched term - "SoftwareName startswith 'cursor' or ...".
 /// Used instead of has_any for software inventory because has is token-based: "cursor" is a
 /// token of "node-cli-cursor", so has_any reported an npm terminal-cursor package as the
@@ -503,3 +383,459 @@ expression FnInstalledMatch =
 	lineageTag: 8d3b1c60-6a92-4f57-b8e3-15d9c7a4e2b0
 
 	annotation PBI_ResultType = Function
+
+/// Shapes a table to one Analytics Hub contract: exactly the listed columns, in order, with the listed types.
+/// A column the source lacks comes back null, so an older store or an absent CSV still refreshes.
+expression FnContract =
+		(source as table, contract as list) as table =>
+		let
+		    Names = List.Transform(contract, each _{0}),
+		    Kept = Table.SelectColumns(source, Names, MissingField.UseNull),
+		    AsText = (v as any) as nullable text => if v = null then null else Text.From(v),
+		    Rule = (c as list) as list =>
+		        if c{1} = "date" then {c{0}, FnToDate, type nullable date}
+		        else if c{1} = "datetime" then {c{0}, FnToDateTime, type nullable datetime}
+		        else if c{1} = "bool" then {c{0}, FnToLogical, type nullable logical}
+		        else if c{1} = "int" then {c{0}, FnToInt, Int64.Type}
+		        else {c{0}, AsText, type nullable text},
+		    Typed = Table.TransformColumns(Kept, List.Transform(contract, Rule))
+		in
+		    Typed
+	lineageTag: 0a21f3bc-4968-4787-8632-1fb2fb820f51
+
+	annotation PBI_ResultType = Function
+
+/// The rows of an Analytics Hub snapshot table that belong to its latest SnapshotDate.
+expression FnLatestSnapshot =
+		(t as table) as table =>
+		let
+		    Latest = List.Max(Table.Column(t, "SnapshotDate")),
+		    Rows = Table.SelectRows(t, each [SnapshotDate] = Latest)
+		in
+		    Rows
+	lineageTag: d5ecb7ff-48be-4fa3-bdfb-dda609b9b632
+
+	annotation PBI_ResultType = Function
+
+/// Splits a contract list such as "files=2; publicSites=1" into [Key, Value] records. Value is a number or null.
+expression FnPairs =
+		(value as nullable text) as list =>
+		let
+		    Parts = if value = null then {} else List.Select(List.Transform(Text.Split(value, ";"), Text.Trim), each _ <> ""),
+		    Pairs = List.Transform(Parts, each [
+		        Key = Text.Trim(Text.BeforeDelimiter(_, "=", {0, RelativePosition.FromEnd})),
+		        Value = try Number.From(Text.AfterDelimiter(_, "=", {0, RelativePosition.FromEnd})) otherwise null])
+		in
+		    Pairs
+	lineageTag: 97ef0efd-9c6d-48cc-b27b-27306b97e15c
+
+	annotation PBI_ResultType = Function
+
+/// A KQL case() mapping `field` to the watchlist tool whose `column` term it matches, longest term first.
+/// mode is exact, domain (host or any subdomain), prefix or contains. Mirrors Analytics Hub's hunting queries.
+expression FnWatchCase =
+		(column as text, field as text, mode as text) as text =>
+		let
+		    Quote = (s as text) as text => "'" & Text.Replace(Text.Replace(s, "\", "\\"), "'", "\'") & "'",
+		    Rows = Table.SelectRows(ShadowAiWatchlist, each Record.Field(_, column) <> null and Text.Trim(Record.Field(_, column)) <> ""),
+		    Terms = Table.AddColumn(Rows, "Term", each Text.Lower(Text.Trim(Record.Field(_, column))), type text),
+		    Ranked = Table.AddColumn(Terms, "TermLen", each Text.Length([Term]), Int64.Type),
+		    Sorted = Table.Sort(Ranked, {{"TermLen", Order.Descending}}),
+		    Test = (t as text) as text =>
+		        if mode = "exact" then field & " == " & Quote(t)
+		        else if mode = "domain" then "(" & field & " == " & Quote(t) & " or " & field & " endswith " & Quote("." & t) & ")"
+		        else if mode = "prefix" then field & " startswith " & Quote(t)
+		        else field & " contains " & Quote(t),
+		    Tests = List.Transform(Table.ToRecords(Sorted), (r) => Test(r[Term]) & ", " & Quote(r[AppName])),
+		    Out = if List.IsEmpty(Tests) then "''" else "case(" & Text.Combine(Tests, ", ") & ", '')"
+		in
+		    Out
+	lineageTag: 3e87f817-676d-4815-a5fc-19c3fa7cb363
+
+	annotation PBI_ResultType = Function
+
+/// Live only: one row per agent per Power Platform connector from Azure Resource Graph, with its operation
+/// count, knowledge-use operations and MCP flag. Feeds arg_agent_config and arg_agent_detail.
+expression FnAgentConnectors =
+		() as table =>
+		let
+		    Raw = FnArg("PowerPlatformResources | where type =~ 'microsoft.copilotstudio/agents' | mv-expand conn = properties.powerPlatformConnectors | where isnotnull(conn) | project AgentResourceId = tolower(tostring(id)), ConnectorId = tostring(conn.connectorId), OperationCount = coalesce(array_length(conn.operations), 0), IsMcpServer = tostring(conn.operations) matches regex '""type"":""MCP""', Ops = tostring(conn.operations) | where isnotempty(ConnectorId) | order by AgentResourceId asc, ConnectorId asc"),
+		    Rows = FnRecordsToTable(Raw, {"AgentResourceId", "ConnectorId", "OperationCount", "IsMcpServer", "Ops"}),
+		    Trimmed = Table.SelectRows(Table.TransformColumns(Rows, {{"ConnectorId", each if _ = null then "" else Text.Trim(_), type text}}), each [ConnectorId] <> ""),
+		    WithKnowledge = Table.AddColumn(Trimmed, "KnowledgeOps", each
+		        let ops = try Json.Document([Ops]) otherwise null
+		        in if ops is list then List.Count(List.Select(ops, (o) => o is record and Text.Lower(Text.From(Record.FieldOrDefault(o, "usedAs", ""))) = "knowledge")) else 0, Int64.Type),
+		    Grouped = Table.Group(WithKnowledge, {"AgentResourceId", "ConnectorId"}, {
+		        {"OperationCount", each List.Sum(List.Transform([OperationCount], FnToInt)), Int64.Type},
+		        {"KnowledgeOps", each List.Sum([KnowledgeOps]), Int64.Type},
+		        {"IsMcpServer", each List.AnyTrue(List.Transform([IsMcpServer], (m) => FnToLogical(m) = true)), type logical}})
+		in
+		    Grouped
+	lineageTag: 3483ec0e-7db4-4ecc-8f34-288c3c7d8f0c
+
+	annotation PBI_ResultType = Function
+
+/// Analytics Hub contract table arg_agent_config: one row per Copilot Studio and Agent Builder agent (CreatedIn
+/// "Copilot Studio Lite" is Agent Builder). Columns and types match Analytics Hub's V004 migration.
+expression arg_agent_config =
+		let
+		    Contract = {{"SnapshotDate", "date"}, {"AgentResourceId", "text"}, {"BotId", "text"}, {"AgentName", "text"}, {"EntraAgentId", "text"}, {"EntraAppId", "text"}, {"TitleId", "text"}, {"MatchedOn", "text"}, {"EnvironmentId", "text"}, {"Authentication", "text"}, {"NoSignIn", "bool"}, {"IsQuarantined", "bool"}, {"IsManaged", "bool"}, {"WebSearchEnabled", "bool"}, {"ConnectorCount", "int"}, {"McpConnectorCount", "int"}, {"KnowledgeConnectorCount", "int"}, {"ConnectedAgentCount", "int"}, {"Connectors", "text"}, {"SharedUsers", "int"}, {"SharedGroups", "int"}, {"SharedEntireTenant", "bool"}, {"Orchestration", "text"}, {"Model", "text"}, {"Channels", "text"}, {"OwnerId", "text"}, {"CreatedIn", "text"}, {"LastPublishedAt", "text"}, {"Source", "text"}},
+		    Live = () =>
+		        let
+		            Today = DateTime.Date(DateTimeZone.RemoveZone(DateTimeZone.UtcNow())),
+		            Agents = FnRecordsToTable(FnArg("PowerPlatformResources | where type =~ 'microsoft.copilotstudio/agents' | extend p = properties | extend sv = p.sharedWithViewers | project AgentResourceId = tolower(tostring(id)), BotId = tolower(coalesce(tostring(p.botId), tostring(p.name), tostring(name))), AgentName = coalesce(tostring(p.displayName), tostring(name)), EntraAgentId = tolower(tostring(p.entraAgentId)), EntraAppId = tolower(tostring(p.entraAppId)), TitleId = tostring(p.titleId), EnvironmentId = tolower(tostring(p.environmentId)), Authentication = tostring(p.authentication), IsQuarantined = tobool(p.isQuarantined), IsManaged = tobool(p.isManaged), WebSearchEnabled = tobool(p.isWebSearchEnabledForKnowledge), Capabilities = tostring(p.capabilitiesCounts), SharedUsers = toint(sv.userCount), SharedGroups = toint(sv.groupCount), SharedEntireTenant = tobool(sv.entireTenant), Orchestration = tostring(p.orchestration), Model = tostring(p.model), Channels = strcat_array(p.channels, '; '), OwnerId = tolower(tostring(p.ownerId)), CreatedIn = tostring(p.createdIn), LastPublishedAt = tostring(p.lastPublishedAt) | order by AgentResourceId asc"), {"AgentResourceId", "BotId", "AgentName", "EntraAgentId", "EntraAppId", "TitleId", "EnvironmentId", "Authentication", "IsQuarantined", "IsManaged", "WebSearchEnabled", "Capabilities", "SharedUsers", "SharedGroups", "SharedEntireTenant", "Orchestration", "Model", "Channels", "OwnerId", "CreatedIn", "LastPublishedAt"}),
+		            ByAgent = Table.Group(FnAgentConnectors(), {"AgentResourceId"}, {
+		                {"Ids", each List.Sort(List.Distinct([ConnectorId])), type list},
+		                {"KnowledgeOps", each List.Sum([KnowledgeOps]), Int64.Type}}),
+		            Joined = Table.NestedJoin(Agents, {"AgentResourceId"}, ByAgent, {"AgentResourceId"}, "c", JoinKind.LeftOuter),
+		            Expanded = Table.ExpandTableColumn(Joined, "c", {"Ids", "KnowledgeOps"}, {"Ids", "KnowledgeOps"}),
+		            NoNullIds = Table.TransformColumns(Expanded, {{"Ids", each if _ = null then {} else _, type list}}),
+		            WithSnapshot = Table.AddColumn(NoNullIds, "SnapshotDate", each Today, type date),
+		            WithNoSignIn = Table.AddColumn(WithSnapshot, "NoSignIn", each if [Authentication] = null or Text.Trim([Authentication]) = "" then null else Text.Lower(Text.Trim([Authentication])) = "none", type nullable logical),
+		            WithCount = Table.AddColumn(WithNoSignIn, "ConnectorCount", each List.Count([Ids]), Int64.Type),
+		            WithMcp = Table.AddColumn(WithCount, "McpConnectorCount", each List.Count(List.Select([Ids], each Text.Contains(Text.Lower(_), "mcp"))), Int64.Type),
+		            WithKnowledge = Table.AddColumn(WithMcp, "KnowledgeConnectorCount", each if [KnowledgeOps] = null then 0 else [KnowledgeOps], Int64.Type),
+		            // Analytics Hub counts connected agents as the sum of every capabilitiesCounts entry whose name mentions them.
+		            WithLinked = Table.AddColumn(WithKnowledge, "ConnectedAgentCount", each
+		                let
+		                    caps = try Json.Document([Capabilities]) otherwise null,
+		                    keys = if caps is record then List.Select(Record.FieldNames(caps), (k) => Text.Contains(Text.Lower(k), "connectedagent")) else {},
+		                    vals = List.Transform(keys, (k) => let n = try Number.From(Record.Field(caps, k)) otherwise null in if n = null or n < 0 then 0 else Number.RoundDown(n))
+		                in
+		                    List.Sum({0} & vals), Int64.Type),
+		            WithConnectors = Table.AddColumn(WithLinked, "Connectors", each Text.Combine([Ids], "; "), type text),
+		            WithMatched = Table.AddColumn(WithConnectors, "MatchedOn", each "", type text),
+		            WithSource = Table.AddColumn(WithMatched, "Source", each "Resource Graph", type text),
+		            Out = Table.TransformColumns(WithSource, {
+		                {"SharedUsers", each if FnToInt(_) = null then 0 else FnToInt(_), Int64.Type},
+		                {"SharedGroups", each if FnToInt(_) = null then 0 else FnToInt(_), Int64.Type},
+		                {"SharedEntireTenant", each FnToLogical(_) = true, type logical}})
+		        in
+		            Out,
+		    Raw =
+		        if SourceMode = "AnalyticsHub" then FnLatestSnapshot(Sql.Database(SqlServer, SqlDatabase){[Schema = "dbo", Item = "arg_agent_config"]}[Data])
+		        else Live(),
+		    Shaped = FnContract(Raw, Contract)
+		in
+		    Shaped
+	lineageTag: bc08818f-1b69-44c6-a04e-4af3256b983b
+
+	annotation PBI_ResultType = Table
+
+/// AI-Monitor's own table, keyed on SnapshotDate + AgentResourceId: the agent fields arg_agent_config lacks
+/// (last used, creator, component and knowledge-by-type counts). Analytics Hub does not land it yet, so in
+/// AnalyticsHub mode a missing table yields an empty one and those fields are blank.
+expression arg_agent_detail =
+		let
+		    Contract = {{"SnapshotDate", "date"}, {"AgentResourceId", "text"}, {"AgentId", "text"}, {"SchemaName", "text"}, {"CreatedAt", "datetime"}, {"CreatedBy", "text"}, {"QuarantinedAt", "datetime"}, {"LastUsedAt", "datetime"}, {"TopicCount", "int"}, {"ToolCount", "int"}, {"KnowledgeCount", "int"}, {"ConnectorOpsCount", "int"}, {"FlowCount", "int"}, {"EditorUserCount", "int"}, {"IsGithubCopilotAgent", "bool"}, {"IsCLIAgent", "bool"}, {"EntraAgentBlueprintId", "text"}, {"Harness", "text"}, {"InstructionsCharCount", "int"}, {"GraphConnectorCount", "int"}, {"SharePointSiteCount", "int"}, {"PublicSiteCount", "int"}, {"FileKnowledgeCount", "int"}, {"DataverseSourceCount", "int"}, {"KnowledgeTypes", "text"}, {"KnowledgeByType", "text"}, {"ConnectorOperations", "text"}, {"McpConnectors", "text"}, {"Region", "text"}},
+		    // Analytics Hub does not land arg_agent_detail yet: a store without it yields an empty table, so the model still refreshes.
+		    Detail = () =>
+		        let
+		            Store = Sql.Database(SqlServer, SqlDatabase),
+		            Found = Table.SelectRows(Store, each [Schema] = "dbo" and [Item] = "arg_agent_detail")
+		        in
+		            if Table.IsEmpty(Found) then #table(List.Transform(Contract, each _{0}), {}) else FnLatestSnapshot(Found{0}[Data]),
+		    Live = () =>
+		        let
+		            Today = DateTime.Date(DateTimeZone.RemoveZone(DateTimeZone.UtcNow())),
+		            Agents = FnRecordsToTable(FnArg("PowerPlatformResources | where type =~ 'microsoft.copilotstudio/agents' | extend p = properties | extend cc = p.componentsCounts, cap = p.capabilitiesCounts, se = p.sharedWithEditors | extend kbt = cc.knowledgeByType | project AgentResourceId = tolower(tostring(id)), AgentId = tostring(name), SchemaName = tostring(p.schemaName), CreatedAt = tostring(p.createdAt), CreatedBy = tostring(p.createdBy), QuarantinedAt = tostring(p.quarantinedAt), TopicCount = toint(cc.topics), ToolCount = toint(cc.tools), KnowledgeCount = toint(cc.knowledge), ConnectorOpsCount = toint(cap.distinctPowerPlatformConnectorsOperations), FlowCount = toint(cap.distinctFlows), EditorUserCount = toint(se.userCount), IsGithubCopilotAgent = tobool(p.isGithubCopilotAgent), IsCLIAgent = tobool(p.isCLIAgent), EntraAgentBlueprintId = tostring(p.entraAgentBlueprintId), Harness = tostring(p.harness), InstructionsCharCount = coalesce(toint(p.instructionsCharactersCount), 0), GraphConnectorCount = coalesce(toint(kbt.graphConnectors), 0), SharePointSiteCount = coalesce(toint(kbt.sharepointSites), 0), PublicSiteCount = coalesce(toint(kbt.publicSites), 0), FileKnowledgeCount = coalesce(toint(kbt.files), 0), DataverseSourceCount = coalesce(toint(kbt.dataverseSources), 0), KnowledgeTypes = strcat_array(bag_keys(kbt), '; '), KnowledgeByType = tostring(kbt), Region = tostring(location) | order by AgentResourceId asc"), {"AgentResourceId", "AgentId", "SchemaName", "CreatedAt", "CreatedBy", "QuarantinedAt", "TopicCount", "ToolCount", "KnowledgeCount", "ConnectorOpsCount", "FlowCount", "EditorUserCount", "IsGithubCopilotAgent", "IsCLIAgent", "EntraAgentBlueprintId", "Harness", "InstructionsCharCount", "GraphConnectorCount", "SharePointSiteCount", "PublicSiteCount", "FileKnowledgeCount", "DataverseSourceCount", "KnowledgeTypes", "KnowledgeByType", "Region"}),
+		            Usage = FnRecordsToTable(FnArg("PowerPlatformResources | where type =~ 'microsoft.powerplatformusage/usagerecords' | where isnotnull(properties) | project ResourceKey = tostring(properties.resourceId), LastUsedRaw = tostring(properties.lastUsed) | where isnotempty(ResourceKey) and isnotempty(LastUsedRaw) | summarize LastUsedRaw = max(LastUsedRaw) by ResourceKey | order by ResourceKey asc"), {"ResourceKey", "LastUsedRaw"}),
+		            JoinUsage = Table.NestedJoin(Agents, {"AgentId"}, Usage, {"ResourceKey"}, "u", JoinKind.LeftOuter),
+		            WithUsage = Table.ExpandTableColumn(JoinUsage, "u", {"LastUsedRaw"}, {"LastUsedAt"}),
+		            // knowledgeByType arrives as a JSON bag; the contract stores it as "type=count; type=count".
+		            Pairs = Table.TransformColumns(WithUsage, {{"KnowledgeByType", (j) =>
+		                let r = try Json.Document(j) otherwise null
+		                in if r is record then Text.Combine(List.Transform(Record.FieldNames(r), (k) => k & "=" & Text.From(Record.Field(r, k))), "; ") else null, type nullable text}}),
+		            ByAgent = Table.Group(FnAgentConnectors(), {"AgentResourceId"}, {
+		                {"ConnectorOperations", each Text.Combine(List.Transform(Table.ToRecords(Table.Sort(_, {{"ConnectorId", Order.Ascending}})), (r) => r[ConnectorId] & "=" & Text.From(if r[OperationCount] = null then 0 else r[OperationCount])), "; "), type text},
+		                {"McpConnectors", each Text.Combine(List.Sort(Table.SelectRows(_, (r) => r[IsMcpServer] = true)[ConnectorId]), "; "), type text}}),
+		            JoinConnectors = Table.NestedJoin(Pairs, {"AgentResourceId"}, ByAgent, {"AgentResourceId"}, "c", JoinKind.LeftOuter),
+		            WithConnectors = Table.ExpandTableColumn(JoinConnectors, "c", {"ConnectorOperations", "McpConnectors"}, {"ConnectorOperations", "McpConnectors"}),
+		            Out = Table.AddColumn(WithConnectors, "SnapshotDate", each Today, type date)
+		        in
+		            Out,
+		    Raw =
+		        if SourceMode = "AnalyticsHub" then Detail()
+		        else Live(),
+		    Shaped = FnContract(Raw, Contract)
+		in
+		    Shaped
+	lineageTag: f704254a-1129-439b-a36b-96a75febc25b
+
+	annotation PBI_ResultType = Table
+
+/// Analytics Hub contract table arg_environments: Power Platform environments.
+expression arg_environments =
+		let
+		    Contract = {{"SnapshotDate", "date"}, {"EnvironmentId", "text"}, {"EnvironmentName", "text"}, {"EnvironmentType", "text"}, {"IsDefault", "bool"}, {"IsManaged", "bool"}, {"Region", "text"}, {"Source", "text"}},
+		    Live = () =>
+		        let
+		            Today = DateTime.Date(DateTimeZone.RemoveZone(DateTimeZone.UtcNow())),
+		            Envs = FnRecordsToTable(FnArg("PowerPlatformResources | where type =~ 'microsoft.powerplatform/environments' | extend p = properties | project EnvironmentId = tolower(tostring(name)), EnvironmentName = tostring(p.displayName), EnvironmentType = tostring(p.environmentType), IsManaged = tobool(p.isManaged), Region = tostring(location) | order by EnvironmentId asc"), {"EnvironmentId", "EnvironmentName", "EnvironmentType", "IsManaged", "Region"}),
+		            WithDefault = Table.AddColumn(Envs, "IsDefault", each if [EnvironmentType] = null or [EnvironmentType] = "" then null else Text.Lower([EnvironmentType]) = "default", type nullable logical),
+		            WithSource = Table.AddColumn(WithDefault, "Source", each "Resource Graph", type text),
+		            Out = Table.AddColumn(WithSource, "SnapshotDate", each Today, type date)
+		        in
+		            Out,
+		    Raw =
+		        if SourceMode = "AnalyticsHub" then FnLatestSnapshot(Sql.Database(SqlServer, SqlDatabase){[Schema = "dbo", Item = "arg_environments"]}[Data])
+		        else Live(),
+		    Shaped = FnContract(Raw, Contract)
+		in
+		    Shaped
+	lineageTag: 582b557c-f25b-4dd0-ac14-79108b284cc9
+
+	annotation PBI_ResultType = Table
+
+/// Analytics Hub contract table arg_agent_flows: agent flows (microsoft.powerautomate/agentflows).
+expression arg_agent_flows =
+		let
+		    Contract = {{"SnapshotDate", "date"}, {"FlowId", "text"}, {"FlowName", "text"}, {"EnvironmentId", "text"}, {"OwnerId", "text"}, {"ConnectorCount", "int"}, {"Trigger", "text"}, {"CreatedAt", "text"}, {"LastModifiedAt", "text"}, {"Source", "text"}},
+		    Live = () =>
+		        let
+		            Today = DateTime.Date(DateTimeZone.RemoveZone(DateTimeZone.UtcNow())),
+		            Flows = FnRecordsToTable(FnArg("PowerPlatformResources | where type =~ 'microsoft.powerautomate/agentflows' | extend p = properties | project FlowId = tolower(tostring(name)), FlowName = tostring(p.displayName), EnvironmentId = tolower(tostring(p.environmentId)), OwnerId = tolower(tostring(p.ownerId)), Connectors = tostring(p.powerPlatformConnectors), Trigger = tostring(p.trigger), CreatedAt = tostring(p.createdAt), LastModifiedAt = tostring(p.lastModifiedAt) | order by FlowId asc"), {"FlowId", "FlowName", "EnvironmentId", "OwnerId", "Connectors", "Trigger", "CreatedAt", "LastModifiedAt"}),
+		            WithCount = Table.AddColumn(Flows, "ConnectorCount", each
+		                let j = try Json.Document([Connectors]) otherwise null
+		                in if j is list then List.Count(List.Distinct(List.Select(List.Transform(j, (c) => if c is record and Record.FieldOrDefault(c, "connectorId", null) <> null then Text.Trim(Text.From(c[connectorId])) else ""), (id) => id <> ""))) else 0, Int64.Type),
+		            WithSource = Table.AddColumn(WithCount, "Source", each "Resource Graph", type text),
+		            Out = Table.AddColumn(WithSource, "SnapshotDate", each Today, type date)
+		        in
+		            Out,
+		    Raw =
+		        if SourceMode = "AnalyticsHub" then FnLatestSnapshot(Sql.Database(SqlServer, SqlDatabase){[Schema = "dbo", Item = "arg_agent_flows"]}[Data])
+		        else Live(),
+		    Shaped = FnContract(Raw, Contract)
+		in
+		    Shaped
+	lineageTag: 613ead81-cfb5-4e7d-95fe-ae4a3d54beb7
+
+	annotation PBI_ResultType = Table
+
+/// Analytics Hub contract table arg_foundry_resources: Foundry accounts and projects and Azure Machine
+/// Learning workspaces. Projects (IsProject) become Azure AI Foundry rows in Agent.
+expression arg_foundry_resources =
+		let
+		    Contract = {{"SnapshotDate", "date"}, {"ResourceId", "text"}, {"ResourceName", "text"}, {"ResourceType", "text"}, {"Kind", "text"}, {"Location", "text"}, {"SubscriptionId", "text"}, {"ResourceGroup", "text"}, {"Sku", "text"}, {"PublicNetworkAccess", "text"}, {"PublicNetwork", "bool"}, {"DisableLocalAuth", "bool"}, {"IsProject", "bool"}, {"AccountId", "text"}},
+		    Live = () =>
+		        let
+		            Today = DateTime.Date(DateTimeZone.RemoveZone(DateTimeZone.UtcNow())),
+		            Res = FnRecordsToTable(FnArg("resources | where type in~ ('microsoft.cognitiveservices/accounts', 'microsoft.cognitiveservices/accounts/projects', 'microsoft.machinelearningservices/workspaces') | project ResourceId = tolower(tostring(id)), ResourceName = tostring(name), ResourceType = tolower(tostring(type)), Kind = tostring(kind), Location = tostring(location), SubscriptionId = tolower(tostring(subscriptionId)), ResourceGroup = tostring(resourceGroup), Sku = tostring(sku.name), PublicNetworkAccess = tostring(properties.publicNetworkAccess), DisableLocalAuth = tobool(properties.disableLocalAuth) | order by ResourceId asc"), {"ResourceId", "ResourceName", "ResourceType", "Kind", "Location", "SubscriptionId", "ResourceGroup", "Sku", "PublicNetworkAccess", "DisableLocalAuth"}),
+		            ShortName = Table.TransformColumns(Res, {{"ResourceName", each List.Last(Text.Split(if _ = null then "" else _, "/")), type text}}),
+		            // Azure treats an unset publicNetworkAccess as Enabled.
+		            WithPublic = Table.AddColumn(ShortName, "PublicNetwork", each Text.Lower(if [PublicNetworkAccess] = null then "" else [PublicNetworkAccess]) <> "disabled", type logical),
+		            WithProject = Table.AddColumn(WithPublic, "IsProject", each Text.EndsWith(if [ResourceType] = null then "" else [ResourceType], "/projects"), type logical),
+		            WithAccount = Table.AddColumn(WithProject, "AccountId", each if [IsProject] and Text.Contains([ResourceId], "/projects/") then Text.BeforeDelimiter([ResourceId], "/projects/", {0, RelativePosition.FromEnd}) else [ResourceId], type text),
+		            Out = Table.AddColumn(WithAccount, "SnapshotDate", each Today, type date)
+		        in
+		            Out,
+		    Raw =
+		        if SourceMode = "AnalyticsHub" then FnLatestSnapshot(Sql.Database(SqlServer, SqlDatabase){[Schema = "dbo", Item = "arg_foundry_resources"]}[Data])
+		        else Live(),
+		    Shaped = FnContract(Raw, Contract)
+		in
+		    Shaped
+	lineageTag: 65333902-836a-4194-b2e7-00198c62a747
+
+	annotation PBI_ResultType = Table
+
+/// Analytics Hub contract table arg_status: one row per Resource Graph probe. Not loaded; kept so the contract is complete.
+expression arg_status =
+		let
+		    Contract = {{"SnapshotDate", "date"}, {"Probe", "text"}, {"Status", "text"}, {"Rows", "int"}, {"Source", "text"}, {"Detail", "text"}},
+		    Live = () =>
+		        let
+		            Today = DateTime.Date(DateTimeZone.RemoveZone(DateTimeZone.UtcNow())),
+		            Probe = (probe as text, kql as text) as record =>
+		                let
+		                    Attempt = try FnArg(kql),
+		                    Count = if Attempt[HasError] then 0 else (try Number.From(Record.FieldOrDefault(List.First(Attempt[Value], []), "Rows", 0)) otherwise 0)
+		                in
+		                    [SnapshotDate = Today, Probe = probe,
+		                     Status = if Attempt[HasError] then "error" else if Count = null or Count = 0 then "empty" else "ok",
+		                     Rows = if Count = null then 0 else Count, Source = "Resource Graph",
+		                     Detail = if Attempt[HasError] then Text.Start(Text.From(Attempt[Error][Message]), 500) else ""],
+		            Rows = {
+		                Probe("arg_agent_config", "PowerPlatformResources | where type =~ 'microsoft.copilotstudio/agents' | summarize Rows = count()"),
+		                Probe("arg_environments", "PowerPlatformResources | where type =~ 'microsoft.powerplatform/environments' | summarize Rows = count()"),
+		                Probe("arg_agent_flows", "PowerPlatformResources | where type =~ 'microsoft.powerautomate/agentflows' | summarize Rows = count()"),
+		                Probe("arg_foundry_resources", "resources | where type in~ ('microsoft.cognitiveservices/accounts', 'microsoft.cognitiveservices/accounts/projects', 'microsoft.machinelearningservices/workspaces') | summarize Rows = count()")},
+		            Out = Table.FromRecords(Rows)
+		        in
+		            Out,
+		    Raw =
+		        if SourceMode = "AnalyticsHub" then FnLatestSnapshot(Sql.Database(SqlServer, SqlDatabase){[Schema = "dbo", Item = "arg_status"]}[Data])
+		        else Live(),
+		    Shaped = FnContract(Raw, Contract)
+		in
+		    Shaped
+	lineageTag: f3c7e6a1-88e1-4fa1-8552-f8ef0160661e
+
+	annotation PBI_ResultType = Table
+
+/// Analytics Hub contract table defender_ai_watchlist: the AI tools hunted for. Live mode builds it from ShadowAiWatchlist.
+expression defender_ai_watchlist =
+		let
+		    Contract = {{"Tool", "text"}, {"Category", "text"}, {"Vendor", "text"}, {"Posture", "text"}, {"ProcessNames", "text"}, {"Domains", "text"}, {"InstallPrefixes", "text"}},
+		    Live = () =>
+		        let
+		            Kept = Table.SelectColumns(ShadowAiWatchlist, {"AppName", "Category", "Vendor", "Posture", "ProcessName", "Domain", "SoftwareMatch"}),
+		            Out = Table.RenameColumns(Kept, {{"AppName", "Tool"}, {"ProcessName", "ProcessNames"}, {"Domain", "Domains"}, {"SoftwareMatch", "InstallPrefixes"}})
+		        in
+		            Out,
+		    Raw =
+		        if SourceMode = "AnalyticsHub" then Sql.Database(SqlServer, SqlDatabase){[Schema = "dbo", Item = "defender_ai_watchlist"]}[Data]
+		        else Live(),
+		    Shaped = FnContract(Raw, Contract)
+		in
+		    Shaped
+	lineageTag: 3d3b146b-8810-4d07-ad8e-ed9dbb97121f
+
+	annotation PBI_ResultType = Table
+
+/// Analytics Hub contract table defender_shadow_ai_daily: devices, users and events per tool per day (Window 1d)
+/// and over 7 and 30 days, for the Ran (process) and Network layers.
+expression defender_shadow_ai_daily =
+		let
+		    Contract = {{"Day", "date"}, {"Window", "text"}, {"Layer", "text"}, {"Tool", "text"}, {"Devices", "int"}, {"Users", "int"}, {"Events", "int"}, {"LoadedAt", "datetime"}},
+		    Live = () =>
+		        let
+		            LoadedAt = DateTimeZone.RemoveZone(DateTimeZone.UtcNow()),
+		            Stats = "Devices = dcount(DeviceId), Users = dcountif(User, isnotempty(User)), Events = sum(Events)",
+		            // One query per layer: daily rows plus 7- and 30-day window rows, as Analytics Hub stores them.
+		            Windowed = (src as text) as text =>
+		                "let End = startofday(now()); let B = materialize(" & src & " | summarize Events = count() by Day = startofday(Timestamp), DeviceId, User, Tool);"
+		                & " union (B | summarize " & Stats & " by Day, Tool | extend Window = '1d'),"
+		                & " (B | where Day >= End - 7d | summarize " & Stats & " by Tool | extend Day = End - 1d, Window = '7d'),"
+		                & " (B | summarize " & Stats & " by Tool | extend Day = End - 1d, Window = '30d')"
+		                & " | project Day, Window, Tool, Devices, Users, Events",
+		            RanSource = "DeviceProcessEvents | where Timestamp > ago(30d) | where FileName in~ (" & FnWatchTerms("ProcessName") & ")"
+		                & " | extend Term = tolower(FileName) | extend Tool = " & FnWatchCase("ProcessName", "Term", "exact")
+		                & " | where isnotempty(Tool) | extend User = tostring(AccountUpn)",
+		            NetworkSource = "DeviceNetworkEvents | where Timestamp > ago(30d) | where isnotempty(RemoteUrl) | where RemoteUrl has_any (" & FnWatchTerms("Domain") & ")"
+		                & " | extend Host = tolower(tostring(split(replace_regex(RemoteUrl, @'^[a-zA-Z]+://', ''), '/')[0]))"
+		                & " | extend Host = trim_end(@'\.', tostring(split(Host, ':')[0])) | extend Tool = " & FnWatchCase("Domain", "Host", "domain")
+		                & " | where isnotempty(Tool) | extend User = tostring(InitiatingProcessAccountUpn)",
+		            Cols = {"Day", "Window", "Tool", "Devices", "Users", "Events"},
+		            Ran = Table.AddColumn(FnHunt(Windowed(RanSource), Cols), "Layer", each "Ran", type text),
+		            Network = Table.AddColumn(FnHunt(Windowed(NetworkSource), Cols), "Layer", each "Network", type text),
+		            Both = Table.Combine({Ran, Network}),
+		            Days = Table.TransformColumns(Both, {{"Day", each let d = FnToDateTime(_) in if d = null then null else DateTime.Date(d), type nullable date}}),
+		            Out = Table.AddColumn(Days, "LoadedAt", each LoadedAt, type datetime)
+		        in
+		            Out,
+		    Raw =
+		        if SourceMode = "AnalyticsHub" then Sql.Database(SqlServer, SqlDatabase){[Schema = "dbo", Item = "defender_shadow_ai_daily"]}[Data]
+		        else Live(),
+		    Shaped = FnContract(Raw, Contract)
+		in
+		    Shaped
+	lineageTag: 6fb537b1-b654-41f2-b3b7-c9c559e2722c
+
+	annotation PBI_ResultType = Table
+
+/// Analytics Hub contract table defender_ai_installed: devices with each watched tool installed (software inventory).
+expression defender_ai_installed =
+		let
+		    Contract = {{"SnapshotDate", "date"}, {"Tool", "text"}, {"Devices", "int"}, {"SoftwareNames", "text"}, {"LoadedAt", "datetime"}},
+		    Live = () =>
+		        let
+		            Today = DateTime.Date(DateTimeZone.RemoveZone(DateTimeZone.UtcNow())),
+		            LoadedAt = DateTimeZone.RemoveZone(DateTimeZone.UtcNow()),
+		            // Software names are matched on a PREFIX (see FnWatchPrefix), vendors on a contains, longest term first.
+		            Kql = "DeviceTvmSoftwareInventory | extend Name = tolower(SoftwareName), Vend = tolower(SoftwareVendor)"
+		                & " | where (" & FnWatchPrefix("SoftwareMatch", "Name") & ") or Vend has_any (" & FnWatchTerms("VendorMatch") & ")"
+		                & " | extend Tool = " & FnWatchCase("SoftwareMatch", "Name", "prefix")
+		                & " | extend Tool = iff(isempty(Tool), " & FnWatchCase("VendorMatch", "Vend", "contains") & ", Tool)"
+		                & " | where isnotempty(Tool) | summarize Devices = dcount(DeviceId), SoftwareNames = make_set(SoftwareName, 10) by Tool"
+		                & " | project Tool, Devices, SoftwareNames = strcat_array(SoftwareNames, '; ')",
+		            Rows = FnHunt(Kql, {"Tool", "Devices", "SoftwareNames"}),
+		            WithSnapshot = Table.AddColumn(Rows, "SnapshotDate", each Today, type date),
+		            Out = Table.AddColumn(WithSnapshot, "LoadedAt", each LoadedAt, type datetime)
+		        in
+		            Out,
+		    Raw =
+		        if SourceMode = "AnalyticsHub" then FnLatestSnapshot(Sql.Database(SqlServer, SqlDatabase){[Schema = "dbo", Item = "defender_ai_installed"]}[Data])
+		        else Live(),
+		    Shaped = FnContract(Raw, Contract)
+		in
+		    Shaped
+	lineageTag: ab5ce792-3d97-420e-bf02-6f15b161c36e
+
+	annotation PBI_ResultType = Table
+
+/// AI-Monitor's own per-device Shadow AI drill-down. Live only: Analytics Hub stores aggregates, so
+/// AnalyticsHub mode returns an empty table with this schema.
+expression defender_shadow_ai_device =
+		let
+		    Contract = {{"Layer", "text"}, {"DeviceName", "text"}, {"AppName", "text"}, {"Posture", "text"}, {"Detected", "text"}, {"Detail", "text"}, {"UserUpn", "text"}, {"LastSeen", "datetime"}},
+		    // Analytics Hub stores Shadow AI aggregates only, so the per-device drill-down is Live-only.
+		    Live = () =>
+		        let
+		            KqlInstalled = "DeviceTvmSoftwareInventory"
+		                & " | where (" & FnWatchPrefix("SoftwareMatch", "SoftwareName") & ")"
+		                & " or SoftwareVendor has_any (" & FnWatchTerms("VendorMatch") & ")"
+		                & " | project DeviceName, Detected = SoftwareName, Vendor = SoftwareVendor, Detail = SoftwareVersion"
+		                & " | take 5000",
+		            Installed = FnHunt(KqlInstalled, {"DeviceName", "Detected", "Vendor", "Detail"}),
+		            InstalledKept = List.Select(Table.ToRecords(Installed), each FnInstalledMatch([Detected], [Vendor]) <> null),
+		            InstalledRecs = List.Transform(InstalledKept, (r) =>
+		                       let
+		                           W = FnInstalledMatch(r[Detected], r[Vendor])
+		                       in
+		                           [ Layer = "Installed",
+		                             DeviceName = r[DeviceName],
+		                             AppName = W[AppName],
+		                             Posture = W[Posture],
+		                             Detected = r[Detected],
+		                             Detail = r[Detail],
+		                             UserUpn = null,
+		                             LastSeen = null ]),
+		            KqlRun = "DeviceProcessEvents"
+		                & " | where Timestamp > ago(30d)"
+		                & " | where FileName in~ (" & FnWatchTerms("ProcessName") & ")"
+		                & " | summarize LastSeen = max(Timestamp), Runs = count() by DeviceName, FileName, AccountUpn"
+		                & " | top 5000 by LastSeen desc",
+		            Run = FnHunt(KqlRun, {"DeviceName", "FileName", "AccountUpn", "LastSeen", "Runs"}),
+		            RunRecs = List.Transform(Table.ToRecords(Run), (r) =>
+		                       let
+		                           W = FnWatchMatch(r[FileName], "ProcessName")
+		                       in
+		                           [ Layer = "Executed",
+		                             DeviceName = r[DeviceName],
+		                             AppName = if W = null then r[FileName] else W[AppName],
+		                             Posture = if W = null then "Unsanctioned" else W[Posture],
+		                             Detected = r[FileName],
+		                             Detail = if r[Runs] = null then "" else Text.From(r[Runs]) & " runs",
+		                             UserUpn = r[AccountUpn],
+		                             LastSeen = FnToDateTime(r[LastSeen]) ]),
+		            Cols = {"Layer", "DeviceName", "AppName", "Posture", "Detected", "Detail", "UserUpn", "LastSeen"},
+		            Out = Table.Combine({FnRecordsToTable(InstalledRecs, Cols), FnRecordsToTable(RunRecs, Cols)})
+		        in
+		            Out,
+		    Raw =
+		        if SourceMode = "AnalyticsHub" then #table(List.Transform(Contract, each _{0}), {})
+		        else Live(),
+		    Shaped = FnContract(Raw, Contract)
+		in
+		    Shaped
+	lineageTag: 2a0ccd94-5b3f-4fe3-87fc-a8ad80caa263
+
+	annotation PBI_ResultType = Table
+
+/// One row per Copilot Studio and Agent Builder agent: arg_agent_config joined to AI-Monitor's arg_agent_detail on
+/// AgentResourceId. Without a detail row, AgentId falls back to BotId and the detail columns are null.
+expression AgentContract =
+		let
+		    Config = Table.RemoveColumns(arg_agent_config, {"SnapshotDate"}),
+		    Detail = Table.RenameColumns(Table.RemoveColumns(arg_agent_detail, {"SnapshotDate"}), {{"AgentId", "DetailAgentId"}, {"Region", "DetailRegion"}}),
+		    DetailCols = List.RemoveItems(Table.ColumnNames(Detail), {"AgentResourceId"}),
+		    Joined = Table.NestedJoin(Config, {"AgentResourceId"}, Detail, {"AgentResourceId"}, "d", JoinKind.LeftOuter),
+		    Expanded = Table.ExpandTableColumn(Joined, "d", DetailCols, DetailCols),
+		    WithAgentId = Table.AddColumn(Expanded, "AgentId", each if [DetailAgentId] <> null and [DetailAgentId] <> "" then [DetailAgentId] else [BotId], type text),
+		    WithKey = Table.AddColumn(WithAgentId, "AgentKey", each (if [EnvironmentId] = null then "" else [EnvironmentId]) & "|" & (if [AgentId] = null then "" else [AgentId]), type text)
+		in
+		    WithKey
+	lineageTag: 993f055a-785a-4af5-b5b1-50b80fb12a0d
+
+	annotation PBI_ResultType = Table

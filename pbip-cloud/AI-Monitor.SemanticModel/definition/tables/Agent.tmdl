@@ -1,4 +1,5 @@
-/// Every Copilot Studio and Microsoft 365 Copilot Agent Builder agent in the tenant, sourced from the Power Platform inventory exposed through Azure Resource Graph.
+/// Every Copilot Studio and Microsoft 365 Copilot Agent Builder agent in the tenant, plus one row per Azure AI Foundry project.
+/// Built from the Analytics Hub contract tables arg_agent_config, arg_agent_detail, arg_environments and arg_foundry_resources (see SourceMode).
 table Agent
 	lineageTag: ff515e8d-e8be-468b-832f-25e8165ab140
 
@@ -456,6 +457,15 @@ table Agent
 		summarizeBy: none
 		sourceColumn: QuarantinedAt
 
+	/// True when the agent's platform records use (not Agent Builder or Azure AI Foundry) and a last-used source is loaded.
+	/// Only these agents are judged "never used" by the risk score and the never-used measures.
+	column HasUsageSignal
+		dataType: boolean
+		isHidden
+		lineageTag: c03e15ea-16f5-417f-988f-ea9dd319bdd9
+		summarizeBy: none
+		sourceColumn: HasUsageSignal
+
 	/// Whether the agent carries any instruction text at all.
 	column HasInstructions = 'Agent'[InstructionsCharCount] > 0
 		dataType: boolean
@@ -511,36 +521,34 @@ table Agent
 		mode: import
 		source =
 				let
-				    RawAgents = FnArg("PowerPlatformResources | where type =~ 'microsoft.copilotstudio/agents' | extend p = properties | extend cc = p.componentsCounts, cap = p.capabilitiesCounts, sv = p.sharedWithViewers, se = p.sharedWithEditors | extend kbt = cc.knowledgeByType | project AgentKey = strcat(tostring(p.environmentId), '|', tostring(name)), AgentId = tostring(name), AgentName = tostring(p.displayName), AuthoringSurface = tostring(p.createdIn), EnvironmentId = tostring(p.environmentId), Region = tostring(location), SchemaName = tostring(p.schemaName), Orchestration = tostring(p.orchestration), Model = tostring(p.model), Authentication = tostring(p.authentication), CreatedAt = tostring(p.createdAt), LastPublishedAt = tostring(p.lastPublishedAt), IsQuarantined = tobool(p.isQuarantined), IsManaged = tobool(p.isManaged), IsGithubCopilotAgent = tobool(p.isGithubCopilotAgent), IsCLIAgent = tobool(p.isCLIAgent), WebSearchEnabled = tobool(p.isWebSearchEnabledForKnowledge), Channels = strcat_array(p.channels, '; '), ChannelCount = coalesce(array_length(p.channels), 0), TopicCount = toint(cc.topics), ToolCount = toint(cc.tools), KnowledgeCount = toint(cc.knowledge), ConnectedAgentCount = toint(cc.connectedAgents), ConnectorCount = toint(cap.distinctPowerPlatformConnectors), ConnectorOpsCount = toint(cap.distinctPowerPlatformConnectorsOperations), FlowCount = toint(cap.distinctFlows), SharedUserCount = toint(sv.userCount), SharedGroupCount = toint(sv.groupCount), SharedTenantWide = tobool(sv.entireTenant), EditorUserCount = toint(se.userCount), OwnerId = tostring(p.ownerId), CreatedBy = tostring(p.createdBy), EntraAppId = tostring(p.entraAppId), TitleId = tostring(p.titleId), QuarantinedAt = tostring(p.quarantinedAt), EntraAgentId = tostring(p.entraAgentId), EntraAgentBlueprintId = tostring(p.entraAgentBlueprintId), Harness = tostring(p.harness), InstructionsCharCount = coalesce(toint(p.instructionsCharactersCount), 0), GraphConnectorCount = coalesce(toint(kbt.graphConnectors), 0), SharePointSiteCount = coalesce(toint(kbt.sharepointSites), 0), PublicSiteCount = coalesce(toint(kbt.publicSites), 0), FileKnowledgeCount = coalesce(toint(kbt.files), 0), DataverseSourceCount = coalesce(toint(kbt.dataverseSources), 0), KnowledgeTypes = strcat_array(bag_keys(kbt), '; ') | order by AgentKey asc"),
-				    RawUsage = FnArg("PowerPlatformResources | where type =~ 'microsoft.powerplatformusage/usagerecords' | where isnotnull(properties) | project ResourceKey = tostring(properties.resourceId), LastUsedRaw = tostring(properties.lastUsed) | where isnotempty(ResourceKey) and isnotempty(LastUsedRaw) | summarize LastUsedRaw = max(LastUsedRaw) by ResourceKey | order by ResourceKey asc"),
-				    RawEnvs = FnArg("PowerPlatformResources | where type =~ 'microsoft.powerplatform/environments' | extend p = properties | project EnvironmentId = tostring(name), EnvironmentName = tostring(p.displayName), Region = tostring(location), EnvironmentType = tostring(p.environmentType), IsManaged = tobool(p.isManaged), EnvironmentGroupId = tostring(p.environmentGroupId), CreatedAt = tostring(p.createdAt), LastModifiedAt = tostring(p.lastModifiedAt), CreatedBy = tostring(p.createdBy) | order by EnvironmentId asc"),
-				    tAgents = FnRecordsToTable(RawAgents, {"AgentKey", "AgentId", "AgentName", "AuthoringSurface", "EnvironmentId", "Region", "SchemaName", "Orchestration", "Model", "Authentication", "CreatedAt", "LastPublishedAt", "IsQuarantined", "IsManaged", "IsGithubCopilotAgent", "IsCLIAgent", "WebSearchEnabled", "Channels", "ChannelCount", "TopicCount", "ToolCount", "KnowledgeCount", "ConnectedAgentCount", "ConnectorCount", "ConnectorOpsCount", "FlowCount", "SharedUserCount", "SharedGroupCount", "SharedTenantWide", "EditorUserCount", "OwnerId", "CreatedBy", "EntraAppId", "TitleId", "QuarantinedAt", "EntraAgentId", "EntraAgentBlueprintId", "Harness", "InstructionsCharCount", "GraphConnectorCount", "SharePointSiteCount", "PublicSiteCount", "FileKnowledgeCount", "DataverseSourceCount", "KnowledgeTypes"}),
-				    tUsage = FnRecordsToTable(RawUsage, {"ResourceKey", "LastUsedRaw"}),
-				    tEnvs = FnRecordsToTable(RawEnvs, {"EnvironmentId", "EnvironmentName", "EnvironmentType"}),
-				    JoinUsage = Table.NestedJoin(tAgents, {"AgentId"}, tUsage, {"ResourceKey"}, "u", JoinKind.LeftOuter),
-				    ExpUsage = Table.ExpandTableColumn(JoinUsage, "u", {"LastUsedRaw"}, {"LastUsedRaw"}),
-				    JoinEnv = Table.NestedJoin(ExpUsage, {"EnvironmentId"}, tEnvs, {"EnvironmentId"}, "e", JoinKind.LeftOuter),
-				    ExpEnv = Table.ExpandTableColumn(JoinEnv, "e", {"EnvironmentName", "EnvironmentType"}, {"EnvironmentName", "EnvironmentType"}),
-				    FillEnv = Table.ReplaceValue(ExpEnv, each [EnvironmentName], each if [EnvironmentName] = null or [EnvironmentName] = "" then "Unlisted: " & [EnvironmentId] else [EnvironmentName], Replacer.ReplaceValue, {"EnvironmentName"}),
+				    Agents = AgentContract,
+				    // Analytics Hub has no last-used signal until arg_agent_detail lands, so "never used" is judged only when some agent has one.
+				    UsageAvailable = List.NonNullCount(Table.Column(Agents, "LastUsedAt")) > 0,
+				    Renamed = Table.RenameColumns(Agents, {{"CreatedIn", "AuthoringSurface"}, {"SharedUsers", "SharedUserCount"}, {"SharedGroups", "SharedGroupCount"}, {"SharedEntireTenant", "SharedTenantWide"}, {"LastUsedAt", "LastUsed"}}),
+				    WithChannels = Table.AddColumn(Renamed, "ChannelCount", each if [Channels] = null then 0 else List.Count(List.Select(List.Transform(Text.Split([Channels], ";"), Text.Trim), each _ <> "")), Int64.Type),
+				    Envs = Table.RenameColumns(Table.SelectColumns(arg_environments, {"EnvironmentId", "EnvironmentName", "EnvironmentType", "Region"}), {{"Region", "EnvRegion"}}),
+				    JoinEnv = Table.NestedJoin(WithChannels, {"EnvironmentId"}, Envs, {"EnvironmentId"}, "e", JoinKind.LeftOuter),
+				    ExpEnv = Table.ExpandTableColumn(JoinEnv, "e", {"EnvironmentName", "EnvironmentType", "EnvRegion"}, {"EnvironmentName", "EnvironmentType", "EnvRegion"}),
+				    WithRegion = Table.AddColumn(ExpEnv, "Region", each if [DetailRegion] <> null and [DetailRegion] <> "" then [DetailRegion] else [EnvRegion], type text),
+				    FillEnv = Table.ReplaceValue(WithRegion, each [EnvironmentName], each if [EnvironmentName] = null or [EnvironmentName] = "" then "Unlisted: " & [EnvironmentId] else [EnvironmentName], Replacer.ReplaceValue, {"EnvironmentName"}),
 				    FillEnvType = Table.ReplaceValue(FillEnv, each [EnvironmentType], each if [EnvironmentType] = null or [EnvironmentType] = "" then "Unknown" else [EnvironmentType], Replacer.ReplaceValue, {"EnvironmentType"}),
 				    FillModel = Table.ReplaceValue(FillEnvType, each [Model], each if [Model] = null or [Model] = "" then "Not specified" else [Model], Replacer.ReplaceValue, {"Model"}),
-				    Converted = Table.TransformColumns(FillModel, {{"CreatedAt", FnToDateTime, type datetime}, {"LastPublishedAt", FnToDateTime, type datetime}, {"LastUsedRaw", FnToDateTime, type datetime}, {"QuarantinedAt", FnToDateTime, type datetime}}),
-				    Bools = Table.TransformColumns(Converted, {{"IsQuarantined", FnToLogical, type logical}, {"IsManaged", FnToLogical, type logical}, {"IsGithubCopilotAgent", FnToLogical, type logical}, {"IsCLIAgent", FnToLogical, type logical}, {"WebSearchEnabled", FnToLogical, type logical}, {"SharedTenantWide", FnToLogical, type logical}}),
-				    Renamed = Table.RenameColumns(Bools, {{"LastUsedRaw", "LastUsed"}}),
-				    Typed = Table.TransformColumnTypes(Renamed, {{"EnvironmentName", type text}, {"EnvironmentType", type text}}),
-				    RawFoundry = FnArg("resources | where type startswith 'microsoft.cognitiveservices' or type startswith 'microsoft.machinelearningservices' | where (type endswith 'accounts/projects') or (tostring(kind) == 'Project') | extend p = properties | project AgentKey = tostring(id), AgentId = tostring(id), AgentName = tostring(split(name, '/')[-1]), EnvironmentId = tostring(subscriptionId), EnvironmentName = iff(name has '/', tostring(split(name, '/')[0]), tostring(name)), Region = tostring(location), CreatedAt = tostring(p.createdAtDate) | order by AgentKey asc"),
-				    FoundryRecords = List.Transform(RawFoundry, each [
-				        AgentKey = Record.FieldOrDefault(_, "AgentKey", null),
-				        AgentId = Record.FieldOrDefault(_, "AgentId", null),
-				        AgentName = Record.FieldOrDefault(_, "AgentName", null),
+				    Converted = Table.TransformColumns(FillModel, {{"LastPublishedAt", FnToDateTime, type datetime}}),
+				    Typed = Table.TransformColumnTypes(Converted, {{"EnvironmentName", type text}, {"EnvironmentType", type text}}),
+				    // Foundry projects are the agent hosts: one pseudo-agent row per project, keyed on its resource id.
+				    Foundry = Table.SelectRows(arg_foundry_resources, each [IsProject] = true or [Kind] = "Project"),
+				    FoundryRecords = List.Transform(Table.ToRecords(Foundry), each [
+				        AgentKey = [ResourceId],
+				        AgentId = [ResourceId],
+				        AgentName = [ResourceName],
 				        AuthoringSurface = "Azure AI Foundry",
-				        EnvironmentId = Record.FieldOrDefault(_, "EnvironmentId", null),
-				        Region = Record.FieldOrDefault(_, "Region", null),
+				        EnvironmentId = [SubscriptionId],
+				        Region = [Location],
 				        SchemaName = null,
 				        Orchestration = "Generative",
 				        Model = "See deployments",
 				        Authentication = "Microsoft Entra",
-				        CreatedAt = FnToDateTime(Record.FieldOrDefault(_, "CreatedAt", null)),
+				        CreatedAt = null,
 				        LastPublishedAt = null,
 				        IsQuarantined = false,
 				        IsManaged = true,
@@ -576,7 +584,7 @@ table Agent
 				        DataverseSourceCount = 0,
 				        KnowledgeTypes = null,
 				        LastUsed = null,
-				        EnvironmentName = Record.FieldOrDefault(_, "EnvironmentName", null),
+				        EnvironmentName = if [ResourceId] <> null and Text.Contains([ResourceId], "/projects/") and [AccountId] <> null then List.Last(Text.Split([AccountId], "/")) else [ResourceName],
 				        EnvironmentType = "Azure subscription"
 				    ]),
 				    tFoundry = FnRecordsToTable(FoundryRecords, {"AgentKey", "AgentId", "AgentName", "AuthoringSurface", "EnvironmentId", "Region", "SchemaName", "Orchestration", "Model", "Authentication", "CreatedAt", "LastPublishedAt", "IsQuarantined", "IsManaged", "IsGithubCopilotAgent", "IsCLIAgent", "WebSearchEnabled", "Channels", "ChannelCount", "TopicCount", "ToolCount", "KnowledgeCount", "ConnectedAgentCount", "ConnectorCount", "ConnectorOpsCount", "FlowCount", "SharedUserCount", "SharedGroupCount", "SharedTenantWide", "EditorUserCount", "OwnerId", "CreatedBy", "EntraAppId", "TitleId", "QuarantinedAt", "EntraAgentId", "EntraAgentBlueprintId", "Harness", "InstructionsCharCount", "GraphConnectorCount", "SharePointSiteCount", "PublicSiteCount", "FileKnowledgeCount", "DataverseSourceCount", "KnowledgeTypes", "LastUsed", "EnvironmentName", "EnvironmentType"}),
@@ -587,7 +595,9 @@ table Agent
 				        if [AuthoringSurface] = "Copilot Studio Lite" then "M365 Copilot Agent Builder"
 				        else if [AuthoringSurface] = null or [AuthoringSurface] = "" then "Copilot Studio"
 				        else [AuthoringSurface], type text),
-				    WithPub = Table.AddColumn(WithPlatform, "IsPublished", each [LastPublishedAt] <> null, type logical),
+				    // Agent Builder and Foundry record no use in Resource Graph, so they are never judged "never used".
+				    WithSignal = Table.AddColumn(WithPlatform, "HasUsageSignal", each not List.Contains({"M365 Copilot Agent Builder", "Azure AI Foundry"}, [Platform]) and UsageAvailable, type logical),
+				    WithPub = Table.AddColumn(WithSignal, "IsPublished", each [LastPublishedAt] <> null, type logical),
 				    WithDays = Table.AddColumn(WithPub, "DaysSinceLastUse", each if [LastUsed] = null then null else Duration.Days(Today - [LastUsed]), Int64.Type),
 				    WithAge = Table.AddColumn(WithDays, "AgeDays", each if [CreatedAt] = null then null else Duration.Days(Today - [CreatedAt]), Int64.Type),
 				    WithMonth = Table.AddColumn(WithAge, "CreatedMonth", each if [CreatedAt] = null then null else Date.ToText(DateTime.Date([CreatedAt]), "yyyy-MM"), type text),
@@ -601,7 +611,7 @@ table Agent
 				        (if [Authentication] = null or [Authentication] = "" or [Authentication] = "None" or [Authentication] = "No authentication" then "No authentication configured (+3)" else null),
 				        (if [IsQuarantined] = true then "Agent is quarantined (+3)" else null),
 				        (if [SharedTenantWide] = true then "Shared with the entire tenant (+2)" else null),
-				        (if [SharedTenantWide] = true and [LastUsed] = null then "Shared tenant-wide and never used (+1)" else null),
+				        (if [SharedTenantWide] = true and [LastUsed] = null and [HasUsageSignal] = true then "Shared tenant-wide and never used (+1)" else null),
 				        (if [WebSearchEnabled] = true then "Web search enabled on knowledge (+1)" else null),
 				        (if [ConnectorCount] <> null and [ConnectorCount] > 0 then "Uses one or more connectors (+1)" else null),
 				        (if [ConnectedAgentCount] <> null and [ConnectedAgentCount] > 0 then "Connected to other agents (+1)" else null)
@@ -615,10 +625,10 @@ table Agent
 				        + (if [WebSearchEnabled] = true then 1 else 0)
 				        + (if [ConnectorCount] <> null and [ConnectorCount] > 0 then 1 else 0)
 				        + (if [ConnectedAgentCount] <> null and [ConnectedAgentCount] > 0 then 1 else 0)
-				        + (if [SharedTenantWide] = true and [LastUsed] = null then 1 else 0), Int64.Type),
+				        + (if [SharedTenantWide] = true and [LastUsed] = null and [HasUsageSignal] = true then 1 else 0), Int64.Type),
 				    WithBand = Table.AddColumn(WithRisk, "RiskBand", each if [RiskScore] >= 5 then "High" else if [RiskScore] >= 3 then "Medium" else "Low", type text),
-				    Ordered = Table.SelectColumns(WithBand, {"AgentKey", "AgentId", "AgentName", "Platform", "AuthoringSurface", "EnvironmentId", "EnvironmentName", "EnvironmentType", "Region", "SchemaName", "Orchestration", "Model", "Authentication", "CreatedAt", "LastPublishedAt", "LastUsed", "IsPublished", "IsQuarantined", "IsManaged", "IsGithubCopilotAgent", "IsCLIAgent", "WebSearchEnabled", "Channels", "ChannelCount", "TopicCount", "ToolCount", "KnowledgeCount", "ConnectedAgentCount", "ConnectorCount", "ConnectorOpsCount", "FlowCount", "SharedUserCount", "SharedGroupCount", "SharedTenantWide", "EditorUserCount", "OwnerId", "CreatedBy", "EntraAppId", "TitleId", "QuarantinedAt", "EntraAgentId", "EntraAgentBlueprintId", "Harness", "KnowledgeTypes", "InstructionsCharCount", "GraphConnectorCount", "SharePointSiteCount", "PublicSiteCount", "FileKnowledgeCount", "DataverseSourceCount", "DaysSinceLastUse", "AgeDays", "CreatedMonth", "ActivityStatus", "RiskScore", "RiskBand", "RiskFactorCount", "RiskReasons"}, MissingField.UseNull),
-				    Retyped = Table.TransformColumnTypes(Ordered, {{"AgentKey", type text}, {"AgentId", type text}, {"AgentName", type text}, {"Platform", type text}, {"AuthoringSurface", type text}, {"EnvironmentId", type text}, {"EnvironmentName", type text}, {"EnvironmentType", type text}, {"Region", type text}, {"SchemaName", type text}, {"Orchestration", type text}, {"Model", type text}, {"Authentication", type text}, {"CreatedAt", type datetime}, {"LastPublishedAt", type datetime}, {"LastUsed", type datetime}, {"IsPublished", type logical}, {"IsQuarantined", type logical}, {"IsManaged", type logical}, {"IsGithubCopilotAgent", type logical}, {"IsCLIAgent", type logical}, {"WebSearchEnabled", type logical}, {"Channels", type text}, {"ChannelCount", Int64.Type}, {"TopicCount", Int64.Type}, {"ToolCount", Int64.Type}, {"KnowledgeCount", Int64.Type}, {"ConnectedAgentCount", Int64.Type}, {"ConnectorCount", Int64.Type}, {"ConnectorOpsCount", Int64.Type}, {"FlowCount", Int64.Type}, {"SharedUserCount", Int64.Type}, {"SharedGroupCount", Int64.Type}, {"SharedTenantWide", type logical}, {"EditorUserCount", Int64.Type}, {"OwnerId", type text}, {"CreatedBy", type text}, {"EntraAppId", type text}, {"TitleId", type text}, {"QuarantinedAt", type datetime}, {"EntraAgentId", type text}, {"EntraAgentBlueprintId", type text}, {"Harness", type text}, {"KnowledgeTypes", type text}, {"InstructionsCharCount", Int64.Type}, {"GraphConnectorCount", Int64.Type}, {"SharePointSiteCount", Int64.Type}, {"PublicSiteCount", Int64.Type}, {"FileKnowledgeCount", Int64.Type}, {"DataverseSourceCount", Int64.Type}, {"DaysSinceLastUse", Int64.Type}, {"AgeDays", Int64.Type}, {"CreatedMonth", type text}, {"ActivityStatus", type text}, {"RiskScore", Int64.Type}, {"RiskBand", type text}, {"RiskFactorCount", Int64.Type}, {"RiskReasons", type text}}),
+				    Ordered = Table.SelectColumns(WithBand, {"AgentKey", "AgentId", "AgentName", "Platform", "AuthoringSurface", "EnvironmentId", "EnvironmentName", "EnvironmentType", "Region", "SchemaName", "Orchestration", "Model", "Authentication", "CreatedAt", "LastPublishedAt", "LastUsed", "IsPublished", "IsQuarantined", "IsManaged", "IsGithubCopilotAgent", "IsCLIAgent", "WebSearchEnabled", "Channels", "ChannelCount", "TopicCount", "ToolCount", "KnowledgeCount", "ConnectedAgentCount", "ConnectorCount", "ConnectorOpsCount", "FlowCount", "SharedUserCount", "SharedGroupCount", "SharedTenantWide", "EditorUserCount", "OwnerId", "CreatedBy", "EntraAppId", "TitleId", "QuarantinedAt", "EntraAgentId", "EntraAgentBlueprintId", "Harness", "KnowledgeTypes", "InstructionsCharCount", "GraphConnectorCount", "SharePointSiteCount", "PublicSiteCount", "FileKnowledgeCount", "DataverseSourceCount", "DaysSinceLastUse", "AgeDays", "CreatedMonth", "ActivityStatus", "RiskScore", "RiskBand", "RiskFactorCount", "RiskReasons", "HasUsageSignal"}, MissingField.UseNull),
+				    Retyped = Table.TransformColumnTypes(Ordered, {{"AgentKey", type text}, {"AgentId", type text}, {"AgentName", type text}, {"Platform", type text}, {"AuthoringSurface", type text}, {"EnvironmentId", type text}, {"EnvironmentName", type text}, {"EnvironmentType", type text}, {"Region", type text}, {"SchemaName", type text}, {"Orchestration", type text}, {"Model", type text}, {"Authentication", type text}, {"CreatedAt", type datetime}, {"LastPublishedAt", type datetime}, {"LastUsed", type datetime}, {"IsPublished", type logical}, {"IsQuarantined", type logical}, {"IsManaged", type logical}, {"IsGithubCopilotAgent", type logical}, {"IsCLIAgent", type logical}, {"WebSearchEnabled", type logical}, {"Channels", type text}, {"ChannelCount", Int64.Type}, {"TopicCount", Int64.Type}, {"ToolCount", Int64.Type}, {"KnowledgeCount", Int64.Type}, {"ConnectedAgentCount", Int64.Type}, {"ConnectorCount", Int64.Type}, {"ConnectorOpsCount", Int64.Type}, {"FlowCount", Int64.Type}, {"SharedUserCount", Int64.Type}, {"SharedGroupCount", Int64.Type}, {"SharedTenantWide", type logical}, {"EditorUserCount", Int64.Type}, {"OwnerId", type text}, {"CreatedBy", type text}, {"EntraAppId", type text}, {"TitleId", type text}, {"QuarantinedAt", type datetime}, {"EntraAgentId", type text}, {"EntraAgentBlueprintId", type text}, {"Harness", type text}, {"KnowledgeTypes", type text}, {"InstructionsCharCount", Int64.Type}, {"GraphConnectorCount", Int64.Type}, {"SharePointSiteCount", Int64.Type}, {"PublicSiteCount", Int64.Type}, {"FileKnowledgeCount", Int64.Type}, {"DataverseSourceCount", Int64.Type}, {"DaysSinceLastUse", Int64.Type}, {"AgeDays", Int64.Type}, {"CreatedMonth", type text}, {"ActivityStatus", type text}, {"RiskScore", Int64.Type}, {"RiskBand", type text}, {"RiskFactorCount", Int64.Type}, {"RiskReasons", type text}, {"HasUsageSignal", type logical}}),
 				    WithCreatedDate = Table.AddColumn(Retyped, "CreatedDate", each if [CreatedAt] = null then null else DateTime.Date([CreatedAt]), type date),
 				    WithLastUsedDate = Table.AddColumn(WithCreatedDate, "LastUsedDate", each if [LastUsed] = null then null else DateTime.Date([LastUsed]), type date)
 				in

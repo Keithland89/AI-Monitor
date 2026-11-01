@@ -59,11 +59,40 @@ table RiskDetail
 		mode: import
 		source =
 				let
-				    Source = Csv.Document(File.Contents(DataFolder & "\FactRiskFactor.csv"), [Delimiter = ",", Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
-				    Headers = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
-				    Kept = Table.SelectColumns(Headers, {"AgentKey", "AgentName", "EnvironmentName", "Platform", "RiskFactor", "Points", "RiskScore", "RiskBand"}, MissingField.UseNull),
-				    Converted = Table.TransformColumns(Kept, {{"Points", FnToInt, Int64.Type}, {"RiskScore", FnToInt, Int64.Type}}),
-				    Typed = Table.TransformColumnTypes(Converted, {{"AgentKey", type text}, {"AgentName", type text}, {"EnvironmentName", type text}, {"Platform", type text}, {"RiskFactor", type text}, {"RiskBand", type text}})
+				    Src = Table.SelectColumns(Agent, {"AgentKey", "AgentName", "EnvironmentName", "Platform", "Authentication",
+				                                      "IsQuarantined", "SharedTenantWide", "WebSearchEnabled", "ConnectorCount",
+				                                      "ConnectedAgentCount", "LastUsed", "HasUsageSignal"}, MissingField.UseNull),
+				    Factors = Table.AddColumn(Src, "f", each
+				        let
+				            // Matches PowerShell's -in semantics exactly: Azure Resource Graph omits
+				            // null-valued fields, and neither -in nor List.Contains matches a null,
+				            // so an absent authentication property deliberately does not fire.
+				            noAuth  = List.Contains({"None", "No authentication", ""}, [Authentication]),
+				            quar    = FnToLogical([IsQuarantined]) = true,
+				            tenant  = FnToLogical([SharedTenantWide]) = true,
+				            // Only judged where the platform records use and a last-used source is loaded (Agent[HasUsageSignal]).
+				            unused  = [LastUsed] = null and [HasUsageSignal] = true,
+				            web     = FnToLogical([WebSearchEnabled]) = true,
+				            conn    = [ConnectorCount] <> null and [ConnectorCount] > 0,
+				            linked  = [ConnectedAgentCount] <> null and [ConnectedAgentCount] > 0
+				        in
+				            List.Combine({
+				                if noAuth then {[RiskFactor = "No authentication configured", Points = 3]} else {},
+				                if quar   then {[RiskFactor = "Agent is quarantined", Points = 3]} else {},
+				                if tenant then {[RiskFactor = "Shared with the entire tenant", Points = 2]} else {},
+				                if tenant and unused then {[RiskFactor = "Shared tenant-wide and never used", Points = 1]} else {},
+				                if web    then {[RiskFactor = "Web search enabled on knowledge", Points = 1]} else {},
+				                if conn   then {[RiskFactor = "Uses one or more connectors", Points = 1]} else {},
+				                if linked then {[RiskFactor = "Connected to other agents", Points = 1]} else {}})),
+				    Scored = Table.AddColumn(Factors, "RiskScore", each
+				        let s = List.Sum(List.Transform([f], each _[Points])) in if s = null then 0 else s, Int64.Type),
+				    Banded = Table.AddColumn(Scored, "RiskBand", each if [RiskScore] >= 5 then "High" else if [RiskScore] >= 3 then "Medium" else "Low", type text),
+				    Fired  = Table.SelectRows(Banded, each List.Count([f]) > 0),
+				    Expand = Table.ExpandListColumn(Fired, "f"),
+				    Flat   = Table.ExpandRecordColumn(Expand, "f", {"RiskFactor", "Points"}, {"RiskFactor", "Points"}),
+				    Kept   = Table.SelectColumns(Flat, {"AgentKey", "AgentName", "EnvironmentName", "Platform", "RiskFactor", "Points", "RiskScore", "RiskBand"}, MissingField.UseNull),
+				    Typed  = Table.TransformColumnTypes(Kept, {{"AgentKey", type text}, {"AgentName", type text}, {"EnvironmentName", type text},
+				                                              {"Platform", type text}, {"RiskFactor", type text}, {"Points", Int64.Type}})
 				in
 				    Typed
 

@@ -1,0 +1,166 @@
+{
+  "description": "Analytics Hub table contract that AI-Monitor reads. Column names, order and SQL types are copied from the Analytics Hub migrations listed in sources; aiMonitorTables are AI-Monitor-owned tables in the same style that Analytics Hub does not land yet.",
+  "repository": "microsoft/AnalyticsHub-Dashboard",
+  "sources": {
+    "azure/sql/migrations/V004__resource_graph.sql": [
+      "arg_agent_config",
+      "arg_environments",
+      "arg_agent_flows",
+      "arg_foundry_resources",
+      "arg_status"
+    ],
+    "azure/sql/migrations/V003__defender.sql": [
+      "defender_ai_watchlist",
+      "defender_shadow_ai_daily",
+      "defender_ai_installed"
+    ]
+  },
+  "tables": {
+    "arg_agent_config": [
+      ["SnapshotDate", "DATE"],
+      ["AgentResourceId", "NVARCHAR(4000)"],
+      ["BotId", "NVARCHAR(4000)"],
+      ["AgentName", "NVARCHAR(4000)"],
+      ["EntraAgentId", "NVARCHAR(4000)"],
+      ["EntraAppId", "NVARCHAR(4000)"],
+      ["TitleId", "NVARCHAR(4000)"],
+      ["MatchedOn", "NVARCHAR(4000)"],
+      ["EnvironmentId", "NVARCHAR(4000)"],
+      ["Authentication", "NVARCHAR(4000)"],
+      ["NoSignIn", "BIT"],
+      ["IsQuarantined", "BIT"],
+      ["IsManaged", "BIT"],
+      ["WebSearchEnabled", "BIT"],
+      ["ConnectorCount", "BIGINT"],
+      ["McpConnectorCount", "BIGINT"],
+      ["KnowledgeConnectorCount", "BIGINT"],
+      ["ConnectedAgentCount", "BIGINT"],
+      ["Connectors", "NVARCHAR(4000)"],
+      ["SharedUsers", "BIGINT"],
+      ["SharedGroups", "BIGINT"],
+      ["SharedEntireTenant", "BIT"],
+      ["Orchestration", "NVARCHAR(4000)"],
+      ["Model", "NVARCHAR(4000)"],
+      ["Channels", "NVARCHAR(4000)"],
+      ["OwnerId", "NVARCHAR(4000)"],
+      ["CreatedIn", "NVARCHAR(4000)"],
+      ["LastPublishedAt", "NVARCHAR(4000)"],
+      ["Source", "NVARCHAR(4000)"]
+    ],
+    "arg_environments": [
+      ["SnapshotDate", "DATE"],
+      ["EnvironmentId", "NVARCHAR(4000)"],
+      ["EnvironmentName", "NVARCHAR(4000)"],
+      ["EnvironmentType", "NVARCHAR(4000)"],
+      ["IsDefault", "BIT"],
+      ["IsManaged", "BIT"],
+      ["Region", "NVARCHAR(4000)"],
+      ["Source", "NVARCHAR(4000)"]
+    ],
+    "arg_agent_flows": [
+      ["SnapshotDate", "DATE"],
+      ["FlowId", "NVARCHAR(4000)"],
+      ["FlowName", "NVARCHAR(4000)"],
+      ["EnvironmentId", "NVARCHAR(4000)"],
+      ["OwnerId", "NVARCHAR(4000)"],
+      ["ConnectorCount", "BIGINT"],
+      ["Trigger", "NVARCHAR(4000)"],
+      ["CreatedAt", "NVARCHAR(4000)"],
+      ["LastModifiedAt", "NVARCHAR(4000)"],
+      ["Source", "NVARCHAR(4000)"]
+    ],
+    "arg_foundry_resources": [
+      ["SnapshotDate", "DATE"],
+      ["ResourceId", "NVARCHAR(4000)"],
+      ["ResourceName", "NVARCHAR(4000)"],
+      ["ResourceType", "NVARCHAR(4000)"],
+      ["Kind", "NVARCHAR(4000)"],
+      ["Location", "NVARCHAR(4000)"],
+      ["SubscriptionId", "NVARCHAR(4000)"],
+      ["ResourceGroup", "NVARCHAR(4000)"],
+      ["Sku", "NVARCHAR(4000)"],
+      ["PublicNetworkAccess", "NVARCHAR(4000)"],
+      ["PublicNetwork", "BIT"],
+      ["DisableLocalAuth", "BIT"],
+      ["IsProject", "BIT"],
+      ["AccountId", "NVARCHAR(4000)"]
+    ],
+    "arg_status": [
+      ["SnapshotDate", "DATE"],
+      ["Probe", "NVARCHAR(4000)"],
+      ["Status", "NVARCHAR(4000)"],
+      ["Rows", "BIGINT"],
+      ["Source", "NVARCHAR(4000)"],
+      ["Detail", "NVARCHAR(4000)"]
+    ],
+    "defender_ai_watchlist": [
+      ["Tool", "NVARCHAR(4000)"],
+      ["Category", "NVARCHAR(4000)"],
+      ["Vendor", "NVARCHAR(4000)"],
+      ["Posture", "NVARCHAR(4000)"],
+      ["ProcessNames", "NVARCHAR(4000)"],
+      ["Domains", "NVARCHAR(4000)"],
+      ["InstallPrefixes", "NVARCHAR(4000)"]
+    ],
+    "defender_shadow_ai_daily": [
+      ["Day", "DATE"],
+      ["Window", "NVARCHAR(4000)"],
+      ["Layer", "NVARCHAR(4000)"],
+      ["Tool", "NVARCHAR(4000)"],
+      ["Devices", "BIGINT"],
+      ["Users", "BIGINT"],
+      ["Events", "BIGINT"],
+      ["LoadedAt", "DATETIME2(6)"]
+    ],
+    "defender_ai_installed": [
+      ["SnapshotDate", "DATE"],
+      ["Tool", "NVARCHAR(4000)"],
+      ["Devices", "BIGINT"],
+      ["SoftwareNames", "NVARCHAR(4000)"],
+      ["LoadedAt", "DATETIME2(6)"]
+    ]
+  },
+  "aiMonitorTables": {
+    "arg_agent_detail": [
+      ["SnapshotDate", "DATE"],
+      ["AgentResourceId", "NVARCHAR(4000)"],
+      ["AgentId", "NVARCHAR(4000)"],
+      ["SchemaName", "NVARCHAR(4000)"],
+      ["CreatedAt", "DATETIME2(6)"],
+      ["CreatedBy", "NVARCHAR(4000)"],
+      ["QuarantinedAt", "DATETIME2(6)"],
+      ["LastUsedAt", "DATETIME2(6)"],
+      ["TopicCount", "BIGINT"],
+      ["ToolCount", "BIGINT"],
+      ["KnowledgeCount", "BIGINT"],
+      ["ConnectorOpsCount", "BIGINT"],
+      ["FlowCount", "BIGINT"],
+      ["EditorUserCount", "BIGINT"],
+      ["IsGithubCopilotAgent", "BIT"],
+      ["IsCLIAgent", "BIT"],
+      ["EntraAgentBlueprintId", "NVARCHAR(4000)"],
+      ["Harness", "NVARCHAR(4000)"],
+      ["InstructionsCharCount", "BIGINT"],
+      ["GraphConnectorCount", "BIGINT"],
+      ["SharePointSiteCount", "BIGINT"],
+      ["PublicSiteCount", "BIGINT"],
+      ["FileKnowledgeCount", "BIGINT"],
+      ["DataverseSourceCount", "BIGINT"],
+      ["KnowledgeTypes", "NVARCHAR(4000)"],
+      ["KnowledgeByType", "NVARCHAR(4000)"],
+      ["ConnectorOperations", "NVARCHAR(4000)"],
+      ["McpConnectors", "NVARCHAR(4000)"],
+      ["Region", "NVARCHAR(4000)"]
+    ],
+    "defender_shadow_ai_device": [
+      ["Layer", "NVARCHAR(4000)"],
+      ["DeviceName", "NVARCHAR(4000)"],
+      ["AppName", "NVARCHAR(4000)"],
+      ["Posture", "NVARCHAR(4000)"],
+      ["Detected", "NVARCHAR(4000)"],
+      ["Detail", "NVARCHAR(4000)"],
+      ["UserUpn", "NVARCHAR(4000)"],
+      ["LastSeen", "DATETIME2(6)"]
+    ]
+  }
+}

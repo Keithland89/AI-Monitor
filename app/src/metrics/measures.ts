@@ -106,8 +106,8 @@ export const A = {
   medium: (a: Agent[]) => count(a, (x) => x.riskBand === 'Medium'),
   atRisk: (a: Agent[]) => count(a, (x) => x.riskBand !== 'Low'),
   avgRisk: (a: Agent[]) => div(sum(a, (x) => x.riskScore), a.length),
-  /** Shared tenant-wide with no Power Platform last-used date. */
-  orphan: (a: Agent[]) => count(a, (x) => x.sharedTenantWide && !x.lastUsed),
+  /** Shared tenant-wide with no last-used date, on a platform that records one (docs/risk-rubric.md). */
+  orphan: (a: Agent[]) => count(a, (x) => x.sharedTenantWide && !x.lastUsed && hasUsageSignal(x)),
   noRiskFactors: (a: Agent[]) => count(a, (x) => x.riskFactorCount === 0),
   avgRiskFactors: (a: Agent[]) => div(sum(a, (x) => x.riskFactorCount), a.length),
   topics: (a: Agent[]) => sum(a, (x) => x.topicCount),

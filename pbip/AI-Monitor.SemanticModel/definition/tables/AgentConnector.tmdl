@@ -1,4 +1,6 @@
 /// One row per agent-to-connector binding, including MCP server tools.
+/// From arg_agent_config (connector list) and arg_agent_detail (operation counts and MCP flags).
+/// In this CSV build those are arg_agent_config.csv and arg_agent_detail.csv.
 table AgentConnector
 	lineageTag: 60aa03eb-bace-408e-84c0-3241c2339f02
 
@@ -33,24 +35,22 @@ table AgentConnector
 		mode: import
 		source =
 				let
-				    Source = if SourceMode = "Live" then (
+				    Agents = Table.SelectColumns(AgentContract, {"AgentKey", "Connectors", "ConnectorOperations", "McpConnectors"}),
+				    // Connectors is "id; id"; arg_agent_detail adds per-connector operation counts and MCP flags when present.
+				    WithRows = Table.AddColumn(Agents, "c", each
 				        let
-				            Raw = FnArg("PowerPlatformResources | where type =~ 'microsoft.copilotstudio/agents' | extend p = properties | mv-expand conn = p.powerPlatformConnectors | where isnotnull(conn) | project AgentKey = strcat(tostring(p.environmentId), '|', tostring(name)), ConnectorId = tostring(conn.connectorId), OperationCount = coalesce(array_length(conn.operations), 0), IsMcpServer = tostring(conn.operations) contains '""type"":""MCP""'"),
-				            Kept = FnRecordsToTable(Raw, {"AgentKey", "ConnectorId", "OperationCount", "IsMcpServer"}),
-				            Converted = Table.TransformColumns(Kept, {{"OperationCount", FnToInt, Int64.Type}, {"IsMcpServer", FnToBool, type logical}}),
-				            Final = Table.TransformColumnTypes(Converted, {{"AgentKey", type text}, {"ConnectorId", type text}})
+				            ids = if [Connectors] = null then {} else List.Distinct(List.Select(List.Transform(Text.Split([Connectors], ";"), Text.Trim), each _ <> "")),
+				            ops = FnPairs([ConnectorOperations]),
+				            mcp = if [McpConnectors] = null then null else List.Select(List.Transform(Text.Split([McpConnectors], ";"), Text.Trim), each _ <> "")
 				        in
-				            Final
-				    ) else (
-				        let
-				            Source = Csv.Document(File.Contents(DataFolder & "\FactAgentConnector.csv"), [Delimiter = ",", Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
-				            Headers = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
-				            Kept = Table.SelectColumns(Headers, {"AgentKey", "ConnectorId", "OperationCount", "IsMcpServer"}, MissingField.UseNull),
-				            Converted = Table.TransformColumns(Kept, {{"OperationCount", FnToInt, Int64.Type}, {"IsMcpServer", FnToBool, type logical}}),
-				            Typed = Table.TransformColumnTypes(Converted, {{"AgentKey", type text}, {"ConnectorId", type text}})
-				        in
-				            Typed
-				    )
+				            List.Transform(ids, (id) => [
+				                ConnectorId = id,
+				                OperationCount = List.Sum(List.Transform(List.Select(ops, (p) => p[Key] = id), (p) => p[Value])),
+				                IsMcpServer = if mcp = null then Text.Contains(Text.Lower(id), "mcp") else List.Contains(mcp, id)])),
+				    Expanded = Table.ExpandListColumn(Table.SelectColumns(WithRows, {"AgentKey", "c"}), "c"),
+				    NonEmpty = Table.SelectRows(Expanded, each [c] <> null),
+				    Flat = Table.ExpandRecordColumn(NonEmpty, "c", {"ConnectorId", "OperationCount", "IsMcpServer"}, {"ConnectorId", "OperationCount", "IsMcpServer"}),
+				    Final = Table.TransformColumnTypes(Flat, {{"AgentKey", type text}, {"ConnectorId", type text}, {"OperationCount", Int64.Type}, {"IsMcpServer", type logical}})
 				in
-				    Source
+				    Final
 

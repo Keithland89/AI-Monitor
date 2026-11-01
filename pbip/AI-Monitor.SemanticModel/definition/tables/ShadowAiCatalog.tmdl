@@ -1,8 +1,7 @@
 /// The AI tooling watchlist this solution hunts for. Shown in the report so the Shadow AI page states
 /// what was looked for even when nothing is found - a blank result then reads as "none present" rather
-/// than "nothing was checked". Generated from ShadowAiWatchlist, so it can never drift from the queries.
-/// Generated from the watchlist, so it needs no data source and is identical in both lanes:
-/// the local report states what was hunted for even with no collector output present.
+/// than "nothing was checked". Read from defender_ai_watchlist, which Live mode builds from ShadowAiWatchlist.
+/// In this CSV build the rows come from defender_ai_watchlist.csv.
 table ShadowAiCatalog
 	lineageTag: fb5aa842-805b-4da2-a379-fbdb03ba76d0
 
@@ -48,6 +47,7 @@ table ShadowAiCatalog
 		mode: import
 		source =
 				let
-				    Source = Table.SelectColumns(ShadowAiWatchlist, {"Category", "Vendor", "AppName", "Posture", "SoftwareMatch", "ProcessName", "Domain"})
+				    Renamed = Table.RenameColumns(defender_ai_watchlist, {{"Tool", "AppName"}, {"InstallPrefixes", "SoftwareMatch"}, {"ProcessNames", "ProcessName"}, {"Domains", "Domain"}}),
+				    Source = Table.SelectColumns(Renamed, {"Category", "Vendor", "AppName", "Posture", "SoftwareMatch", "ProcessName", "Domain"})
 				in
 				    Source

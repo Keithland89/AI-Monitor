@@ -1,4 +1,5 @@
 /// Power Platform environments - the security and data boundary each agent lives in.
+/// From arg_environments. Group, created and modified fields are not in that table, so they are blank.
 table Environment
 	lineageTag: 57f8162f-00e6-47a0-9e81-da6099127acf
 
@@ -71,10 +72,13 @@ table Environment
 		mode: import
 		source =
 				let
-				    Raw = FnArg("PowerPlatformResources | where type =~ 'microsoft.powerplatform/environments' | extend p = properties | project EnvironmentId = tostring(name), EnvironmentName = tostring(p.displayName), Region = tostring(location), EnvironmentType = tostring(p.environmentType), IsManaged = tobool(p.isManaged), EnvironmentGroupId = tostring(p.environmentGroupId), CreatedAt = tostring(p.createdAt), LastModifiedAt = tostring(p.lastModifiedAt), CreatedBy = tostring(p.createdBy) | order by EnvironmentId asc"),
-				    Kept = FnRecordsToTable(Raw, {"EnvironmentId", "EnvironmentName", "Region", "EnvironmentType", "IsManaged", "EnvironmentGroupId", "CreatedAt", "LastModifiedAt", "CreatedBy"}),
-				    Converted = Table.TransformColumns(Kept, {{"IsManaged", FnToBool, type logical}, {"CreatedAt", FnToDateTime, type datetime}, {"LastModifiedAt", FnToDateTime, type datetime}}),
-				    Final = Table.TransformColumnTypes(Converted, {{"EnvironmentId", type text}, {"EnvironmentName", type text}, {"Region", type text}, {"EnvironmentType", type text}, {"EnvironmentGroupId", type text}, {"CreatedBy", type text}})
+				    Envs = FnDistinctKey(Table.SelectColumns(arg_environments, {"EnvironmentId", "EnvironmentName", "Region", "EnvironmentType", "IsManaged"}), "EnvironmentId"),
+				    // Analytics Hub's arg_environments has no group, creation or modification fields: the columns stay, blank.
+				    WithGroup = Table.AddColumn(Envs, "EnvironmentGroupId", each null, type nullable text),
+				    WithCreated = Table.AddColumn(WithGroup, "CreatedAt", each null, type nullable datetime),
+				    WithModified = Table.AddColumn(WithCreated, "LastModifiedAt", each null, type nullable datetime),
+				    WithCreator = Table.AddColumn(WithModified, "CreatedBy", each null, type nullable text),
+				    Final = Table.TransformColumnTypes(WithCreator, {{"EnvironmentId", type text}, {"EnvironmentName", type text}, {"Region", type text}, {"EnvironmentType", type text}, {"IsManaged", type logical}, {"EnvironmentGroupId", type text}, {"CreatedAt", type datetime}, {"LastModifiedAt", type datetime}, {"CreatedBy", type text}})
 				in
 				    Final
 

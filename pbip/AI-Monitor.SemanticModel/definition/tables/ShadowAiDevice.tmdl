@@ -1,8 +1,8 @@
 /// Device-grain detail behind ShadowAiSignal - which machines carry or ran each AI tool.
 /// Installed rows carry a version in Detail and no user, because software inventory is a machine-level
 /// snapshot. Executed rows carry the signed-in user and a run count over the last 30 days.
-/// In this CSV build the rows come from FactShadowAiDevice.csv.
-/// Set SourceMode to Live to query Defender directly instead. A missing CSV yields an empty table.
+/// Live only: Analytics Hub stores aggregates, so in AnalyticsHub mode this table is empty.
+/// In this CSV build the rows come from defender_shadow_ai_device.csv. A missing CSV yields an empty table.
 table ShadowAiDevice
 	lineageTag: b0230d6e-7724-46bb-8657-7a9272d71327
 
@@ -52,11 +52,8 @@ table ShadowAiDevice
 		mode: import
 		source =
 				let
-				    Source =
-				        if SourceMode = "Live" then SrcShadowDevice
-				        else FnCsv("FactShadowAiDevice.csv", {"Layer", "DeviceName", "AppName", "Posture", "Detected", "Detail", "UserUpn", "LastSeen"}),
-				    Converted = Table.TransformColumns(Source, {{"LastSeen", FnToDateTime, type datetime}}),
-				    Typed = Table.TransformColumnTypes(Converted, {{"Layer", type text}, {"DeviceName", type text}, {"AppName", type text}, {"Posture", type text}, {"Detected", type text}, {"Detail", type text}, {"UserUpn", type text}})
+				    Source = defender_shadow_ai_device,
+				    Typed = Table.TransformColumnTypes(Source, {{"Layer", type text}, {"DeviceName", type text}, {"AppName", type text}, {"Posture", type text}, {"Detected", type text}, {"Detail", type text}, {"UserUpn", type text}, {"LastSeen", type datetime}})
 				in
 				    Typed
 

@@ -1,4 +1,5 @@
 /// Azure AI Foundry accounts, hubs and projects - the surface that hosts Foundry Agent Service agents.
+/// From arg_foundry_resources. Endpoint and creation date are not in that table, so they are blank.
 table AzureAIResource
 	lineageTag: 7a78e03e-3ef5-4449-a027-7d8cf5b845e2
 
@@ -101,24 +102,21 @@ table AzureAIResource
 		mode: import
 		source =
 				let
-				    Source = if SourceMode = "Live" then (
-				        let
-				            Raw = FnArg("resources | where type startswith 'microsoft.cognitiveservices' or type startswith 'microsoft.machinelearningservices' | where type !endswith 'deployments' | extend p = properties, resKind = tostring(kind) | extend isProject = (type endswith 'accounts/projects') or (resKind == 'Project') | project ResourceId = tostring(id), ResourceName = tostring(split(name, '/')[-1]), ParentAccount = iff(name has '/', tostring(split(name, '/')[0]), ''), ResourceType = tostring(type), Kind = resKind, Category = case(isProject, 'Foundry project', resKind == 'AIServices', 'AI Foundry account', resKind == 'Hub', 'Foundry hub', resKind == 'OpenAI', 'Azure OpenAI', resKind), IsAgentHost = isProject, Region = tostring(location), ResourceGroup = tostring(resourceGroup), SubscriptionId = tostring(subscriptionId), Endpoint = tostring(p.endpoint), Sku = tostring(sku.name), PublicAccess = tostring(p.publicNetworkAccess), LocalAuthOff = tobool(p.disableLocalAuth), CreatedAt = tostring(p.createdAtDate)"),
-				            Kept = FnRecordsToTable(Raw, {"ResourceId", "ResourceName", "ParentAccount", "ResourceType", "Kind", "Category", "IsAgentHost", "Region", "ResourceGroup", "SubscriptionId", "Endpoint", "Sku", "PublicAccess", "LocalAuthOff", "CreatedAt"}),
-				            Converted = Table.TransformColumns(Kept, {{"IsAgentHost", FnToBool, type logical}, {"LocalAuthOff", FnToBool, type logical}, {"CreatedAt", FnToDateTime, type datetime}}),
-				            Final = Table.TransformColumnTypes(Converted, {{"ResourceId", type text}, {"ResourceName", type text}, {"ParentAccount", type text}, {"ResourceType", type text}, {"Kind", type text}, {"Category", type text}, {"Region", type text}, {"ResourceGroup", type text}, {"SubscriptionId", type text}, {"Endpoint", type text}, {"Sku", type text}, {"PublicAccess", type text}})
-				        in
-				            Final
-				    ) else (
-				        let
-				            Source = Csv.Document(File.Contents(DataFolder & "\DimAzureAIResource.csv"), [Delimiter = ",", Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
-				            Headers = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
-				            Kept = Table.SelectColumns(Headers, {"ResourceId", "ResourceName", "ParentAccount", "ResourceType", "Kind", "Category", "IsAgentHost", "Region", "ResourceGroup", "SubscriptionId", "Endpoint", "Sku", "PublicAccess", "LocalAuthOff", "CreatedAt"}, MissingField.UseNull),
-				            Converted = Table.TransformColumns(Kept, {{"IsAgentHost", FnToBool, type logical}, {"LocalAuthOff", FnToBool, type logical}, {"CreatedAt", FnToDateTime, type datetime}}),
-				            Typed = Table.TransformColumnTypes(Converted, {{"ResourceId", type text}, {"ResourceName", type text}, {"ParentAccount", type text}, {"ResourceType", type text}, {"Kind", type text}, {"Category", type text}, {"Region", type text}, {"ResourceGroup", type text}, {"SubscriptionId", type text}, {"Endpoint", type text}, {"Sku", type text}, {"PublicAccess", type text}})
-				        in
-				            Typed
-				    )
+				    Res = arg_foundry_resources,
+				    WithHost = Table.AddColumn(Res, "IsAgentHost", each [IsProject] = true or [Kind] = "Project", type logical),
+				    WithParent = Table.AddColumn(WithHost, "ParentAccount", each if [ResourceId] <> null and Text.Contains([ResourceId], "/projects/") and [AccountId] <> null then List.Last(Text.Split([AccountId], "/")) else "", type text),
+				    WithCategory = Table.AddColumn(WithParent, "Category", each
+				        if [IsAgentHost] then "Foundry project"
+				        else if [Kind] = "AIServices" then "AI Foundry account"
+				        else if [Kind] = "Hub" then "Foundry hub"
+				        else if [Kind] = "OpenAI" then "Azure OpenAI"
+				        else [Kind], type text),
+				    Renamed = Table.RenameColumns(WithCategory, {{"Location", "Region"}, {"PublicNetworkAccess", "PublicAccess"}, {"DisableLocalAuth", "LocalAuthOff"}}),
+				    // arg_foundry_resources has no endpoint or creation date: the columns stay, blank.
+				    WithEndpoint = Table.AddColumn(Renamed, "Endpoint", each null, type nullable text),
+				    WithCreated = Table.AddColumn(WithEndpoint, "CreatedAt", each null, type nullable datetime),
+				    Kept = Table.SelectColumns(WithCreated, {"ResourceId", "ResourceName", "ParentAccount", "ResourceType", "Kind", "Category", "IsAgentHost", "Region", "ResourceGroup", "SubscriptionId", "Endpoint", "Sku", "PublicAccess", "LocalAuthOff", "CreatedAt"}),
+				    Final = Table.TransformColumnTypes(Kept, {{"ResourceId", type text}, {"ResourceName", type text}, {"ParentAccount", type text}, {"ResourceType", type text}, {"Kind", type text}, {"Category", type text}, {"IsAgentHost", type logical}, {"Region", type text}, {"ResourceGroup", type text}, {"SubscriptionId", type text}, {"Endpoint", type text}, {"Sku", type text}, {"PublicAccess", type text}, {"LocalAuthOff", type logical}, {"CreatedAt", type datetime}})
 				in
-				    Source
+				    Final
 

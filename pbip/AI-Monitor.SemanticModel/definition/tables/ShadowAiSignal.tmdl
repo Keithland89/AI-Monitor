@@ -3,9 +3,9 @@
 /// blind spots: Installed says a packaged app is present, Executed says it actually ran, Network says
 /// the device reached an AI service at all. A tool absent from Installed but present in Network is the
 /// normal shape for browser-based use.
+/// From defender_ai_installed and the 30-day rows of defender_shadow_ai_daily, Analytics Hub's Defender tables.
 /// Empty when Defender is unlicensed, has no onboarded devices, or refuses the refresh account - see FnHunt.
-/// In this CSV build the rows come from FactShadowAiSignal.csv.
-/// Set SourceMode to Live to query Defender directly instead. A missing CSV yields an empty table.
+/// In this CSV build the rows come from defender_ai_installed.csv and defender_shadow_ai_daily.csv. A missing CSV yields an empty table.
 table ShadowAiSignal
 	lineageTag: 5bc02f88-929d-492b-bf6f-9a5833ac1796
 
@@ -64,10 +64,37 @@ table ShadowAiSignal
 		mode: import
 		source =
 				let
-				    Source =
-				        if SourceMode = "Live" then Table.Combine({SrcShadowInstalled, SrcShadowExecuted, SrcShadowNetwork})
-				        else FnCsv("FactShadowAiSignal.csv", {"Layer", "Category", "Vendor", "AppName", "Posture", "Detected", "DeviceCount", "UserCount", "LastSeen"}),
-				    Converted = Table.TransformColumns(Source, {{"DeviceCount", FnToInt, Int64.Type}, {"UserCount", FnToInt, Int64.Type}, {"LastSeen", FnToDateTime, type datetime}}),
-				    Typed = Table.TransformColumnTypes(Converted, {{"Layer", type text}, {"Category", type text}, {"Vendor", type text}, {"AppName", type text}, {"Posture", type text}, {"Detected", type text}})
+				    Watch = Table.RenameColumns(Table.SelectColumns(defender_ai_watchlist, {"Tool", "Category", "Vendor", "Posture", "ProcessNames", "Domains"}), {{"Tool", "WTool"}}),
+				    Installed = Table.SelectRows(defender_ai_installed, each [Tool] <> null and [Tool] <> ""),
+				    // Ran and Network come from the 30-day window rows of the latest day; LastSeen is the last daily row with events.
+				    Daily = Table.SelectRows(defender_shadow_ai_daily, each [Tool] <> null and [Tool] <> "" and List.Contains({"Ran", "Network"}, [Layer])),
+				    Month = Table.SelectRows(Daily, each [Window] = "30d"),
+				    LatestDay = List.Max(Month[Day]),
+				    MonthRows = Table.SelectRows(Month, each [Day] = LatestDay),
+				    Seen = Table.Group(Table.SelectRows(Daily, each [Window] = "1d" and [Events] <> null and [Events] > 0), {"Layer", "Tool"}, {{"LastDay", each List.Max([Day]), type nullable date}}),
+				    JoinSeen = Table.NestedJoin(MonthRows, {"Layer", "Tool"}, Seen, {"Layer", "Tool"}, "s", JoinKind.LeftOuter),
+				    WithSeen = Table.ExpandTableColumn(JoinSeen, "s", {"LastDay"}, {"LastDay"}),
+				    InstalledRecs = List.Transform(Table.ToRecords(Installed), (r) => [Layer = "Installed", Tool = r[Tool], Found = r[SoftwareNames], DeviceCount = r[Devices], UserCount = null, LastSeen = null]),
+				    ActivityRecs = List.Transform(Table.ToRecords(WithSeen), (r) => [
+				        Layer = if r[Layer] = "Ran" then "Executed" else r[Layer],
+				        Tool = r[Tool],
+				        Found = null,
+				        DeviceCount = r[Devices],
+				        UserCount = r[Users],
+				        LastSeen = if r[LastDay] = null then null else DateTime.From(r[LastDay])]),
+				    Rows = FnRecordsToTable(InstalledRecs & ActivityRecs, {"Layer", "Tool", "Found", "DeviceCount", "UserCount", "LastSeen"}),
+				    JoinWatch = Table.NestedJoin(Rows, {"Tool"}, Watch, {"WTool"}, "w", JoinKind.LeftOuter),
+				    WithWatch = Table.ExpandTableColumn(JoinWatch, "w", {"Category", "Vendor", "Posture", "ProcessNames", "Domains"}, {"WCategory", "WVendor", "WPosture", "WProcess", "WDomain"}),
+				    Shaped = FnRecordsToTable(List.Transform(Table.ToRecords(WithWatch), (r) => [
+				        Layer = r[Layer],
+				        Category = if r[WCategory] = null or r[WCategory] = "" then "Unclassified" else r[WCategory],
+				        Vendor = if r[WVendor] = null then "" else r[WVendor],
+				        AppName = r[Tool],
+				        Posture = if r[WPosture] = null or r[WPosture] = "" then "Unsanctioned" else r[WPosture],
+				        Detected = if r[Layer] = "Installed" then r[Found] else if r[Layer] = "Executed" then r[WProcess] else r[WDomain],
+				        DeviceCount = r[DeviceCount],
+				        UserCount = r[UserCount],
+				        LastSeen = r[LastSeen]]), {"Layer", "Category", "Vendor", "AppName", "Posture", "Detected", "DeviceCount", "UserCount", "LastSeen"}),
+				    Typed = Table.TransformColumnTypes(Shaped, {{"Layer", type text}, {"Category", type text}, {"Vendor", type text}, {"AppName", type text}, {"Posture", type text}, {"Detected", type text}, {"DeviceCount", Int64.Type}, {"UserCount", Int64.Type}, {"LastSeen", type datetime}})
 				in
 				    Typed
