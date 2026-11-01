@@ -1,6 +1,7 @@
 import Papa from 'papaparse'
 import { buildDataset } from './build'
 import { usageDate } from './cost'
+import { parseM365, type M365ReportRow } from './m365'
 import { toBool, toInt, toTime } from './transforms'
 import type {
   AgentBase, AgentConnector, AgentCredit, AgentFlow, AgentKnowledge, AiCostDaily, AiCostMeter, AzureAIResource, CopilotSurface, CreditPool, Dataset,
@@ -14,7 +15,10 @@ export const SAMPLE_FILES = [
 ] as const
 
 export type SampleFile = (typeof SAMPLE_FILES)[number]
-export type SampleTexts = Record<SampleFile, string> & { manifest: string }
+/** The Microsoft 365 usage reports ship as JSON, in the same shape the daily flow stores in Dataverse. */
+export const SAMPLE_M365 = 'm365-usage.json'
+
+export type SampleTexts = Record<SampleFile, string> & { manifest: string; m365?: string }
 
 type Row = Record<string, string>
 
@@ -152,6 +156,7 @@ export function sampleRaw(t: SampleTexts): RawData {
     agents: parse(t.agents).map(sampleAgent),
     environments, flows, connectors, knowledge, sources, spAgents, aiResources, interactions, surfaces, users, shadowSignals, shadowDevices,
     credits, creditPool, aiCostDaily, aiCostMeters,
+    m365: t.m365 ? parseM365(JSON.parse(t.m365) as M365ReportRow[]) : undefined,
   }
 }
 
@@ -168,6 +173,7 @@ const SAMPLE_LANES: Omit<LaneStatus, 'state' | 'rows'>[] = [
   { id: 'credits', label: 'Copilot Credits per agent', connector: 'powerplatformadminv2' },
   { id: 'creditpool', label: 'Tenant capacity (credit pool)', connector: 'powerplatformadminv2' },
   { id: 'aicost', label: 'Azure AI spend (Cost Management)', connector: 'arm' },
+  { id: 'm365usage', label: 'Microsoft 365 usage reports', connector: 'commondataserviceforapps' },
 ]
 
 const SYNTHETIC_COST = 'Synthetic: the anonymised source has no cost data, so these rows are generated from the sample agents and resources.'
@@ -179,6 +185,7 @@ export function sampleDataset(t: SampleTexts): Dataset {
     agents: raw.agents.length, environments: raw.environments.length, flows: raw.flows.length, foundry: raw.aiResources.length,
     users: raw.users.length, interactions: raw.interactions.length, knowledge: raw.sources.length, sharepoint: raw.spAgents.length,
     shadow: raw.shadowSignals.length, credits: raw.credits.length, creditpool: raw.creditPool.length, aicost: raw.aiCostDaily.length,
+    m365usage: raw.m365 ? 1 : 0,
   }
   const lanes: LaneStatus[] = SAMPLE_LANES.map((l) => ({
     ...l,
@@ -189,7 +196,9 @@ export function sampleDataset(t: SampleTexts): Dataset {
         ? 'The sample ships no Defender rows: the source tenant returned 403 for advanced hunting.'
         : l.id === 'credits' || l.id === 'creditpool' || l.id === 'aicost'
           ? SYNTHETIC_COST
-          : undefined,
+          : l.id === 'm365usage'
+            ? 'Synthetic: tenant-wide counts generated to match the sample\'s size.'
+            : undefined,
   }))
   return buildDataset(raw, {
     mode: 'sample',
@@ -211,7 +220,7 @@ export async function loadSample(base = import.meta.env.BASE_URL): Promise<Datas
     return res.text()
   }
   const entries = await Promise.all(SAMPLE_FILES.map(async (f) => [f, await get(`${f}.csv`)] as const))
-  const texts = { ...Object.fromEntries(entries), manifest: await get('manifest.json') } as SampleTexts
+  const texts = { ...Object.fromEntries(entries), manifest: await get('manifest.json'), m365: await get(SAMPLE_M365) } as SampleTexts
   return sampleDataset(texts)
 }
 

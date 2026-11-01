@@ -12,7 +12,7 @@ const plan = (more = {}) => buildPlan({ record: emptyRecord(), scopeMode: 'Agent
 test('the plan lists every step in order', () => {
   assert.deepEqual(plan().steps.map((s) => s.id), [
     'sign-in', 'prereqs', 'environment', 'audit-app', 'sweep-app', 'root-reader', 'connection',
-    'solution-interactions', 'solution-sharepoint', 'lane-d-tables', 'solution-appusers', 'appuser-grant', 'solution-sweep',
+    'solution-interactions', 'solution-sharepoint', 'workpatterns-table', 'solution-workpatterns', 'lane-d-tables', 'solution-appusers', 'appuser-grant', 'solution-sweep',
     'flows', 'verify', 'app', 'lane-f', 'lane-cost',
   ]);
 });
@@ -99,9 +99,9 @@ test('the plan saves as Markdown', () => {
   assert.match(md, /^# Agent Monitor install: the plan/);
   assert.match(md, /Made 2024-05-01 10:30 UTC\./);
   assert.match(md, /## 6\. Reader at the tenant root management group \*\(skipped\)\*/);
-  assert.match(md, /## 12\. Lane D: grant the knowledge sweep in each environment \*\(asks again before it runs\)\*/);
+  assert.match(md, /## 14\. Lane D: grant the knowledge sweep in each environment \*\(asks again before it runs\)\*/);
   assert.match(md, /- \*Role:\* System Administrator in the landing environment/);
-  assert.equal((md.match(/^## /gm) ?? []).length, 18);
+  assert.equal((md.match(/^## /gm) ?? []).length, 20);
 });
 
 test('hand-offs become next steps with a message to send', () => {

@@ -14,10 +14,11 @@ import { addHandOff, clearHandOff, defaultRecordPath, deleteRecord, emptyRecord,
 import { API_PATH, createDataverse } from './dataverse.js';
 import { createClient, HttpError } from './http.js';
 import {
-  addSecret, APPS, assignRootReader, auditResourceAccess, BAP_BASE, deleteApp, ensureApp, findVault, grantAuditConsent,
-  graphAuditRole, registerAdminApp, removeRoleAssignment, removeSecret, storeInKeyVault, unregisterAdminApp, VAULT_SECRET_NAMES,
+  addSecret, APPS, assignRootReader, AUDIT_PERMISSIONS, auditResourceAccess, BAP_BASE, deleteApp, ensureApp, findVault,
+  grantAuditConsent, graphAuditRole, registerAdminApp, removeRoleAssignment, removeSecret, storeInKeyVault, unregisterAdminApp,
+  VAULT_SECRET_NAMES,
 } from './identity.js';
-import { LANE_D_TABLES, logicalName, provisionLaneD } from './lane-d-tables.js';
+import { LANE_D_TABLES, logicalName, provisionLaneD, provisionWorkPatterns, WORK_PATTERNS_TABLE } from './lane-d-tables.js';
 import { commandLine } from './launch.js';
 import { createCli } from './managed-app/cli.js';
 import { ADMIN_STEPS } from './managed-app/errors.js';
@@ -612,16 +613,16 @@ export function createRun(c) {
   const impl = {
     'audit-app': {
       run: async () => {
-        const { graphSpId, roleId } = await graphAuditRole(apis.graph);
-        const app = await ensureApp(apis.graph, { key: 'audit', ...(record.auditApp ? { existing: record.auditApp } : {}), requiredResourceAccess: auditResourceAccess(roleId) });
+        const { graphSpId, roleIds } = await graphAuditRole(apis.graph);
+        const app = await ensureApp(apis.graph, { key: 'audit', ...(record.auditApp ? { existing: record.auditApp } : {}), requiredResourceAccess: auditResourceAccess(roleIds) });
         record.auditApp = app;
         save();
         ui.ok(`Using the app registration "${app.displayName}"`);
-        const consent = await grantAuditConsent(apis.graph, { tenantId, app, graphSpId, roleId });
+        const consent = await grantAuditConsent(apis.graph, { tenantId, app, graphSpId, roleIds });
         app.consented = consent.consented;
         if (consent.consented) {
           clearHandOff(record, 'audit-consent');
-          ui.ok('Admin consent is granted for AuditLogsQuery.Read.All');
+          ui.ok(`Admin consent is granted for ${AUDIT_PERMISSIONS.join(' and ')}`);
         } else {
           addHandOff(record, consent.handOff);
           ui.warn('You can\'t grant admin consent. The link for a Global Administrator is in the next steps; the audit flows fail until it\'s granted.');
@@ -701,6 +702,15 @@ export function createRun(c) {
     },
     'solution-interactions': { needs: ['audit-app'], run: () => solutionStep('interactions') },
     'solution-sharepoint': { needs: ['audit-app'], run: () => solutionStep('sharepoint') },
+    'workpatterns-table': {
+      run: async () => {
+        const made = await provisionWorkPatterns(dv.client, { log: { ok: ui.ok, warn: ui.warn, info: ui.note }, sleep: c.sleep });
+        record.workPatternsTable = true;
+        save();
+        ui.ok(made.length ? 'Made the work patterns table' : 'The work patterns table is already there');
+      },
+    },
+    'solution-workpatterns': { needs: ['audit-app', 'workpatterns-table'], run: () => solutionStep('workpatterns') },
     'lane-d-tables': {
       run: async () => {
         const made = await provisionLaneD(dv.client, { log: { ok: ui.ok, warn: ui.warn, info: ui.note }, sleep: c.sleep });
@@ -973,6 +983,7 @@ export async function status(o, d) {
     else ui.warn(`Lane ${def.lane}: ${def.uniqueName} not imported by the installer`);
   }
   if (record.tablesProvisioned) ui.ok('Lane D tables made');
+  if (record.workPatternsTable) ui.ok('Work patterns table made');
   const grant = record.appUserGrant;
   if (grant?.approvedAt) ui.ok(`App user grants approved ${grant.approvedAt.slice(0, 10)}`);
   else if (grant?.whatIfAt) ui.info(`App user grants: what-if only${grant.missing !== undefined ? ` (${grant.missing} of ${grant.inScope} environments missing)` : ''}`);
@@ -1178,10 +1189,11 @@ export async function uninstall(o, d) {
   if (record.managedApp?.appId) lines.push('Deletes the app.');
   if (Object.keys(record.flows).length) lines.push(`Turns off ${Object.keys(record.flows).length} flows.`);
   if (plainDefs.length) lines.push(`Deletes the solutions ${plainDefs.map((s) => s.uniqueName).join(', ')}.`);
-  if (dataDefs.length || record.tablesProvisioned) {
+  const tables = [...(record.tablesProvisioned ? ['the lane D tables'] : []), ...(record.workPatternsTable ? ['the work patterns table'] : [])];
+  if (dataDefs.length || tables.length) {
     lines.push(o.deleteData
-      ? `Deletes ${[...dataDefs.map((s) => s.uniqueName), ...(record.tablesProvisioned ? ['the lane D tables'] : [])].join(', ')}, and every row in their tables (--delete-data).`
-      : `Keeps ${[...dataDefs.map((s) => s.uniqueName), ...(record.tablesProvisioned ? ['the lane D tables'] : [])].join(', ')} and their data (add --delete-data to delete them).`);
+      ? `Deletes ${[...dataDefs.map((s) => s.uniqueName), ...tables].join(', ')}, and every row in their tables (--delete-data).`
+      : `Keeps ${[...dataDefs.map((s) => s.uniqueName), ...tables].join(', ')} and their data (add --delete-data to delete them).`);
   }
   if (record.sweepApp?.rootReaderId) lines.push('Removes the knowledge sweep\'s Reader role at the tenant root.');
   if (record.sweepApp?.adminApp) lines.push('Unregisters the knowledge sweep as a Power Platform admin management application.');
@@ -1246,6 +1258,13 @@ export async function uninstall(o, d) {
         save();
       });
     }
+    if (o.deleteData && record.workPatternsTable) {
+      await attempt('Deleting the work patterns table', async () => {
+        if (await dv.deleteTable(logicalName(WORK_PATTERNS_TABLE))) ui.ok(`Deleted ${logicalName(WORK_PATTERNS_TABLE)}`);
+        delete record.workPatternsTable;
+        save();
+      });
+    }
     if (record.connection?.created) {
       const conn = record.connection;
       await attempt('Deleting the Dataverse connection', async () => {
@@ -1285,7 +1304,7 @@ export async function uninstall(o, d) {
     });
   }
 
-  const leftData = SOLUTIONS.some((s) => record.solutions[s.key]) || record.tablesProvisioned;
+  const leftData = SOLUTIONS.some((s) => record.solutions[s.key]) || record.tablesProvisioned || record.workPatternsTable;
   if (failed) {
     ui.warn(`${failed} things weren't removed. Fix what's above and run ${commandLine('uninstall')} again.`);
     return 1;

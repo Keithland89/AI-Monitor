@@ -12,9 +12,9 @@ const SWEEP = '33333333-3333-3333-3333-333333333333';
 const BASE = { tenantId: TENANT, appIds: { audit: AUDIT, sweep: SWEEP }, secretMode: 'envvar' };
 const asMap = (/** @type {import('../src/solutions.js').EnvValue[]} */ values) => Object.fromEntries(values.map((v) => [v.schemaname, v.value]));
 
-test('the solutions import in order: C, E, then D (app users, sweep)', () => {
-  assert.deepEqual(SOLUTIONS.map((s) => s.key), ['interactions', 'sharepoint', 'appusers', 'sweep']);
-  assert.deepEqual(SOLUTIONS.map((s) => s.lane), ['C', 'E', 'D', 'D']);
+test('the solutions import in order: C, E, G, then D (app users, sweep)', () => {
+  assert.deepEqual(SOLUTIONS.map((s) => s.key), ['interactions', 'sharepoint', 'workpatterns', 'appusers', 'sweep']);
+  assert.deepEqual(SOLUTIONS.map((s) => s.lane), ['C', 'E', 'G', 'D', 'D']);
   assert.equal(GRANT_FLOW_ID, solution('appusers').flows[0].id);
 });
 

@@ -1,6 +1,6 @@
 // @ts-check
 /**
- * After the flows are on: the newest row in each lane's run table, and lane F's check. No row yet
+ * After the flows are on: the newest row in each lane's run table, lane G's report rows, and lane F's check. No row yet
  * means the first run is still pending, which isn't a failure; a missing table means the lane isn't
  * set up.
  */
@@ -53,6 +53,23 @@ export const RUN_TABLES = [
   },
 ];
 
+/** Lane G keeps one row a report, updated in place, so every row is read rather than the newest. */
+export const WORK_PATTERNS = { lane: 'G', name: 'Work patterns', set: 'poc_m365usagereports', columns: ['poc_name', 'poc_status', 'poc_collectedat'] };
+
+/**
+ * @param {any[]} rows
+ * @returns {[LaneState, string]}
+ */
+export function judgeWorkPatterns(rows) {
+  const bad = rows.filter((r) => !/^2\d\d$/.test(String(r.poc_status ?? '').trim()));
+  const when = rows.map((r) => String(r.poc_collectedat ?? '')).sort().pop()?.slice(0, 16).replace('T', ' ');
+  const stamp = when ? ` (${when})` : '';
+  if (!bad.length) return ['ok', `Last run read all ${rows.length} reports.${stamp}`];
+  const names = bad.map((r) => `${r.poc_name} (${String(r.poc_status ?? '').trim() || 'no status'})`).join(', ');
+  const hint = bad.some((r) => /^40[13]$/.test(String(r.poc_status ?? '').trim())) ? ' The audit collector needs Reports.Read.All with admin consent.' : '';
+  return [bad.length === rows.length ? 'failed' : 'warn', `${bad.length} of ${rows.length} reports couldn't be read: ${names}.${hint}${stamp}`];
+}
+
 /**
  * @param {import('./dataverse.js').Dataverse} dv
  * @returns {Promise<LaneResult[]>}
@@ -72,6 +89,18 @@ export async function verifyLanes(dv) {
     } catch (err) {
       out.push({ lane: t.lane, name: t.name, state: 'warn', detail: `Couldn't read ${t.set}: ${/** @type {Error} */ (err).message.split('\n')[0]}` });
     }
+  }
+  const g = WORK_PATTERNS;
+  try {
+    const rows = await dv.allRows(g.set, g.columns);
+    if (rows === undefined) out.push({ lane: g.lane, name: g.name, state: 'missing', detail: 'Not set up: its table isn\'t in the environment.' });
+    else if (!rows.length) out.push({ lane: g.lane, name: g.name, state: 'pending', detail: 'First run pending: no report has been written yet.' });
+    else {
+      const [state, detail] = judgeWorkPatterns(rows);
+      out.push({ lane: g.lane, name: g.name, state, detail });
+    }
+  } catch (err) {
+    out.push({ lane: g.lane, name: g.name, state: 'warn', detail: `Couldn't read ${g.set}: ${/** @type {Error} */ (err).message.split('\n')[0]}` });
   }
   return out;
 }

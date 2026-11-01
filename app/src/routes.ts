@@ -51,12 +51,13 @@ export const TABS: TabDef[] = [
   {
     id: 'activity',
     label: 'Copilot activity',
-    blurb: 'Chat, Cowork and habit stages',
-    intro: 'Audit-log interactions with agents, Copilot Chat, in-app Copilot and Cowork.',
+    blurb: 'Chat, Cowork and work patterns',
+    intro: 'Audit-log interactions with agents, Copilot Chat, in-app Copilot and Cowork, and where Copilot fits the way people work.',
     views: [
       { id: 'interactions', label: 'Interactions' },
       { id: 'chat', label: 'Chat & Cowork' },
       { id: 'habits', label: 'Habit stages' },
+      { id: 'patterns', label: 'Work patterns' },
     ],
     agentFilters: true,
   },

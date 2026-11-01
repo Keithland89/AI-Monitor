@@ -213,6 +213,94 @@ export const isConnectionDrop = (err) => !(err instanceof HttpError) && /failed:
  */
 
 /**
+ * @param {import('./http.js').HttpClient} client
+ * @param {string} path
+ */
+async function pathExists(client, path) {
+  try {
+    await client.get(path);
+    return true;
+  } catch (err) {
+    if (isNotFound(err)) return false;
+    throw err;
+  }
+}
+
+/**
+ * Makes one table unless it's there already, and waits until it can be queried.
+ * @param {import('./http.js').HttpClient} client
+ * @param {TableDef} t
+ * @param {{ log: ProvisionLog, sleep: (ms: number) => Promise<void>, dryRun: boolean, changed: string[] }} o
+ */
+async function ensureTable(client, t, { log, sleep, dryRun, changed }) {
+  const exists = (/** @type {string} */ path) => pathExists(client, path);
+  const logical = logicalName(t);
+  const definition = `/EntityDefinitions(LogicalName='${logical}')?$select=LogicalName`;
+  if (await exists(definition)) {
+    log.info(`${logical} is already there`);
+    return;
+  }
+  if (dryRun) {
+    changed.push(`would create ${logical}`);
+    return;
+  }
+  try {
+    await client.post('/EntityDefinitions', tableBody(t), { once: true });
+  } catch (err) {
+    // Creating a table can outlast the connection, and Dataverse carries on regardless,
+    // so wait to see whether it made the table before posting it a second time.
+    if (!isConnectionDrop(err)) throw err;
+    log.info(`The connection dropped while creating ${logical}. Checking whether Dataverse made it anyway.`);
+    let made = false;
+    for (let i = 0; i < TABLE_WAIT_POLLS && !made; i++) {
+      await sleep(10_000);
+      made = await exists(definition);
+    }
+    if (!made) await client.post('/EntityDefinitions', tableBody(t), { once: true });
+  }
+  changed.push(`created ${logical}`);
+  log.ok(`Created ${logical}`);
+  // A new table isn't queryable until the metadata cache catches up.
+  for (let i = 0; i < 12; i++) {
+    await sleep(5000);
+    if (await exists(`/${t.set}?$top=1`)) return;
+  }
+  log.warn(`${t.set} isn't queryable yet. It usually is within a few minutes.`);
+}
+
+/**
+ * The work patterns table: one row per Microsoft 365 usage report, rewritten by its daily flow
+ * (solution\work-patterns\build.mjs) and read by the app's Work patterns view.
+ * @type {TableDef}
+ */
+export const WORK_PATTERNS_TABLE = {
+  schema: 'M365UsageReport',
+  set: 'poc_m365usagereports',
+  display: 'Microsoft 365 usage report',
+  plural: 'Microsoft 365 usage reports',
+  description: 'One row per Microsoft Graph usage report, holding its latest JSON response. The daily work patterns flow rewrites each row in place.',
+  primary: primaryName('Name', 'Report', 200),
+  attributes: [
+    S('Period', 'Period', 20, 'The report period, such as D30.'),
+    M('Payload', 'Payload', 1048576, 'The JSON Microsoft Graph returned, or its error.'),
+    S('Status', 'Status', 100, 'The HTTP status the flow saw.'),
+    D('CollectedAt', 'Collected at', 'When the flow last read the report.'),
+  ],
+};
+
+/**
+ * Makes the work patterns table. Returns what it changed.
+ * @param {import('./http.js').HttpClient} client  The Dataverse Web API client.
+ * @param {{ log: ProvisionLog, sleep?: (ms: number) => Promise<void>, dryRun?: boolean }} o
+ */
+export async function provisionWorkPatterns(client, { log, sleep = defaultSleep, dryRun = false }) {
+  /** @type {string[]} */
+  const changed = [];
+  await ensureTable(client, WORK_PATTERNS_TABLE, { log, sleep, dryRun, changed });
+  return changed;
+}
+
+/**
  * Makes the lane D tables, keys and the upsert column. Returns what it changed.
  * @param {import('./http.js').HttpClient} client  The Dataverse Web API client.
  * @param {{ log: ProvisionLog, sleep?: (ms: number) => Promise<void>, dryRun?: boolean }} o
@@ -222,51 +310,9 @@ export async function provisionLaneD(client, { log, sleep = defaultSleep, dryRun
   const changed = [];
 
   /** @param {string} path */
-  const exists = async (path) => {
-    try {
-      await client.get(path);
-      return true;
-    } catch (err) {
-      if (isNotFound(err)) return false;
-      throw err;
-    }
-  };
-
+  const exists = (path) => pathExists(client, path);
   /** @param {TableDef} t */
-  async function createTable(t) {
-    const logical = logicalName(t);
-    const definition = `/EntityDefinitions(LogicalName='${logical}')?$select=LogicalName`;
-    if (await exists(definition)) {
-      log.info(`${logical} is already there`);
-      return;
-    }
-    if (dryRun) {
-      changed.push(`would create ${logical}`);
-      return;
-    }
-    try {
-      await client.post('/EntityDefinitions', tableBody(t), { once: true });
-    } catch (err) {
-      // Creating a table can outlast the connection, and Dataverse carries on regardless,
-      // so wait to see whether it made the table before posting it a second time.
-      if (!isConnectionDrop(err)) throw err;
-      log.info(`The connection dropped while creating ${logical}. Checking whether Dataverse made it anyway.`);
-      let made = false;
-      for (let i = 0; i < TABLE_WAIT_POLLS && !made; i++) {
-        await sleep(10_000);
-        made = await exists(definition);
-      }
-      if (!made) await client.post('/EntityDefinitions', tableBody(t), { once: true });
-    }
-    changed.push(`created ${logical}`);
-    log.ok(`Created ${logical}`);
-    // A new table isn't queryable until the metadata cache catches up.
-    for (let i = 0; i < 12; i++) {
-      await sleep(5000);
-      if (await exists(`/${t.set}?$top=1`)) return;
-    }
-    log.warn(`${t.set} isn't queryable yet. It usually is within a few minutes.`);
-  }
+  const createTable = (t) => ensureTable(client, t, { log, sleep, dryRun, changed });
 
   /**
    * @param {string} entity

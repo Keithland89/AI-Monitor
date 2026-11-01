@@ -84,26 +84,28 @@ The installer shows this plan after the prerequisite checks. Steps that are alre
 | 1 | Sign in | Nothing. One browser sign-in gets tokens for Microsoft Graph, Azure, Power Platform and Dataverse. | Any user |
 | 2 | Check prerequisites | Nothing. See [Prerequisites](#prerequisites). | Any user |
 | 3 | Confirm the landing environment | Nothing. The tables, the flows and the app all go into this one environment, because the app reads the tables through the current-environment Dataverse connector. | System Administrator there |
-| 4 | App registration: Agent Monitor - audit collector | A single-tenant app registration with its service principal. It gets the Microsoft Graph application permission `AuditLogsQuery.Read.All`, admin consent, and a client secret. | Can register apps. The consent needs Global Administrator or Privileged Role Administrator. |
+| 4 | App registration: Agent Monitor - audit collector | A single-tenant app registration with its service principal. It gets the Microsoft Graph application permissions `AuditLogsQuery.Read.All` (lanes C and E) and `Reports.Read.All` (lane G), admin consent, and a client secret. | Can register apps. The consent needs Global Administrator or Privileged Role Administrator. |
 | 5 | App registration: Agent Monitor - knowledge sweep | A single-tenant app registration with no API permissions and a client secret. It's registered as a Power Platform admin management application. | Can register apps. The admin registration needs Power Platform Administrator. |
 | 6 | Reader at the tenant root management group *(asks again)* | Azure Reader for the knowledge sweep app at the tenant root, so Agents scope mode can find the environments with agents. Only used in Agents mode. | Owner or User Access Administrator at the root |
 | 7 | Dataverse connection for the flows | Reuses your working Dataverse connection in the landing environment, or creates one in your name. The flows' connection references are bound to it. | Environment Maker |
 | 8 | Lane C: import CopilotInteractionLogging | The managed solution, and its environment variables: tenant, app ID and secret. | System Administrator |
 | 9 | Lane E: import SharePointAgentLogging | The managed solution, and its environment variables. | System Administrator |
-| 10 | Lane D: create the knowledge source tables | `poc_AgentKnowledgeSource` and the flow tables, with their keys. This is what `Publish-KnowledgeSources.js --provision` does. Tables that are already there are left alone. | System Administrator |
-| 11 | Lane D: import AgentAppUserProvisioning | The managed solution, with ScopeMode, `MaxGrants` 25 and `WhatIf` true, so its first run only reports. | System Administrator |
-| 12 | Lane D: grant the knowledge sweep in each environment *(asks again)* | Runs the grant flow in what-if mode and shows the result. Only if you approve does it set `WhatIf` to false and run it again. The knowledge sweep becomes an application user with **System Administrator** in each environment in scope (at most `MaxGrants` a run), and stays so through the weekly runs. | Power Platform Administrator |
-| 13 | Lane D: import AgentKnowledgeSourceSweep | The managed solution and its environment variables. | System Administrator |
-| 14 | Turn the flows on | Turns the six flows on. Flows whose variables changed are turned off and on again so they read the new values. Each daily flow runs once now. | Owner of the flows (you) |
-| 15 | Check the run tables | Nothing. Reads the newest row of each lane's run table. "First run pending" isn't a failure. | System Administrator |
-| 16 | Deploy the app | Runs `ms app init` into the landing environment, then `ms app add data-source` for `arm`, `powerplatformadminv2`, `wdatp` and `commondataserviceforapps`, then `ms app deploy`. It shares the app with the viewer group if you gave one. It prints the play URL. | Environment Maker, with the Managed Apps settings on |
-| 17 | Lane F: Defender (check only) | Nothing to install. Reports whether Defender for Endpoint and Security Reader are there. | Security Reader |
-| 18 | Cost & consumption (check only) | Nothing to install. Reports whether you can read Copilot Credits (Power Platform Administrator) and Azure Cost Management (one test query on up to three subscriptions). | Power Platform Administrator, Cost Management Reader |
+| 10 | Lane G: create the work patterns table | `poc_M365UsageReport`: one row for each Microsoft 365 usage report, holding its latest 30 days as JSON. A table that is already there is left alone. | System Administrator |
+| 11 | Lane G: import M365UsageReports | The managed solution and its environment variables. Its daily flow copies five Microsoft Graph usage report counts (Microsoft 365 services, apps, email, Teams and Microsoft 365 Copilot), 30 days at a time, into that table, signing in as the audit collector. | System Administrator |
+| 12 | Lane D: create the knowledge source tables | `poc_AgentKnowledgeSource` and the flow tables, with their keys. This is what `Publish-KnowledgeSources.js --provision` does. Tables that are already there are left alone. | System Administrator |
+| 13 | Lane D: import AgentAppUserProvisioning | The managed solution, with ScopeMode, `MaxGrants` 25 and `WhatIf` true, so its first run only reports. | System Administrator |
+| 14 | Lane D: grant the knowledge sweep in each environment *(asks again)* | Runs the grant flow in what-if mode and shows the result. Only if you approve does it set `WhatIf` to false and run it again. The knowledge sweep becomes an application user with **System Administrator** in each environment in scope (at most `MaxGrants` a run), and stays so through the weekly runs. | Power Platform Administrator |
+| 15 | Lane D: import AgentKnowledgeSourceSweep | The managed solution and its environment variables. | System Administrator |
+| 16 | Turn the flows on | Turns the seven flows on. Flows whose variables changed are turned off and on again so they read the new values. Each daily flow runs once now. | Owner of the flows (you) |
+| 17 | Check the run tables | Nothing. Reads the newest row of each lane's run table. "First run pending" isn't a failure. | System Administrator |
+| 18 | Deploy the app | Runs `ms app init` into the landing environment, then `ms app add data-source` for `arm`, `powerplatformadminv2`, `wdatp` and `commondataserviceforapps`, then `ms app deploy`. It shares the app with the viewer group if you gave one. It prints the play URL. | Environment Maker, with the Managed Apps settings on |
+| 19 | Lane F: Defender (check only) | Nothing to install. Reports whether Defender for Endpoint and Security Reader are there. | Security Reader |
+| 20 | Cost & consumption (check only) | Nothing to install. Reports whether you can read Copilot Credits (Power Platform Administrator) and Azure Cost Management (one test query on up to three subscriptions). | Power Platform Administrator, Cost Management Reader |
 
 ### Approval
 
 - **The plan**: you approve it as a whole before anything changes. With `--yes`, the installer takes the defaults without asking.
-- **The two broad grants** (steps 6 and 12) are asked about again, on their own, when the installer gets to them. `--yes` doesn't approve them. Pass `--approve-root-reader` or `--approve-grants` to approve them in advance. If you decline:
+- **The two broad grants** (steps 6 and 14) are asked about again, on their own, when the installer gets to them. `--yes` doesn't approve them. Pass `--approve-root-reader` or `--approve-grants` to approve them in advance. If you decline:
   - Reader at the root: the installer switches to Dataverse scope mode instead.
   - The app user grants: the grant flow stays in what-if mode, and you can run `install` again later to approve it.
 - **Admin hand-offs**: you may not have a role a step needs, such as admin consent, the admin management application, or Reader at the root. In that case the installer doesn't fail. It writes down a link or command for an admin to run, carries on, and lists the hand-offs at the end. They're kept in the install record, and the next run checks whether they were done.
@@ -114,7 +116,7 @@ The installer shows this plan after the prerequisite checks. Steps that are alre
 
 - **Roles**:
   - Power Platform Administrator, or Global Reader or AI Administrator, for lane A;
-  - Global Administrator or Privileged Role Administrator for admin consent;
+  - Global Administrator or Privileged Role Administrator for admin consent (`AuditLogsQuery.Read.All` and `Reports.Read.All`);
   - Security Reader for lane F;
   - Reader on the Azure subscriptions for Foundry;
   - Cost Management Reader (or Reader) on the subscriptions with Azure AI resources, for the Cost & consumption tab's Azure AI spend. The check runs one small Cost Management query.
@@ -147,7 +149,7 @@ It lists what it will do, from the install record, and asks first. It will:
 - delete the two app registrations, if it created them;
 - delete the Dataverse connection, if it made one.
 
-It never removes what it didn't make. Some things stay unless you add `--delete-data`: the solutions whose tables hold collected data (lanes C and E), the lane D tables, and their rows. Secrets in Key Vault stay too. The application users the grant flow added in other environments also stay, but deleting the knowledge sweep app registration ends their access. To remove the unpacked installer itself, run `install.ps1 -Uninstall`.
+It never removes what it didn't make. Some things stay unless you add `--delete-data`: the solutions whose tables hold collected data (lanes C and E), the lane D tables, the work patterns table (lane G), and their rows. Secrets in Key Vault stay too. The application users the grant flow added in other environments also stay, but deleting the knowledge sweep app registration ends their access. To remove the unpacked installer itself, run `install.ps1 -Uninstall`.
 
 ## Troubleshooting
 
@@ -171,7 +173,7 @@ npm run typecheck   # tsc over the JSDoc types
 ```
 
 `packaging/build-release.js` builds a release into `release/`:
-- `agent-inventory-installer.zip`, which holds `installer/`, the four managed solutions in `solution/`, and `app/dist/`;
+- `agent-inventory-installer.zip`, which holds `installer/`, the five managed solutions in `solution/`, and `app/dist/`;
 - `install.ps1`, with the version and the zip's SHA-256 filled in;
 - `SHA256SUMS`.
 

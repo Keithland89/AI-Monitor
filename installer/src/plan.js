@@ -93,7 +93,7 @@ export function buildPlan(p) {
     title: `App registration: ${APPS.audit.displayName}`,
     changes: [
       audit ? `Reuses the app registration made earlier (${audit.displayName}).` : `Creates the app registration "${APPS.audit.displayName}", single-tenant, with its service principal.`,
-      'Adds the Microsoft Graph application permission AuditLogsQuery.Read.All and grants admin consent for it.',
+      'Adds the Microsoft Graph application permissions AuditLogsQuery.Read.All and Reports.Read.All and grants admin consent for them.',
       `Adds a client secret when a solution needs one, into ${secretWhere}. Only its key ID and expiry are saved.`,
     ],
     role: 'Can register apps; admin consent needs Global Administrator or Privileged Role Administrator (otherwise you get a link to send them)',
@@ -161,6 +161,14 @@ export function buildPlan(p) {
 
   solutionStep('interactions', ['Brings the Copilot interaction tables and the daily and manual sync flows.']);
   solutionStep('sharepoint', ['Brings the SharePoint agent tables and the daily and manual flows.']);
+  steps.push({
+    id: 'workpatterns-table',
+    title: 'Lane G: create the work patterns table',
+    changes: ['Creates the poc_M365UsageReport table: one row for each Microsoft 365 usage report, holding its latest 30 days. A table already there is left alone.'],
+    role: 'System Administrator in the landing environment',
+    ...(record.workPatternsTable ? { state: 'done' } : {}),
+  });
+  solutionStep('workpatterns', ['Brings the daily flow that copies five Microsoft 365 usage reports from Microsoft Graph into that table.']);
   steps.push({
     id: 'lane-d-tables',
     title: 'Lane D: create the knowledge source tables',

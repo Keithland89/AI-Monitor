@@ -200,7 +200,7 @@ export async function checkPrereqs(ctx) {
     entraRole({
       id: 'consent-role',
       label: 'Global Administrator or Privileged Role Administrator',
-      neededFor: 'Granting admin consent for the audit collector\'s AuditLogsQuery.Read.All permission (lanes C and E).',
+      neededFor: 'Granting admin consent for the audit collector\'s AuditLogsQuery.Read.All and Reports.Read.All permissions (lanes C, E and G).',
       howTo: 'Carry on without it: the installer gives you a link for a Global Administrator or Privileged Role Administrator to approve, then you run it again.',
       optional: true,
     }, CONSENT_ROLES),

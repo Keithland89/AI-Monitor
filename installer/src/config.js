@@ -60,6 +60,7 @@ export const RECORD_VERSION = 1;
  * @property {{ id: string, created?: boolean, status?: string }} [connection]
  * @property {Record<string, { version: string, importedAt: string }>} solutions
  * @property {boolean} [tablesProvisioned]
+ * @property {boolean} [workPatternsTable]
  * @property {Record<string, 'on' | 'off'>} flows
  * @property {{ whatIfAt?: string, inScope?: number, missing?: number, approvedAt?: string, declinedAt?: string }} [appUserGrant]
  * @property {ManagedAppRecord} [managedApp]

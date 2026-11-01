@@ -9,7 +9,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "preview": "vite preview",
-    "sample": "node scripts/prepare-sample.mjs && node scripts/sample-cost.mjs"
+    "sample": "node scripts/prepare-sample.mjs && node scripts/sample-cost.mjs && node scripts/sample-m365.mjs"
   },
   "dependencies": {
     "@microsoft/managed-apps": "^0.6.0",

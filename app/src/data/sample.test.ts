@@ -3,11 +3,11 @@ import { fileURLToPath } from 'node:url'
 import Papa from 'papaparse'
 import { describe, expect, it } from 'vitest'
 import { A, I } from '../metrics/measures'
-import { SAMPLE_FILES, sampleDataset, type SampleTexts } from './sample'
+import { SAMPLE_FILES, SAMPLE_M365, sampleDataset, type SampleTexts } from './sample'
 
 const dir = fileURLToPath(new URL('../../public/sample/', import.meta.url))
 const read = (name: string) => readFileSync(dir + name, 'utf8')
-const texts = { ...Object.fromEntries(SAMPLE_FILES.map((f) => [f, read(`${f}.csv`)])), manifest: read('manifest.json') } as SampleTexts
+const texts = { ...Object.fromEntries(SAMPLE_FILES.map((f) => [f, read(`${f}.csv`)])), manifest: read('manifest.json'), m365: read(SAMPLE_M365) } as SampleTexts
 const ds = sampleDataset(texts)
 const manifest = JSON.parse(texts.manifest) as { asOf: string; files: { name: string; rows: number }[] }
 const csv = (name: string) => Papa.parse<Record<string, string>>(read(name), { header: true, skipEmptyLines: true }).data
@@ -65,6 +65,20 @@ describe('sample', () => {
     const sp = [...ds.surfaces.values()].filter((s) => s.type === 'SharePoint agent')
     expect(sp.length).toBeGreaterThan(0)
     expect(sp.filter((s) => s.spAgentKey).length).toBeGreaterThan(0)
+  })
+
+  it('ships Microsoft 365 usage that fits the sample', () => {
+    const m = ds.m365!
+    expect(m.failed).toEqual([])
+    expect(m.refreshed <= ds.asOf.slice(0, 10)).toBe(true)
+    expect(m.appDaily).toHaveLength(30)
+    expect(m.emailDaily).toHaveLength(30)
+    expect(m.teamsDaily).toHaveLength(30)
+    const any = m.copilot.find((c) => c.product === 'anyApp')!
+    expect(any.active).toBeLessThanOrEqual(any.enabled)
+    expect(any.enabled).toBeLessThan(m.active!)
+    for (const c of m.copilot) expect(c.active, c.product).toBeLessThanOrEqual(any.active)
+    for (const d of m.appDaily) for (const v of Object.values(d.counts)) expect(v).toBeLessThanOrEqual(m.active!)
   })
 
   it('marks every lane as sample', () => {

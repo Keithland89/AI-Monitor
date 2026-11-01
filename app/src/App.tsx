@@ -16,6 +16,7 @@ import { Foundry } from './pages/Foundry'
 import { AzureAiSpend, CopilotCredits } from './pages/Cost'
 import { ShadowAI } from './pages/Shadow'
 import { DataSourcesGaps, LaneStatusView } from './pages/Setup'
+import { WorkPatterns } from './pages/WorkPatterns'
 import { href, NAV_GROUPS, TABS, useRoute, type Route, type TabId } from './routes'
 import { DataSourceDialog } from './ui/DataSourceDialog'
 import { dateLabel, int } from './ui/format'
@@ -32,7 +33,7 @@ function Page({ route }: { route: Route }) {
     case 'usage':
       return view === 'popularity' ? <UsagePopularity /> : view === 'adoption' ? <Adoption /> : view === 'lifecycle' ? <LifecycleReview /> : <AgentAnalytics />
     case 'activity':
-      return view === 'chat' ? <ChatCowork /> : view === 'habits' ? <HabitStages /> : <Interactions />
+      return view === 'chat' ? <ChatCowork /> : view === 'habits' ? <HabitStages /> : view === 'patterns' ? <WorkPatterns /> : <Interactions />
     case 'governance':
       return <Governance />
     case 'integrations':
@@ -52,7 +53,7 @@ const opts = (values: string[]) => values.map((v) => ({ value: v, label: v }))
 const uniq = (values: string[]) => [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b))
 
 /** Views inside an agent-filtered tab that are not about inventory agents, so the slicers would mislead. */
-const UNFILTERED_VIEWS = new Set(['inventory/sharepoint', 'activity/chat', 'activity/habits', 'cost/azure'])
+const UNFILTERED_VIEWS = new Set(['inventory/sharepoint', 'activity/chat', 'activity/habits', 'activity/patterns', 'cost/azure'])
 
 const FILTER_LABELS = { env: 'Environment', platform: 'Platform', riskBand: 'Risk band', origin: 'Agent origin' } as const
 type FilterKey = keyof typeof FILTER_LABELS
