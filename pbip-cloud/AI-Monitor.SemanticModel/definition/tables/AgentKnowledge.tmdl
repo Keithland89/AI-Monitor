@@ -1,4 +1,5 @@
 /// One row per agent per knowledge source type - what each agent is actually grounded in. This is the only integration surface Agent Builder agents have: they carry no Power Platform connectors, tools or flows, so they are invisible in the connector fact table.
+/// From arg_agent_detail (knowledge by type) and arg_agent_config (web search).
 table AgentKnowledge
 	lineageTag: 6aad2f1e-997d-4b0d-be8c-148c913682fd
 
@@ -28,10 +29,16 @@ table AgentKnowledge
 		mode: import
 		source =
 				let
-				    Raw = FnArg("PowerPlatformResources | where type =~ 'microsoft.copilotstudio/agents' | extend p = properties, kbt = properties.componentsCounts.knowledgeByType | mv-expand k = bag_keys(kbt) | project AgentKey = strcat(tostring(p.environmentId), '|', tostring(name)), kt = tostring(k), SourceCount = toint(kbt[tostring(k)]) | where SourceCount > 0 | union (     PowerPlatformResources     | where type =~ 'microsoft.copilotstudio/agents'     | where tobool(properties.isWebSearchEnabledForKnowledge) == true     | project AgentKey = strcat(tostring(properties.environmentId), '|', tostring(name)),     kt = 'webSearch', SourceCount = toint(1) ) | project AgentKey, SourceCount, KnowledgeType = case( kt == 'files', 'Uploaded files', kt == 'fileGroups', 'File groups', kt == 'publicSites', 'Public websites', kt == 'sharepointSites', 'SharePoint sites', kt == 'dataverseSources', 'Dataverse tables', kt == 'graphConnectors', 'Microsoft Graph connectors', kt == 'powerPlatformConnectors', 'Power Platform connectors', kt == 'bingCustomSearch', 'Bing custom search', kt == 'teamsMessages', 'Teams messages', kt == 'webSearch', 'Web search', kt) | order by AgentKey asc, KnowledgeType asc"),
-				    Kept = FnRecordsToTable(Raw, {"AgentKey", "KnowledgeType", "SourceCount"}),
-				    Converted = Table.TransformColumns(Kept, {{"SourceCount", FnToInt, Int64.Type}}),
-				    Final = Table.TransformColumnTypes(Converted, {{"AgentKey", type text}, {"KnowledgeType", type text}})
+				    Labels = [files = "Uploaded files", fileGroups = "File groups", publicSites = "Public websites", sharepointSites = "SharePoint sites", dataverseSources = "Dataverse tables", graphConnectors = "Microsoft Graph connectors", powerPlatformConnectors = "Power Platform connectors", bingCustomSearch = "Bing custom search", teamsMessages = "Teams messages"],
+				    Agents = Table.SelectColumns(AgentContract, {"AgentKey", "KnowledgeByType", "WebSearchEnabled"}),
+				    // KnowledgeByType comes from arg_agent_detail; web search comes from arg_agent_config, so it shows in every mode.
+				    WithRows = Table.AddColumn(Agents, "k", each
+				        List.Transform(List.Select(FnPairs([KnowledgeByType]), (p) => p[Value] <> null and p[Value] > 0), (p) => [KnowledgeType = Record.FieldOrDefault(Labels, p[Key], p[Key]), SourceCount = p[Value]])
+				        & (if [WebSearchEnabled] = true then {[KnowledgeType = "Web search", SourceCount = 1]} else {})),
+				    Expanded = Table.ExpandListColumn(Table.SelectColumns(WithRows, {"AgentKey", "k"}), "k"),
+				    NonEmpty = Table.SelectRows(Expanded, each [k] <> null),
+				    Flat = Table.ExpandRecordColumn(NonEmpty, "k", {"KnowledgeType", "SourceCount"}, {"KnowledgeType", "SourceCount"}),
+				    Final = Table.TransformColumnTypes(Flat, {{"AgentKey", type text}, {"KnowledgeType", type text}, {"SourceCount", Int64.Type}})
 				in
 				    Final
 

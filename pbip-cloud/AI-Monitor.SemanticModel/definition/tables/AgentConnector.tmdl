@@ -1,4 +1,5 @@
 /// One row per agent-to-connector binding, including MCP server tools.
+/// From arg_agent_config (connector list) and arg_agent_detail (operation counts and MCP flags).
 table AgentConnector
 	lineageTag: 437f5d45-d281-4ca3-b29e-2d9e6f3084d6
 
@@ -33,10 +34,22 @@ table AgentConnector
 		mode: import
 		source =
 				let
-				    Raw = FnArg("PowerPlatformResources | where type =~ 'microsoft.copilotstudio/agents' | extend p = properties | mv-expand conn = p.powerPlatformConnectors | where isnotnull(conn) | project AgentKey = strcat(tostring(p.environmentId), '|', tostring(name)), ConnectorId = tostring(conn.connectorId), OperationCount = coalesce(array_length(conn.operations), 0), IsMcpServer = tostring(conn.operations) matches regex '""type"":""MCP""' | order by AgentKey asc, ConnectorId asc, OperationCount asc, IsMcpServer asc"),
-				    Kept = FnRecordsToTable(Raw, {"AgentKey", "ConnectorId", "OperationCount", "IsMcpServer"}),
-				    Converted = Table.TransformColumns(Kept, {{"OperationCount", FnToInt, Int64.Type}, {"IsMcpServer", FnToBool, type logical}}),
-				    Final = Table.TransformColumnTypes(Converted, {{"AgentKey", type text}, {"ConnectorId", type text}})
+				    Agents = Table.SelectColumns(AgentContract, {"AgentKey", "Connectors", "ConnectorOperations", "McpConnectors"}),
+				    // Connectors is "id; id"; arg_agent_detail adds per-connector operation counts and MCP flags when present.
+				    WithRows = Table.AddColumn(Agents, "c", each
+				        let
+				            ids = if [Connectors] = null then {} else List.Distinct(List.Select(List.Transform(Text.Split([Connectors], ";"), Text.Trim), each _ <> "")),
+				            ops = FnPairs([ConnectorOperations]),
+				            mcp = if [McpConnectors] = null then null else List.Select(List.Transform(Text.Split([McpConnectors], ";"), Text.Trim), each _ <> "")
+				        in
+				            List.Transform(ids, (id) => [
+				                ConnectorId = id,
+				                OperationCount = List.Sum(List.Transform(List.Select(ops, (p) => p[Key] = id), (p) => p[Value])),
+				                IsMcpServer = if mcp = null then Text.Contains(Text.Lower(id), "mcp") else List.Contains(mcp, id)])),
+				    Expanded = Table.ExpandListColumn(Table.SelectColumns(WithRows, {"AgentKey", "c"}), "c"),
+				    NonEmpty = Table.SelectRows(Expanded, each [c] <> null),
+				    Flat = Table.ExpandRecordColumn(NonEmpty, "c", {"ConnectorId", "OperationCount", "IsMcpServer"}, {"ConnectorId", "OperationCount", "IsMcpServer"}),
+				    Final = Table.TransformColumnTypes(Flat, {{"AgentKey", type text}, {"ConnectorId", type text}, {"OperationCount", Int64.Type}, {"IsMcpServer", type logical}})
 				in
 				    Final
 

@@ -64,14 +64,26 @@ For every imported solution:
 
 ## Lanes A and B — inventory and identity
 
-Nothing to install. Open `pbip-cloud\AI-Monitor.pbip`, set the two parameters, publish, then set credentials in the workspace.
+Nothing to install. Open `pbip-cloud\AI-Monitor.pbip`, set the parameters, publish, then set credentials in the workspace.
 
 | Parameter | Value |
 |---|---|
 | `DataverseUrl` | The environment holding the landing tables, e.g. `https://contoso.crm.dynamics.com` |
 | `DateStart` | The first day of the `Date` table |
+| `SourceMode` | `Live` (default) to read Azure Resource Graph and Defender directly, or `AnalyticsHub` to read Analytics Hub's tables (see below) |
+| `SqlServer`, `SqlDatabase` | Analytics Hub's SQL endpoint and database. Used only when `SourceMode` is `AnalyticsHub`; leave the placeholders otherwise |
 
-After publishing, set **all three** data source credentials — Azure Resource Graph, Dataverse and the Defender advanced hunting host — to **Organizational account** with privacy level **Organizational**. If any is left *Private*, the Data Privacy Firewall blocks the model from combining them and the refresh fails with a message that does not mention privacy levels.
+After publishing, set **all three** data source credentials — Azure Resource Graph, Dataverse and the Defender advanced hunting host — to **Organizational account** with privacy level **Organizational**. If any is left *Private*, the Data Privacy Firewall blocks the model from combining them and the refresh fails with a message that does not mention privacy levels. If the dataset settings also list the SQL placeholder as a data source in `Live` mode, it is never queried in that mode; if the service still asks for a credential for it, set one and tick **Skip test connection**.
+
+### Reading from Analytics Hub instead
+
+If you already run [Analytics Hub](https://github.com/microsoft/AnalyticsHub-Dashboard) on Fabric or Azure SQL, set `SourceMode` to `AnalyticsHub` and point `SqlServer` and `SqlDatabase` at its store. The model then reads Analytics Hub's `arg_*` and `defender_*` tables instead of calling Resource Graph and Defender itself. Set the SQL credential to **Organizational account**.
+
+What changes in this mode:
+
+- **Last used, creator and knowledge by type** come from `arg_agent_detail`, which is AI-Monitor's own table. Until Analytics Hub writes it, these are blank and no agent is judged on use (see [the risk rubric](risk-rubric.md)).
+- **Per-device Shadow AI** is empty, because Analytics Hub stores daily totals per tool.
+- **Lanes D and E** (named knowledge sources and SharePoint agents) still read Dataverse, so keep `DataverseUrl` set.
 
 ---
 

@@ -117,8 +117,8 @@ table Metrics
 		displayFolder: 02 Adoption
 		lineageTag: c328a047-49b8-4e4e-86f2-ff9ce9e8f7a4
 
-	/// No usage record has ever been emitted for these agents.
-	measure 'Agents Never Used' = CALCULATE ( [Agent Count], KEEPFILTERS ( ISBLANK ( 'Agent'[LastUsed] ) ))
+	/// No usage record has ever been emitted for these agents. Agent Builder and Azure AI Foundry agents are not judged on use (they record none), and nothing is judged until a last-used source is loaded (Agent[HasUsageSignal]).
+	measure 'Agents Never Used' = CALCULATE ( [Agent Count], KEEPFILTERS ( ISBLANK ( 'Agent'[LastUsed] ) ), KEEPFILTERS ( 'Agent'[HasUsageSignal] = TRUE () ))
 		formatString: #,0
 		displayFolder: 02 Adoption
 		lineageTag: 29c22f47-d975-4d86-adaf-8279ed1e45a2
@@ -213,8 +213,8 @@ table Metrics
 		displayFolder: 03 Governance
 		lineageTag: 95adec4c-cd7a-468d-8bb2-dae892526dbc
 
-	/// Shared with the whole tenant but never used - prime clean-up candidates.
-	measure 'Orphan Risk Agents' = CALCULATE ( [Agent Count], KEEPFILTERS ( 'Agent'[SharedTenantWide] = TRUE () ), KEEPFILTERS ( ISBLANK ( 'Agent'[LastUsed] ) ))
+	/// Shared with the whole tenant but never used - prime clean-up candidates. Agent Builder and Azure AI Foundry agents are not judged on use (they record none), and nothing is judged until a last-used source is loaded (Agent[HasUsageSignal]).
+	measure 'Orphan Risk Agents' = CALCULATE ( [Agent Count], KEEPFILTERS ( 'Agent'[SharedTenantWide] = TRUE () ), KEEPFILTERS ( ISBLANK ( 'Agent'[LastUsed] ) ), KEEPFILTERS ( 'Agent'[HasUsageSignal] = TRUE () ))
 		formatString: #,0
 		displayFolder: 03 Governance
 		lineageTag: 9f58c707-b462-4aaa-8759-cbd6dd9c0cdd

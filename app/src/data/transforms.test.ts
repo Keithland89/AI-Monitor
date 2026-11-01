@@ -203,6 +203,33 @@ describe('finaliseAgents', () => {
     expect(agents[0].riskReasons).toContain('Shared tenant-wide and never used (+1)')
   })
 
+  it('does not judge never-used on platforms with no usage signal (docs/risk-rubric.md)', () => {
+    const { agents } = finaliseAgents(
+      [
+        base({ key: 'b', authoringSurface: 'Copilot Studio Lite', sharedTenantWide: true, lastUsed: '' }),
+        base({ key: 'f', platform: 'Azure AI Foundry', sharedTenantWide: true, lastUsed: '' }),
+      ],
+      opt,
+    )
+    for (const a of agents) {
+      expect(a.riskReasons).toBe('Shared with the entire tenant (+2)')
+      expect(a.riskScore).toBe(2)
+    }
+  })
+
+  it('scores every rubric factor and bands the total', () => {
+    const all = finaliseAgents(
+      [base({ authentication: 'None', isQuarantined: true, sharedTenantWide: true, webSearch: true, connectorCount: 2, connectedAgentCount: 1 })],
+      opt,
+    ).agents[0]
+    expect(all.riskScore).toBe(3 + 3 + 2 + 1 + 1 + 1 + 1)
+    expect(all.riskFactorCount).toBe(7)
+    expect(all.riskBand).toBe('High')
+    expect(finaliseAgents([base({ sharedTenantWide: true, webSearch: true })], opt).agents[0].riskBand).toBe('Medium')
+    expect(finaliseAgents([base({ sharedTenantWide: true, webSearch: true, lastUsed: '2026-04-01T00:00:00' })], opt).agents[0].riskBand).toBe('Medium')
+    expect(finaliseAgents([base({ connectorCount: 1, connectedAgentCount: 1, lastUsed: '2026-04-01T00:00:00' })], opt).agents[0].riskBand).toBe('Low')
+  })
+
   it('labels platform-provisioned agents and shows ids when names cannot be resolved', () => {
     const sys = finaliseAgents([base({ createdBy: ZERO_GUID, isManaged: true })], opt).agents[0]
     expect(sys.agentOrigin).toBe('Platform-provisioned')

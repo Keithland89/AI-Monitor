@@ -1,4 +1,5 @@
-/// Autonomous agent flows and Microsoft 365 agent flows registered in the tenant.
+/// Agent flows registered in the tenant, from the Analytics Hub contract table arg_agent_flows.
+/// State and last used are not in that table, so they are blank.
 table AgentFlow
 	lineageTag: 7251e05a-b333-4795-b820-91dbe2104f4c
 
@@ -58,16 +59,17 @@ table AgentFlow
 		mode: import
 		source =
 				let
-				    Raw = FnArg("PowerPlatformResources | where type in~ ('microsoft.powerautomate/agentflows','microsoft.powerautomate/m365agentflows') | extend p = properties | project FlowId = tostring(name), FlowName = tostring(p.displayName), FlowType = iff(type has 'm365agentflows', 'M365 Agent Flow', 'Agent Flow'), EnvironmentId = tostring(p.environmentId), State = tostring(p.state), CreatedAt = tostring(p.createdAt), Region = tostring(location) | order by FlowId asc"),
-				    Usage = FnArg("PowerPlatformResources | where type =~ 'microsoft.powerplatformusage/usagerecords' | where isnotnull(properties) | project ResourceKey = tostring(properties.resourceId), LastUsedRaw = tostring(properties.lastUsed) | where isnotempty(ResourceKey) and isnotempty(LastUsedRaw) | summarize LastUsedRaw = max(LastUsedRaw) by ResourceKey | order by ResourceKey asc"),
-				    tF = FnRecordsToTable(Raw, {"FlowId", "FlowName", "FlowType", "EnvironmentId", "State", "CreatedAt", "Region"}),
-				    tU = FnRecordsToTable(Usage, {"ResourceKey", "LastUsedRaw"}),
-				    Joined = Table.NestedJoin(tF, {"FlowId"}, tU, {"ResourceKey"}, "u", JoinKind.LeftOuter),
-				    Expanded = Table.ExpandTableColumn(Joined, "u", {"LastUsedRaw"}, {"LastUsedRaw"}),
-				    WithUse = Table.AddColumn(Expanded, "LastUsed", each FnToDateTime([LastUsedRaw]), type datetime),
-				    Kept = Table.SelectColumns(WithUse, {"FlowId", "FlowName", "FlowType", "EnvironmentId", "State", "CreatedAt", "Region", "LastUsed"}, MissingField.UseNull),
+				    Flows = Table.SelectColumns(arg_agent_flows, {"FlowId", "FlowName", "EnvironmentId", "CreatedAt"}),
+				    Envs = Table.RenameColumns(Table.SelectColumns(arg_environments, {"EnvironmentId", "Region"}), {{"EnvironmentId", "EnvKey"}}),
+				    Joined = Table.NestedJoin(Flows, {"EnvironmentId"}, Envs, {"EnvKey"}, "e", JoinKind.LeftOuter),
+				    Expanded = Table.ExpandTableColumn(Joined, "e", {"Region"}, {"Region"}),
+				    // arg_agent_flows carries agent flows only, with no state or last-used fields.
+				    WithType = Table.AddColumn(Expanded, "FlowType", each "Agent Flow", type text),
+				    WithState = Table.AddColumn(WithType, "State", each null, type nullable text),
+				    WithUse = Table.AddColumn(WithState, "LastUsed", each null, type nullable datetime),
+				    Kept = Table.SelectColumns(WithUse, {"FlowId", "FlowName", "FlowType", "EnvironmentId", "State", "CreatedAt", "Region", "LastUsed"}),
 				    Converted = Table.TransformColumns(Kept, {{"CreatedAt", FnToDateTime, type datetime}}),
-				    Final = Table.TransformColumnTypes(Converted, {{"FlowId", type text}, {"FlowName", type text}, {"FlowType", type text}, {"EnvironmentId", type text}, {"State", type text}, {"Region", type text}})
+				    Final = Table.TransformColumnTypes(Converted, {{"FlowId", type text}, {"FlowName", type text}, {"FlowType", type text}, {"EnvironmentId", type text}, {"State", type text}, {"Region", type text}, {"LastUsed", type datetime}})
 				in
 				    Final
 

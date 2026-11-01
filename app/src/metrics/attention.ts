@@ -1,4 +1,5 @@
 import type { Agent } from '../data/types'
+import { hasUsageSignal } from './lifecycle'
 
 /** A per-agent condition the Overview counts and Inventory › All agents can filter to with `?focus=<id>`. */
 export interface AttentionCheck {
@@ -27,8 +28,8 @@ export const ATTENTION: AttentionCheck[] = [
   {
     id: 'shared-unused',
     label: 'Shared tenant-wide but never used',
-    help: 'Published to everyone, with no last-used date in Power Platform: retire it, or tell people it exists.',
-    test: (a) => a.sharedTenantWide && !a.lastUsed,
+    help: 'Published to everyone, with no last-used date in Power Platform: retire it, or tell people it exists. Agent Builder and Azure AI Foundry record no last-used date, so they are not counted.',
+    test: (a) => a.sharedTenantWide && !a.lastUsed && hasUsageSignal(a),
   },
   {
     id: 'owner-unresolved',

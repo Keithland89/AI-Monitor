@@ -13,7 +13,7 @@ describe('agent measures', () => {
     expect(A.neverUsed(agents)).toBe(2)
   })
 
-  it('keeps no-signal platforms out of never used, idle and dormant, but not out of the risk reason', () => {
+  it('keeps no-signal platforms out of never used, idle, dormant and the never-used risk count', () => {
     const agents = [
       { platform: 'M365 Copilot Agent Builder', sharedTenantWide: true, lastUsed: '', activityStatus: 'No usage signal' },
       { platform: 'Copilot Studio', sharedTenantWide: false, lastUsed: '', activityStatus: 'No usage signal' },
@@ -23,7 +23,7 @@ describe('agent measures', () => {
     expect(A.noUsageSignal(agents)).toBe(1)
     expect(A.dormant(agents)).toBe(1)
     expect(A.idle(agents)).toBe(0)
-    expect(A.orphan(agents)).toBe(1)
+    expect(A.orphan(agents)).toBe(0)
   })
 })
 

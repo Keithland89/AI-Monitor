@@ -61,8 +61,7 @@ table RiskDetail
 				let
 				    Src = Table.SelectColumns(Agent, {"AgentKey", "AgentName", "EnvironmentName", "Platform", "Authentication",
 				                                      "IsQuarantined", "SharedTenantWide", "WebSearchEnabled", "ConnectorCount",
-				                                      "ConnectedAgentCount", "LastUsed"}, MissingField.UseNull),
-				    // Risk banding is duplicated in the local build's RiskDetail table. Keep the two in step.
+				                                      "ConnectedAgentCount", "LastUsed", "HasUsageSignal"}, MissingField.UseNull),
 				    Factors = Table.AddColumn(Src, "f", each
 				        let
 				            // Matches PowerShell's -in semantics exactly: Azure Resource Graph omits
@@ -71,7 +70,8 @@ table RiskDetail
 				            noAuth  = List.Contains({"None", "No authentication", ""}, [Authentication]),
 				            quar    = FnToLogical([IsQuarantined]) = true,
 				            tenant  = FnToLogical([SharedTenantWide]) = true,
-				            unused  = [LastUsed] = null,
+				            // Only judged where the platform records use and a last-used source is loaded (Agent[HasUsageSignal]).
+				            unused  = [LastUsed] = null and [HasUsageSignal] = true,
 				            web     = FnToLogical([WebSearchEnabled]) = true,
 				            conn    = [ConnectorCount] <> null and [ConnectorCount] > 0,
 				            linked  = [ConnectedAgentCount] <> null and [ConnectedAgentCount] > 0

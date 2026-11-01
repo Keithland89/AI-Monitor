@@ -1,6 +1,7 @@
 /// Device-grain detail behind ShadowAiSignal - which machines carry or ran each AI tool.
 /// Installed rows carry a version in Detail and no user, because software inventory is a machine-level
 /// snapshot. Executed rows carry the signed-in user and a run count over the last 30 days.
+/// Live only: Analytics Hub stores aggregates, so in AnalyticsHub mode this table is empty.
 table ShadowAiDevice
 	lineageTag: ad6d131b-5ad8-428c-ab71-26962aa406af
 
@@ -50,8 +51,8 @@ table ShadowAiDevice
 		mode: import
 		source =
 				let
-				    Source = SrcShadowDevice,
-				    Typed = Table.TransformColumnTypes(Source, {{"LastSeen", type datetime}})
+				    Source = defender_shadow_ai_device,
+				    Typed = Table.TransformColumnTypes(Source, {{"Layer", type text}, {"DeviceName", type text}, {"AppName", type text}, {"Posture", type text}, {"Detected", type text}, {"Detail", type text}, {"UserUpn", type text}, {"LastSeen", type datetime}})
 				in
 				    Typed
 

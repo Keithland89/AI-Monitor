@@ -172,14 +172,15 @@ Roughly five in six agents in this tenant were provisioned by the platform, not 
 | Uses one or more connectors | +1 |
 | Connected to other agents | +1 |
 
-Bands: **High ≥ 5**, **Medium 3–4**, **Low < 3**. Implemented identically in PowerShell (CSV mode) and Power Query (Live mode).
+Bands: **High ≥ 5**, **Medium 3–4**, **Low < 3**. Agent Builder and Azure AI Foundry record no last-used date, so "never used" is not judged for them. The Power BI model and the app apply the same rules, and tests hold both to them. The full rubric, with the Analytics Hub columns each factor reads, is in [docs/risk-rubric.md](docs/risk-rubric.md).
 
-### CSV mode vs Live mode
+### Source modes
 
-The semantic model has a `SourceMode` parameter:
+The semantic model has a `SourceMode` parameter. Every mode lands the same tables, in [Analytics Hub](https://github.com/microsoft/AnalyticsHub-Dashboard)'s layout, so the report reads the same whichever you choose:
 
-- **`Csv`** (default) — reads `data\*.csv` via the `DataFolder` parameter. Fast, no auth prompts, refreshes anywhere.
-- **`Live`** — queries Azure Resource Graph directly from Power Query.
+- **`Live`** (default in `pbip-cloud\`): queries Azure Resource Graph and Defender directly from Power Query. Needs no Fabric or Azure store; Power BI Pro is enough.
+- **`AnalyticsHub`**: reads Analytics Hub's tables from its Fabric or Azure SQL store, through the `SqlServer` and `SqlDatabase` parameters. Use this when you already run Analytics Hub, so inventory is collected once. Named knowledge sources and SharePoint agents still come from Dataverse, and per-device Shadow AI detail is Live only, because Analytics Hub stores daily totals.
+- **`Csv`** (default in `pbip\`, local build only): reads the same tables as CSV files from the `DataFolder` parameter. This is how the sample ships.
 
 ---
 
@@ -618,21 +619,21 @@ Same sources of truth, same **11 pages / 174 visuals / 20 tables**, different co
 
 | | `pbip\` | `pbip-cloud\` |
 |---|---|---|
-| Agent inventory | `data\DimAgent.csv` | `AzureResourceGraph.Query` connector, live |
-| Agent grounding | `data\FactAgentKnowledge.csv` | ARG `knowledgeByType`, live |
+| Agent inventory | `data\arg_agent_config.csv` + `arg_agent_detail.csv` | `AzureResourceGraph.Query` connector, live |
+| Environments, flows, Foundry | `data\arg_environments.csv`, `arg_agent_flows.csv`, `arg_foundry_resources.csv` | ARG, live |
 | Named knowledge sources | `data\FactAgentKnowledgeSource.csv` | Dataverse `poc_agentknowledgesources` |
 | SharePoint agent inventory | `data\DimSharePointAgent.csv` | Dataverse `poc_sharepointagents` |
-| Shadow AI | `data\FactShadowAiSignal.csv` + `FactShadowAiDevice.csv` | Defender advanced hunting via `Web.Contents`, live |
+| Shadow AI | `data\defender_*.csv` | Defender advanced hunting via `Web.Contents`, live |
 | Identity | `DimUser.csv` (Microsoft Graph, whole directory) | Dataverse `systemusers`, names resolved in DAX |
 | Refresh in PowerBI.com | needs a gateway (local files) | **no gateway, scheduled refresh works** |
 | Best for | one-off analysis, air-gapped review, fastest iteration | the published, self-refreshing report |
 
 ### `SourceMode` — the local build can also run live
 
-`pbip\` carries two parameters the cloud build does not:
+Both builds carry `SourceMode`, `SqlServer` and `SqlDatabase` (see [Source modes](#source-modes)). `pbip\` adds a `Csv` mode and one more parameter:
 
-- **`SourceMode`** — `"Csv"` (default) or `"Live"`. Every fact and dimension partition branches on it. In `Live` mode the local build queries Azure Resource Graph and Defender directly, exactly as the cloud build does; in `Csv` mode it reads the folder below. It is the same model either way, which is what makes the local build usable as a staging copy of the cloud one.
-- **`DataFolder`** — where the CSVs live. Defaults to the repo's `data\`.
+- **`SourceMode`**: `"Csv"` (default), `"Live"` or `"AnalyticsHub"` in `pbip\`; `"Live"` (default) or `"AnalyticsHub"` in `pbip-cloud\`. Only the contract expressions (`arg_*`, `defender_*`) branch on it. Every model table reads those, with the same M in both builds, so the local build doubles as a staging copy of the cloud one.
+- **`DataFolder`**: where the CSVs live. Defaults to the repo's `data\`. The files are named after Analytics Hub's tables; see [data\README.md](data/README.md).
 
 Missing CSVs are not an error. `FnCsv` returns an empty table for a file that is not there, matching `FnHunt`'s fail-soft contract in the cloud build, so a partial extract still gives a model that refreshes. `MissingField.UseNull` on the agent read means an older extract, taken before the newer fields existed, still loads with those columns blank rather than breaking the refresh.
 
