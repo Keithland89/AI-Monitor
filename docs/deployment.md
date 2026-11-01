@@ -65,7 +65,7 @@ For every imported solution:
 
 ## Lanes A and B — inventory and identity
 
-Nothing to install. Open `pbip-cloud\AgentInventory.pbip`, set the two parameters, publish, then set credentials in the workspace.
+Nothing to install. Open `pbip-cloud\AI-Monitor.pbip`, set the two parameters, publish, then set credentials in the workspace.
 
 | Parameter | Value |
 |---|---|

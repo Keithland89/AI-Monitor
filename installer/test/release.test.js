@@ -37,7 +37,7 @@ test('the zip holds the installer, the managed solutions and the app\'s build, a
     mkdirSync(dirname(join(root, p)), { recursive: true });
     writeFileSync(join(root, p), s);
   };
-  for (const p of ['installer/package.json', 'installer/package-lock.json', 'installer/README.md', 'installer/managed-cli/package.json', 'installer/managed-cli/package-lock.json', 'installer/bin/agent-inventory-install.js', 'installer/src/cli.js', 'installer/src/web/index.html']) put(p);
+  for (const p of ['installer/package.json', 'installer/package-lock.json', 'installer/README.md', 'installer/managed-cli/package.json', 'installer/managed-cli/package-lock.json', 'installer/bin/ai-monitor-install.js', 'installer/src/cli.js', 'installer/src/web/index.html']) put(p);
   for (const s of SOLUTIONS) put(`solution/${s.file}`);
   put('solution/CopilotInteractionLogging.zip');
   put('installer/node_modules/x/index.js');

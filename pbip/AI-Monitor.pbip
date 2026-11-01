@@ -4,7 +4,7 @@
   "artifacts": [
     {
       "report": {
-        "path": "AgentInventory.Report"
+        "path": "AI-Monitor.Report"
       }
     }
   ],

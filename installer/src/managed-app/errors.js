@@ -18,7 +18,7 @@ export const LINKS = {
   share: 'https://learn.microsoft.com/microsoft-365/managed-apps/developer/share-app',
   portal: 'https://managedapps.cloud.microsoft/',
   node: 'https://nodejs.org/',
-  issues: 'https://github.com/Keithland89/agent-inventory/issues',
+  issues: 'https://github.com/Keithland89/AI-Monitor/issues',
 };
 
 /**

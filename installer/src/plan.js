@@ -216,7 +216,7 @@ export function buildPlan(p) {
     changes: p.skipApp
       ? ['Skipped (--skip-app).']
       : [
-        app?.appId ? 'Updates the app deployed earlier, only if its build changed.' : `Creates the app "Agent Monitor" in ${envName} (ms app init).`,
+        app?.appId ? 'Updates the app deployed earlier, only if its build changed.' : `Creates the app "AI-Monitor" in ${envName} (ms app init).`,
         `Adds its ${DATA_SOURCES.length} data sources: ${DATA_SOURCES.join(', ')} (each viewer signs in to them the first time).`,
         'Deploys the built app and prints its link.',
         ...(p.viewerGroup ? [`Shares it with the viewer group ${p.viewerGroup}.`] : ['Shares it with nobody yet: run access later, or pass --viewer-group.']),
@@ -256,7 +256,7 @@ export const pendingSteps = (plan) => plan.steps.filter((s) => !s.state && !s.ch
  * @param {{ now?: Date }} [o]
  */
 export function planMarkdown(plan, o = {}) {
-  const out = [`# Agent Monitor install: ${plan.title.toLowerCase()}`, ''];
+  const out = [`# AI-Monitor install: ${plan.title.toLowerCase()}`, ''];
   if (o.now) out.push(`Made ${o.now.toISOString().slice(0, 16).replace('T', ' ')} UTC.`, '');
   for (const f of plan.facts) out.push(`- **${f.label}:** ${f.value}`);
   out.push('');
@@ -284,7 +284,7 @@ export function handOffSteps(handoffs, again) {
     why: h.what,
     ...(h.link ? { link: h.link, linkText: 'Link' } : {}),
     message: [
-      `Please could you do this for the Agent Monitor install: ${h.what}`,
+      `Please could you do this for the AI-Monitor install: ${h.what}`,
       ...(h.link ? [h.link] : []),
       ...(h.command ? [h.command] : []),
     ].join('\n'),

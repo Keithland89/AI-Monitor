@@ -101,7 +101,7 @@ export function AskPanel({ open, onClose, route }: { open: boolean; onClose: () 
   const suggestions = SUGGESTIONS[route.tab.id] ?? SUGGESTIONS.overview
 
   return (
-    <Sheet open={open} onClose={onClose} title="Ask Agent Monitor" side className="sheet-ask">
+    <Sheet open={open} onClose={onClose} title="Ask AI-Monitor" side className="sheet-ask">
       <div className="ask">
         <p className="ask-scope">
           Answers use a summary of what the app has loaded: <b>{pageLabel}</b>

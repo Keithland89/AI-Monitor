@@ -13,7 +13,7 @@ Dataverse and Defender advanced hunting directly.
 Unzip it and point the `pbip\` build's `DataFolder` parameter at the unzipped `data` folder — that
 is the normal way to open the CSV build, and it needs no tenant access at all.
 
-To report on your own tenant, use `pbip-cloud\AgentInventory.pbip`, which reads the same sources live.
+To report on your own tenant, use `pbip-cloud\AI-Monitor.pbip`, which reads the same sources live.
 
 ## What lands here
 

@@ -1,8 +1,8 @@
-# Agent Monitor: the app
+# AI-Monitor: the app
 
-A Copilot Managed App version of the Agent Monitor Power BI report. It runs entirely in the browser inside the Managed Apps player, reads the same sources as the report through four connectors, and computes every column and measure in TypeScript. Nothing is sent anywhere else.
+A Copilot Managed App version of the AI-Monitor Power BI report. It runs entirely in the browser inside the Managed Apps player, reads the same sources as the report through four connectors, and computes every column and measure in TypeScript. Nothing is sent anywhere else.
 
-It covers all 16 report pages in nine tabs with sub-views. It adds a **Chat & Cowork** view built from the same audit-log lane, a **Cost & consumption** tab that the report doesn't have, three computed views (**Lifecycle & review**, **Habit stages**, cost against use) that reuse data the app already loads, and a **Work patterns** view built from the Microsoft 365 usage reports (lane G).
+It covers all 16 report pages in ten tabs with sub-views. It adds a **Chat & Cowork** view built from the same audit-log lane, a **Cost & consumption** tab that the report doesn't have, three computed views (**Lifecycle & review**, **Habit stages**, cost against use) that reuse data the app already loads, and a **Work patterns** view built from the Microsoft 365 usage reports (lane G).
 
 | Tab | Sub-views | Report pages |
 |---|---|---|
@@ -107,7 +107,7 @@ To deploy by hand with the `ms` CLI (`@microsoft/managed-apps-cli` 0.29.0, Node 
 cd app
 npm ci
 npm run build
-ms app init --repo none --display-name "Agent Monitor" --build-type none --build-path ./dist --environment-id <landing environment id>
+ms app init --repo none --display-name "AI-Monitor" --build-type none --build-path ./dist --environment-id <landing environment id>
 foreach ($c in 'powerplatformadminv2', 'arm', 'wdatp', 'commondataserviceforapps') {
   ms app add data-source --connector $c --as action --use-sso --skip-codegen --non-interactive --json
 }

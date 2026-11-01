@@ -26,7 +26,7 @@ looks like against real-shaped data.
 
 ## Using it
 
-Unzip `agent365-sample-data.zip` anywhere, then open `pbip\AgentInventory.pbip` in Power BI Desktop.
+Unzip `agent365-sample-data.zip` anywhere, then open `pbip\AI-Monitor.pbip` in Power BI Desktop.
 
 In Power BI Desktop: **Home → Transform data → Manage parameters**, set
 

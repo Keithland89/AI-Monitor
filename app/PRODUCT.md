@@ -11,7 +11,7 @@ Power Platform, Microsoft 365 and security admins who need to know which agents 
 
 ## Purpose
 
-To bring the Agent Monitor Power BI report into an app that needs no Power BI workspace, gateway or refresh schedule. The app answers the report's questions with live data on open:
+To bring the AI-Monitor Power BI report into an app that needs no Power BI workspace, gateway or refresh schedule. The app answers the report's questions with live data on open:
 
 - What agents exist across Copilot Studio, SharePoint, agent flows and Azure AI Foundry?
 - Who owns them, and how widely are they shared?

@@ -227,7 +227,7 @@ function solutionXml(managed) {
       <LocalizedName description="Microsoft 365 Usage Reports" languagecode="1033" />
     </LocalizedNames>
     <Descriptions>
-      <Description description="Work patterns lane of Agent Monitor: a daily flow that copies five Microsoft 365 usage reports from Microsoft Graph into one Dataverse table." languagecode="1033" />
+      <Description description="Work patterns lane of AI-Monitor: a daily flow that copies five Microsoft 365 usage reports from Microsoft Graph into one Dataverse table." languagecode="1033" />
     </Descriptions>
     <Version>${VERSION}</Version>
     <Managed>${managed ? 1 : 0}</Managed>

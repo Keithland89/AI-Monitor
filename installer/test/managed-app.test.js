@@ -7,7 +7,7 @@ import { PassThrough } from 'node:stream';
 import { test } from 'node:test';
 import { createCli, MIN_NODE, nodeOk, parseJson, pinnedVersion } from '../src/managed-app/cli.js';
 import { ADMIN_STEPS, explain, notReady } from '../src/managed-app/errors.js';
-import { APP_NAME, buildHash, deployTheApp, ensureBuild, removeTheApp, whyNot } from '../src/managed-app/flow.js';
+import { APP_NAME, buildHash, defaultWorkDir, deployTheApp, ensureBuild, removeTheApp, whyNot } from '../src/managed-app/flow.js';
 import { addDataSource, createApp, DATA_SOURCES, dataSourceArgs, deployApp, initArgs } from '../src/managed-app/steps.js';
 import { emptyRecord } from '../src/config.js';
 import { quietUi, TEST_DIR, workDir } from './helpers.js';
@@ -100,7 +100,7 @@ test('the JSON is found after other output', () => {
 
 test('init puts the app in the landing environment', () => {
   assert.deepEqual(initArgs({ displayName: APP_NAME, environmentId: ENV_ID }), [
-    'app', 'init', '--repo', 'none', '--display-name', 'Agent Monitor', '--build-type', 'none', '--build-path', './dist', '--environment-id', ENV_ID,
+    'app', 'init', '--repo', 'none', '--display-name', 'AI-Monitor', '--build-type', 'none', '--build-path', './dist', '--environment-id', ENV_ID,
   ]);
 });
 
@@ -298,4 +298,13 @@ test('uninstall deletes the app the record names; one already gone is fine', asy
   assert.equal(await removeTheApp({ ui: quietUi().ui, record, save: () => {}, run, workDir: join(TEST_DIR, '.work', 'no-such-folder') }), true);
   assert.deepEqual(calls[0].args, ['app', 'delete', '--force', '--app', APP_ID, '--environment-id', ENV_ID]);
   assert.equal(record.managedApp, undefined);
+});
+
+test('the app work folder is %LOCALAPPDATA%\\AI-Monitor\\app, or the one an install from before the rename made', () => {
+  const env = { LOCALAPPDATA: join('C:', 'Users', 'someone', 'AppData', 'Local') };
+  const fresh = join(env.LOCALAPPDATA, 'AI-Monitor', 'app');
+  const legacy = join(env.LOCALAPPDATA, 'AgentInventory', 'app');
+  assert.equal(defaultWorkDir(env, () => false), fresh);
+  assert.equal(defaultWorkDir(env, (p) => p === legacy), legacy);
+  assert.equal(defaultWorkDir(env, (p) => p === legacy || p === fresh), fresh);
 });

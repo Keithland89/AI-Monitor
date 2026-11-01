@@ -9,10 +9,13 @@ import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync 
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 
-export const RECORD_FILE = 'agent-inventory-install.json';
-export const RECORD_FOLDER = 'Agent Monitor';
-/** Where installs from before the rename keep their record. */
-export const LEGACY_RECORD_FOLDER = 'Copilot Inventory';
+export const RECORD_FILE = 'ai-monitor-install.json';
+export const RECORD_FOLDER = 'AI-Monitor';
+/** Where installs from before the renames keep their record, newest first. */
+export const LEGACY_RECORDS = /** @type {const} */ ([
+  ['Agent Monitor', 'agent-inventory-install.json'],
+  ['Copilot Inventory', 'agent-inventory-install.json'],
+]);
 export const RECORD_VERSION = 1;
 
 /**
@@ -72,16 +75,16 @@ export const RECORD_VERSION = 1;
 export const emptyRecord = () => ({ version: RECORD_VERSION, options: {}, solutions: {}, flows: {}, handoffs: [] });
 
 /**
- * Documents\Agent Monitor\agent-inventory-install.json, or the record in Documents\Copilot Inventory when an
- * install from before the rename left one there and there's none in the new folder.
+ * Documents\AI-Monitor\ai-monitor-install.json, or a record that an install from before a rename left in
+ * Documents\Agent Monitor or Documents\Copilot Inventory, when there's none in the new folder.
  * @param {NodeJS.ProcessEnv} [env]
  * @param {(path: string) => boolean} [exists]
  */
 export function defaultRecordPath(env = process.env, exists = existsSync) {
   const home = env.USERPROFILE || env.HOME || homedir();
   const path = join(home, 'Documents', RECORD_FOLDER, RECORD_FILE);
-  const legacy = join(home, 'Documents', LEGACY_RECORD_FOLDER, RECORD_FILE);
-  return !exists(path) && exists(legacy) ? legacy : path;
+  if (exists(path)) return path;
+  return LEGACY_RECORDS.map(([folder, file]) => join(home, 'Documents', folder, file)).find(exists) ?? path;
 }
 
 /** Keys that would hold a secret. Key IDs, expiry dates and the secret mode are fine. */
