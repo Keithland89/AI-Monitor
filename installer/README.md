@@ -13,10 +13,10 @@ It automates the manual setup in [docs/deployment.md](../docs/deployment.md). Re
 **One line in PowerShell** (Windows PowerShell 5.1 or PowerShell 7, with Node.js 22.13 or later on the PATH):
 
 ```powershell
-irm https://github.com/Keithland89/Agent-Monitor/releases/download/installer-v<version>/install.ps1 | iex
+irm https://github.com/ai-datalab/Agent-Monitor/releases/download/installer-v<version>/install.ps1 | iex
 ```
 
-Replace `<version>` with the version on the [releases page](https://github.com/Keithland89/Agent-Monitor/releases?q=installer-v). The repo's "Latest" release may not be an installer release, so the command names the version.
+Replace `<version>` with the version on the [releases page](https://github.com/ai-datalab/Agent-Monitor/releases?q=installer-v). The repo's "Latest" release may not be an installer release, so the command names the version.
 
 The launcher does the following:
 - downloads `agent-monitor-installer.zip` from that release and checks its SHA-256;

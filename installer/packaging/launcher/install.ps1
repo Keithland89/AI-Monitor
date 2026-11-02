@@ -5,7 +5,7 @@ Downloads the release zip from GitHub (the installer, the three managed solution
 build), checks its SHA-256, unpacks it under %LOCALAPPDATA%\Agent-Monitor\installer and opens the
 installer in your browser. It needs no admin rights and installs nothing system-wide.
 
-  irm https://github.com/Keithland89/Agent-Monitor/releases/download/installer-v{{VERSION}}/install.ps1 | iex
+  irm https://github.com/ai-datalab/Agent-Monitor/releases/download/installer-v{{VERSION}}/install.ps1 | iex
 
 Or download this file and run it where your execution policy allows scripts:
 
@@ -35,9 +35,9 @@ Works in Windows PowerShell 5.1 and PowerShell 7. The release build fills in {{V
   $Version = '{{VERSION}}'
   $Sha256 = '{{SHA256}}'
   $ZipName = 'agent-monitor-installer.zip'
-  $ZipUrl = "https://github.com/Keithland89/Agent-Monitor/releases/download/installer-v$Version/$ZipName"
-  $Again = "irm https://github.com/Keithland89/Agent-Monitor/releases/download/installer-v$Version/install.ps1 | iex"
-  $Releases = 'https://github.com/Keithland89/Agent-Monitor/releases?q=installer-v'
+  $ZipUrl = "https://github.com/ai-datalab/Agent-Monitor/releases/download/installer-v$Version/$ZipName"
+  $Again = "irm https://github.com/ai-datalab/Agent-Monitor/releases/download/installer-v$Version/install.ps1 | iex"
+  $Releases = 'https://github.com/ai-datalab/Agent-Monitor/releases?q=installer-v'
 
   # Launcher options; the rest go to the installer as typed.
   $ZipPath = @($env:AGENT_MONITOR_ZIP, $env:AI_MONITOR_ZIP, $env:AGENT_INVENTORY_ZIP) | Where-Object { $_ } | Select-Object -First 1

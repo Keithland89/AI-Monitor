@@ -15,7 +15,7 @@ import { SOLUTIONS } from '../src/solutions.js';
 
 export const ZIP_NAME = 'agent-monitor-installer.zip';
 export const SCRIPT_NAME = 'install.ps1';
-export const REPO = 'Keithland89/Agent-Monitor';
+export const REPO = 'ai-datalab/Agent-Monitor';
 
 /**
  * @param {string} repo
