@@ -13,4 +13,4 @@ npm run build:demo
 
 The app's existing supported runtime is Node.js 24.11 or later. The build runs the TypeScript project check before Vite and requires no sign-in, cloud resources, or paid services. The generator is deterministic and requires no network data.
 
-The repository does not include a repository-level license file. Do not treat the demo source or generated bundle as having an open-source redistribution license; third-party dependencies remain subject to their own upstream licenses.
+The repository does not include a repository-level license file or a general open-source redistribution license. On 2026-11-03, an authorized source copyright holder granted permission to copy, host, publicly display, and redistribute this generated demo bundle and its required source-derived assets at `/demo/agent-monitor/`; this permission does not cover unrelated repository content. The build writes the bundled dependencies' license texts to `demo/agent-monitor/THIRD-PARTY-NOTICES.md`.

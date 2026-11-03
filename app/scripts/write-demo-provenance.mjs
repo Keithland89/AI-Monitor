@@ -19,19 +19,9 @@ const changedPaths = git(['status', '--porcelain', '--untracked-files=all', '--'
   .map((line) => line.slice(2).trimStart())
 const licenseFiles = ['LICENSE', 'LICENSE.md', 'LICENSE.txt', 'COPYING', 'NOTICE'].filter((name) => existsSync(resolve(repoDir, name)))
 const npmVersion = process.env.npm_config_user_agent?.match(/(?:^| )npm\/([^\s]+)/)?.[1] ?? 'unknown'
-const sourceFiles = [
-  'app/demo/',
-  'app/src/DemoApp.tsx',
-  'app/src/DashboardFrame.tsx',
-  'app/src/demo-main.tsx',
-  'app/src/data/DemoDataProvider.tsx',
-  'app/src/data/demo.ts',
-  'app/src/data/demoStatic.ts',
-  'app/src/pages/DemoSetup.tsx',
-  'app/src/pages/LaneStatus.tsx',
-  'app/src/metrics/demoCoverage.ts',
-  'app/vite.demo.config.ts',
-]
+const sourceFiles = git(['diff', '--name-only', `${baseRevision}...${revision}`, '--', 'app'])
+  .split(/\r?\n/)
+  .filter(Boolean)
 
 const markdown = [
   '# Agent Monitor demo provenance',
@@ -39,16 +29,17 @@ const markdown = [
   '- Canonical source repository: https://github.com/ai-datalab/Agent-Monitor (the configured repository redirects here).',
   `- Source revision: \`${revision}\`.`,
   `- Base revision: \`${baseRevision}\` (merge-base of \`HEAD\` and \`origin/main\`).`,
-  `- Source directory/files: ${sourceFiles.map((path) => `\`${path}\``).join(', ')}.`,
+  `- Source directory: \`app/\`; source files changed from the base revision: ${sourceFiles.map((path) => `\`${path}\``).join(', ')}.`,
   '- Static bundle: repository-root `demo/agent-monitor/`; deploy at `/demo/agent-monitor/`.',
   '- Build command (run from `app/`): `npm ci && npm run build:demo`.',
   `- Build runtime: Node.js ${process.version}; npm ${npmVersion}.`,
   '- Data provenance: deterministic, generated synthetic fixtures in `app/src/data/demo.ts`; no bundled tenant extract is read.',
   '- Runtime behavior: no sign-in, live source, API, telemetry, host bridge, collector, or admin action is used.',
-  `- Working-tree provenance: ${changedPaths.length ? 'demo source changes were uncommitted when this bundle was built' : 'no uncommitted app source changes were present when this bundle was built'}.`,
+  '- Public distribution permission: an authorized source copyright holder granted permission on 2026-11-03 to copy, host, publicly display, and redistribute this demo bundle and its required source-derived assets at `/demo/agent-monitor/`; this does not license unrelated repository content.',
+  `- Working-tree provenance: ${changedPaths.length ? 'demo source changes were uncommitted when this bundle was built' : 'the app source working tree was clean when this bundle was built; all demo source files are committed at the source revision above'}.`,
   ...(changedPaths.length ? changedPaths.map((path) => `  - \`${path}\``) : []),
-  `- Repository license: ${licenseFiles.length ? `repository-level license files are present: ${licenseFiles.map((path) => `\`${path}\``).join(', ')}.` : 'no repository-level LICENSE, COPYING, or NOTICE file was found; the repository grants no open-source redistribution license for this demo.'}`,
-  '- Third-party licenses: dependencies are installed through npm and remain subject to their own upstream licenses; no third-party assets are vendored into the bundle.',
+  `- Repository license: ${licenseFiles.length ? `repository-level license files are present: ${licenseFiles.map((path) => `\`${path}\``).join(', ')}.` : 'no repository-level LICENSE, COPYING, or NOTICE file was found; the repository provides no general open-source license.'}`,
+  '- Third-party licenses: bundled npm dependency license texts and versions are listed in `THIRD-PARTY-NOTICES.md`; no third-party assets are vendored into the bundle.',
   '',
 ].join('\n')
 
