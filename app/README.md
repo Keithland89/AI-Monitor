@@ -83,6 +83,12 @@ The **Ask** button in the header opens a side panel for questions about what the
 - **In the player, with Cowork on.** The question and summary go to Microsoft 365 Copilot (Cowork) under your account, and the answer streams into the panel. You can stop it part-way. Follow-up questions include the last two answers. Cowork is a developer preview: the player only answers `cowork/*` methods when its `cowork` developer setting is on, and `@microsoft/managed-apps` 0.6 doesn't wrap them yet. `src/ask/cowork.ts` reuses the SDK's bridge channel (`tapBridge()` runs first in `main.tsx`). If Cowork doesn't start within 20 seconds, or rejects the call, the panel switches to handing off.
 - **Everywhere else (sample mode, `npm run dev`, or Cowork off).** The panel offers the question with its summary to copy, plus a link to Copilot Chat. "What gets sent" shows the exact text. The app never makes up answers.
 
+## Static shareable demo
+
+The static browser demo is built from the same dashboard pages with a separate entry point and a deterministic, wholly synthetic dataset. It includes every section and sub-view, clickable navigation and filters, and does not import the production data provider, load the anonymized sample, detect the Managed Apps host, call connectors, send telemetry, use the Ask/Cowork bridge, or expose live-data actions.
+
+From `app/`, run `npm ci` and `npm run build:demo`. This writes a self-contained bundle to the repository-root `demo/agent-monitor/` folder for deployment at `/demo/agent-monitor/`; the folder contains `index.html`, local assets, and generated `PROVENANCE.md`. Source and build notes are in [`demo/README.md`](demo/README.md). The bundle is intended for integration into a site, not deployment as the production Managed App.
+
 ### Landing tables
 
 The Dataverse connector reads the environment the app is deployed to. **Deploy the app to the same environment that holds the landing tables.** The app reads these entity sets:

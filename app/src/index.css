@@ -157,6 +157,12 @@ a {
 .source-chip:hover {
   background: var(--hover);
 }
+.source-chip.demo-static {
+  cursor: default;
+}
+.source-chip.demo-static:hover {
+  background: var(--surface);
+}
 .source-chip .tag {
   padding: 1px 8px;
   border-radius: 999px;

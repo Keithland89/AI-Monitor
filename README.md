@@ -39,6 +39,7 @@ Agent 365–style tenant agent monitoring, without Agent 365.
 
 - **The app:** a Copilot Managed App with ten tabs, from the agent estate to cost and Shadow AI,
   plus an **Ask** panel. It opens on an anonymised sample until it's connected.
+- **The interactive demo:** a no-sign-in static browser build of every app dashboard, using wholly synthetic data.
 - **A Power BI report** with the same model, if you prefer Power BI.
 - **An installer** that switches every data lane on and deploys the app, after you approve a plan.
 
@@ -75,6 +76,10 @@ It changes nothing until you approve the plan.
 **To use the app**: the installer deploys it to the landing environment. To build and deploy it by
 hand, see [`app\README.md`](app/README.md). Outside the Managed Apps player it opens on the
 anonymised sample (`cd app`, `npm ci`, `npm run dev`).
+
+**To share the interactive demo**: build the standalone synthetic-data bundle with `cd app`,
+`npm ci`, `npm run build:demo`. The output is `demo\agent-monitor\`, ready to mount at
+`/demo/agent-monitor/`; it needs no sign-in or live data sources.
 
 **To report on your own tenant** — open `pbip-cloud\AI-Monitor.pbip` in Power BI Desktop, publish
 it to a workspace, set the three data-source credentials to *Organizational account*, and set a

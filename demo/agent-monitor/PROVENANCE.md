@@ -1,0 +1,34 @@
+# Agent Monitor demo provenance
+
+- Canonical source repository: https://github.com/ai-datalab/Agent-Monitor (the configured repository redirects here).
+- Source revision: `0d3f94e0fd6fb5a4efece1b75de82217dce2aaea`.
+- Base revision: `0d3f94e0fd6fb5a4efece1b75de82217dce2aaea` (merge-base of `HEAD` and `origin/main`).
+- Source directory/files: `app/demo/`, `app/src/DemoApp.tsx`, `app/src/DashboardFrame.tsx`, `app/src/demo-main.tsx`, `app/src/data/DemoDataProvider.tsx`, `app/src/data/demo.ts`, `app/src/data/demoStatic.ts`, `app/src/pages/DemoSetup.tsx`, `app/src/pages/LaneStatus.tsx`, `app/src/metrics/demoCoverage.ts`, `app/vite.demo.config.ts`.
+- Static bundle: repository-root `demo/agent-monitor/`; deploy at `/demo/agent-monitor/`.
+- Build command (run from `app/`): `npm ci && npm run build:demo`.
+- Build runtime: Node.js v26.13.0; npm 11.20.0.
+- Data provenance: deterministic, generated synthetic fixtures in `app/src/data/demo.ts`; no bundled tenant extract is read.
+- Runtime behavior: no sign-in, live source, API, telemetry, host bridge, collector, or admin action is used.
+- Working-tree provenance: demo source changes were uncommitted when this bundle was built.
+  - `app/.gitignore`
+  - `app/README.md`
+  - `app/demo/README.md`
+  - `app/demo/index.html`
+  - `app/package.json`
+  - `app/scripts/write-demo-provenance.mjs`
+  - `app/src/App.tsx`
+  - `app/src/DashboardFrame.tsx`
+  - `app/src/DemoApp.tsx`
+  - `app/src/data/DemoDataProvider.tsx`
+  - `app/src/data/demo.test.ts`
+  - `app/src/data/demo.ts`
+  - `app/src/data/demoStatic.ts`
+  - `app/src/demo-main.tsx`
+  - `app/src/index.css`
+  - `app/src/metrics/demoCoverage.ts`
+  - `app/src/pages/DemoSetup.tsx`
+  - `app/src/pages/LaneStatus.tsx`
+  - `app/src/pages/Setup.tsx`
+  - `app/vite.demo.config.ts`
+- Repository license: no repository-level LICENSE, COPYING, or NOTICE file was found; the repository grants no open-source redistribution license for this demo.
+- Third-party licenses: dependencies are installed through npm and remain subject to their own upstream licenses; no third-party assets are vendored into the bundle.

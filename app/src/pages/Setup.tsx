@@ -12,12 +12,16 @@ import { PageFilters, PageIntro } from '../ui/PageFilters'
 
 const VERDICT_COLOR: Record<string, string> = { Working: COLOR.licensed, Blocked: COLOR.unlicensed }
 
-export function DataSourcesGaps() {
+export function DataSourcesGaps({ demo = false }: { demo?: boolean }) {
   const { ds } = useData()
   const verdicts = bars(API_COVERAGE, (r) => r.verdict)
   return (
     <>
-      <PageIntro>What the platform APIs expose, what they do not, and the gaps that still need a workaround.</PageIntro>
+      <PageIntro>
+        {demo
+          ? 'Static reference coverage only. This synthetic demo does not query APIs, report live operations, or collect telemetry.'
+          : 'What the platform APIs expose, what they do not, and the gaps that still need a workaround.'}
+      </PageIntro>
       <KpiRow>
         <Kpi label="Agent 365 gaps" value={int(AGENT_GAPS.length)} tone="unlicensed" />
         <Kpi label="APIs tested" value={int(API_COVERAGE.length)} />
@@ -125,32 +129,36 @@ export function RunTable({ runs }: { runs: RunInfo[] }) {
   )
 }
 
-export function LaneStatusView() {
+export function LaneStatusView({ demo = false }: { demo?: boolean }) {
   const { ds, hostAvailable, switchMode, reload, loading } = useData()
   const withData = ds.lanes.filter((l) => l.state === 'ok' || l.state === 'sample').length
   return (
     <>
       <PageIntro>
-        {ds.mode === 'live'
+        {demo
+          ? 'Every row below is a synthetic fixture marker. No data source was contacted and no collector ran.'
+          : ds.mode === 'live'
           ? `Live data. ${withData} of ${ds.lanes.length} lanes returned rows. Each lane loads on its own, so one failing lane leaves the rest of the app working.`
           : 'Anonymised sample data. Live data needs the app to run inside the Copilot Managed Apps player.'}
       </PageIntro>
-      <PageFilters label="Data mode">
-        <button type="button" className="btn" disabled={!hostAvailable || loading || ds.mode === 'live'} onClick={() => switchMode('live')}>
-          Use live data
-        </button>
-        <button type="button" className="btn" disabled={loading || ds.mode === 'sample'} onClick={() => switchMode('sample')}>
-          Use sample data
-        </button>
-        <button type="button" className="btn" disabled={loading} onClick={reload}>
-          Reload
-        </button>
-      </PageFilters>
+      {!demo && (
+        <PageFilters label="Data mode">
+          <button type="button" className="btn" disabled={!hostAvailable || loading || ds.mode === 'live'} onClick={() => switchMode('live')}>
+            Use live data
+          </button>
+          <button type="button" className="btn" disabled={loading || ds.mode === 'sample'} onClick={() => switchMode('sample')}>
+            Use sample data
+          </button>
+          <button type="button" className="btn" disabled={loading} onClick={reload}>
+            Reload
+          </button>
+        </PageFilters>
+      )}
       <Grid cols={2}>
-        <Panel title="Data lanes" span={2} note={ds.appEnvironment ? 'Dataverse lanes read the environment the app is deployed to.' : undefined}>
+        <Panel title="Data lanes" span={2} note={demo ? 'Synthetic demo fixtures only; no live source was queried.' : ds.appEnvironment ? 'Dataverse lanes read the environment the app is deployed to.' : undefined}>
           <LaneTable lanes={ds.lanes} />
         </Panel>
-        <Panel title="Collector runs" span={2} note="The landing-environment flows record each run. A stale or failed run explains missing rows.">
+        <Panel title="Collector runs" span={2} note={demo ? 'Synthetic sample records; no collector ran.' : 'The landing-environment flows record each run. A stale or failed run explains missing rows.'}>
           <RunTable runs={ds.runs} />
         </Panel>
       </Grid>
