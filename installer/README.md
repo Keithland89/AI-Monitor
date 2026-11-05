@@ -8,6 +8,11 @@ It signs you in, checks your roles and tenant settings, and then shows a plan. I
 
 It automates the manual setup in [docs/deployment.md](../docs/deployment.md). Read that page for what each lane collects and why.
 
+## Video walkthrough
+
+[Watch the installer walkthrough (MP4)](../Images/agent-monitor-installer-walkthrough-v3.mp4).
+The narration is AI-generated, and the walkthrough uses simulated services.
+
 ## Quick start
 
 **One line in PowerShell** (Windows PowerShell 5.1 or PowerShell 7, with Node.js 22.13 or later on the PATH):
