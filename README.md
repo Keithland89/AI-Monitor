@@ -80,6 +80,12 @@ registry.
 
 ## Quick start
 
+### Installer walkthrough
+
+https://github.com/user-attachments/assets/b84b8ba4-8377-4f54-941f-c5fd75c27b2f
+
+The narration is AI-generated, and the walkthrough uses simulated services.
+
 **To switch everything on with the installer**: run the installer from a clone (`cd installer`,
 `npm ci`, `node bin/agent-monitor-install.js --ui`), or with the one-line launcher in
 [`installer\README.md`](installer/README.md). It signs you in and checks your roles. It then shows a
