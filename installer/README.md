@@ -10,7 +10,8 @@ It automates the manual setup in [docs/deployment.md](../docs/deployment.md). Re
 
 ## Video walkthrough
 
-[Watch the installer walkthrough (MP4)](../Images/agent-monitor-installer-walkthrough-v3.mp4).
+https://github.com/user-attachments/assets/b84b8ba4-8377-4f54-941f-c5fd75c27b2f
+
 The narration is AI-generated, and the walkthrough uses simulated services.
 
 ## Quick start
